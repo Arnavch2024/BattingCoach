@@ -1,6 +1,14 @@
 # Research RAG
 
-MCP-based RAG system for research paper analysis with architecture visualization and prototype builder.
+**Research RAG** is a comprehensive, full-stack application designed to accelerate academic and technical research. By leveraging advanced Retrieval-Augmented Generation (RAG) pipelines, the tool allows users to upload research papers (PDFs) and instantly interact with them. 
+
+Beyond standard document Q&A, Research RAG serves as an intelligent research assistant that can:
+- **Analyze and Query:** Extract insights from uploaded papers using a highly accurate 3-stage RAG pipeline (Cosine FAISS + BM25 Fusion + CrossEncoder).
+- **Visualize Architectures:** Automatically generate interactive, node-based diagrams to visualize complex system architectures or methodologies described in the papers.
+- **Build Prototypes:** Instantly turn paper concepts into functional, sandboxed React UI prototypes with live previews.
+- **Explore Ecosystems:** Seamlessly search external sources like ArXiv for related papers, GitHub for implementations, and HuggingFace for relevant datasets and models via integrated Model Context Protocol (MCP) tools.
+
+This tool bridges the gap between reading a paper and actively understanding, visualizing, and implementing its concepts.
 
 ## Stack
 
