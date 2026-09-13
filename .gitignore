@@ -1,0 +1,73 @@
+# Node.js
+cricket-coach-ui/node_modules/
+cricket-coach-ui/.next/
+cricket-coach-ui/out/
+cricket-coach-ui/build/
+.npm/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env/
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Datasets / Large files
+*.pt
+runs/
+cricket_shot_classifier-20260420T175634Z-3-001/
+*.safetensors
+
+# Keep the final fine-tuned checkpoints in Git LFS.
+!runs/
+!runs/obb/
+!runs/obb/runs/
+!runs/obb/runs/bat_detection/
+!runs/obb/runs/bat_detection/train/
+!runs/obb/runs/bat_detection/train/weights/
+!runs/obb/runs/bat_detection/train/weights/best.pt
+!runs/obb/runs/bat_detection/train/weights/last.pt
+
+# Exclude generated visuals and epoch snapshots; retain reproducibility metadata.
+runs/obb/runs/bat_detection/train/*
+!runs/obb/runs/bat_detection/train/args.yaml
+!runs/obb/runs/bat_detection/train/results.csv
+!runs/obb/runs/bat_detection/train/weights/
+!runs/obb/runs/bat_detection/train/weights/best.pt
+!runs/obb/runs/bat_detection/train/weights/last.pt
