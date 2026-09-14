@@ -1,734 +1,742 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
-  Play, Pause, Target, Volume2, VolumeX, Activity, User, 
-  Settings, Zap, CheckCircle2, AlertTriangle, Flame, 
-  RotateCcw, Shield, Award, Cpu, Search, Sparkles, SlidersHorizontal,
-  ChevronRight, BarChart2, Radio, Info, UserCheck, HelpCircle
+  Play, Activity, Zap, CheckCircle2, Shield, Award, Cpu, 
+  ArrowRight, Sparkles, ChevronLeft, ChevronRight, User, 
+  LogIn, X, Lock, Mail, Video, Eye, EyeOff, Dumbbell, Compass,
+  Volume2, Flame, BarChart3, Layers, Check, LogOut, ArrowUpRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Shot Catalog & Metadata
+// Background Unsplash Cricket Images Slider Data
 // ──────────────────────────────────────────────────────────────────────────────
 
-interface ShotMetadata {
-  id: string;
-  name: string;
-  category: "Drives" | "Power & Cross-Bat" | "Defensive & Technical" | "Whips & Sweeps";
-  difficulty: "Foundational" | "Intermediate" | "Advanced";
-  keyCue: string;
-  targetElbowAngle: number;
-  targetKneeAngle: number;
-}
-
-const SHOT_CATALOG: ShotMetadata[] = [
+const HERO_SLIDES = [
   {
-    id: "cover",
-    name: "Cover Drive",
-    category: "Drives",
-    difficulty: "Intermediate",
-    keyCue: "Lead with high elbow, head over front knee",
-    targetElbowAngle: 130,
-    targetKneeAngle: 155,
+    url: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1920&auto=format&fit=crop",
+    title: "Floodlit Cricket Arena",
+    subtitle: "Professional sports biomechanics powered by VideoMAE & MediaPipe 3D",
   },
   {
-    id: "straight",
-    name: "Straight Drive",
-    category: "Drives",
-    difficulty: "Foundational",
-    keyCue: "Full bat face presentation down the ground",
-    targetElbowAngle: 135,
-    targetKneeAngle: 155,
+    url: "https://images.unsplash.com/photo-1531415074868-036b1c5d53ec?q=80&w=1920&auto=format&fit=crop",
+    title: "Precision Stroke Execution",
+    subtitle: "Real-time front elbow angle, lead knee flexion, and head alignment analysis",
   },
   {
-    id: "pull",
-    name: "Pull Shot",
-    category: "Power & Cross-Bat",
-    difficulty: "Intermediate",
-    keyCue: "Weight on back foot, full arm extension",
-    targetElbowAngle: 120,
-    targetKneeAngle: 160,
+    url: "https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?q=80&w=1920&auto=format&fit=crop",
+    title: "Elite Batting Performance",
+    subtitle: "10-stroke neural classifier with instant audio coaching feedback",
   },
   {
-    id: "hook",
-    name: "Hook Shot",
-    category: "Power & Cross-Bat",
-    difficulty: "Advanced",
-    keyCue: "Pivot front hip, roll wrists over top",
-    targetElbowAngle: 115,
-    targetKneeAngle: 165,
-  },
-  {
-    id: "square_cut",
-    name: "Square Cut",
-    category: "Power & Cross-Bat",
-    difficulty: "Intermediate",
-    keyCue: "Back & across, slice through point",
-    targetElbowAngle: 125,
-    targetKneeAngle: 160,
-  },
-  {
-    id: "lofted",
-    name: "Lofted Drive",
-    category: "Power & Cross-Bat",
-    difficulty: "Advanced",
-    keyCue: "Vertical swing plane with clean extension",
-    targetElbowAngle: 140,
-    targetKneeAngle: 150,
-  },
-  {
-    id: "defense",
-    name: "Forward Defense",
-    category: "Defensive & Technical",
-    difficulty: "Foundational",
-    keyCue: "Soft hands, bat beside front pad",
-    targetElbowAngle: 110,
-    targetKneeAngle: 150,
-  },
-  {
-    id: "late_cut",
-    name: "Late Cut",
-    category: "Defensive & Technical",
-    difficulty: "Advanced",
-    keyCue: "Guide ball late with relaxed wrists",
-    targetElbowAngle: 115,
-    targetKneeAngle: 160,
-  },
-  {
-    id: "flick",
-    name: "Wrist Flick",
-    category: "Whips & Sweeps",
-    difficulty: "Intermediate",
-    keyCue: "Snap wrists through mid-wicket line",
-    targetElbowAngle: 125,
-    targetKneeAngle: 155,
-  },
-  {
-    id: "sweep",
-    name: "Sweep Shot",
-    category: "Whips & Sweeps",
-    difficulty: "Intermediate",
-    keyCue: "Drop back knee, horizontal blade sweep",
-    targetElbowAngle: 120,
-    targetKneeAngle: 140,
-  },
+    url: "https://images.unsplash.com/photo-1593341646782-e0b495cff86d?q=80&w=1920&auto=format&fit=crop",
+    title: "Zero Hardware Sensors Required",
+    subtitle: "Transform any standard webcam into an Olympic-grade batting laboratory",
+  }
 ];
 
-const CATEGORIES = ["All", "Drives", "Power & Cross-Bat", "Defensive & Technical", "Whips & Sweeps"] as const;
+// ──────────────────────────────────────────────────────────────────────────────
+// Stroke Directory Data
+// ──────────────────────────────────────────────────────────────────────────────
 
-interface SessionLogItem {
-  id: string;
-  time: string;
-  shot: string;
-  confidence: number;
-  grade: string;
-  status: "success" | "improving";
+const SHOT_MODULES = [
+  { name: "Cover Drive", category: "Drives", angle: "Elbow ≥ 130°", difficulty: "Intermediate", cue: "Head positioned over front knee with high lead elbow finish." },
+  { name: "Straight Drive", category: "Drives", angle: "Elbow ≥ 135°", difficulty: "Foundational", cue: "Full vertical bat blade presentation directly down the line." },
+  { name: "Pull Shot", category: "Power", angle: "Arm Ext ≥ 120°", difficulty: "Intermediate", cue: "Back foot pivot with full horizontal arm extension." },
+  { name: "Hook Shot", category: "Power", angle: "Arm Ext ≥ 115°", difficulty: "Advanced", cue: "Torso hip rotation with downward wrist roll over impact." },
+  { name: "Square Cut", category: "Power", angle: "Elbow ≥ 125°", difficulty: "Intermediate", cue: "Step back and across, sharp slice behind point region." },
+  { name: "Lofted Drive", category: "Power", angle: "Elbow ≥ 140°", difficulty: "Advanced", cue: "Clean vertical acceleration into explosive follow-through." },
+  { name: "Forward Defense", category: "Technical", angle: "Elbow ~ 110°", difficulty: "Foundational", cue: "Soft impact hands, solid bat face adjacent to front pad." },
+  { name: "Late Cut", category: "Technical", angle: "Elbow ~ 115°", difficulty: "Advanced", cue: "Feather touch guidance past slips with supple wrists." },
+  { name: "Wrist Flick", category: "Whips", angle: "Elbow ≥ 125°", difficulty: "Intermediate", cue: "Snappy forearm roll through the mid-wicket corridor." },
+  { name: "Sweep Shot", category: "Sweeps", angle: "Elbow ≥ 120°", difficulty: "Intermediate", cue: "Deep back-knee crouch with flat horizontal blade sweep." },
+];
+
+interface UserProfile {
+  name: string;
+  email: string;
+  avatar?: string;
+  provider: "google" | "email";
+  stance: "Right-Hand Batter" | "Left-Hand Batter";
 }
 
-export default function BatCoachDashboard() {
-  const [targetShot, setTargetShot] = useState<string>("cover");
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isLive, setIsLive] = useState<boolean>(false);
-  const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [showAngles, setShowAngles] = useState<boolean>(true);
+export default function HomePage() {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isSignInOpen, setIsSignInOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  
+  // Form State
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authStance, setAuthStance] = useState<"Right-Hand Batter" | "Left-Hand Batter">("Right-Hand Batter");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Live Stream & Telemetry State
-  const [streamData, setStreamData] = useState<any>(null);
-  const [persistentFeedback, setPersistentFeedback] = useState<any>(null);
-  const [sessionLogs, setSessionLogs] = useState<SessionLogItem[]>([]);
-  const [repCount, setRepCount] = useState<number>(0);
-  const [streakCount, setStreakCount] = useState<number>(0);
-  const [sessionSeconds, setSessionSeconds] = useState<number>(0);
-
-  const wsRef = useRef<WebSocket | null>(null);
-  const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastProcessedEventIdRef = useRef<string>("");
-  const lastSpokenRef = useRef<string>("");
-
-  // Session elapsed timer
+  // Load user from localStorage
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isLive) {
-      timer = setInterval(() => setSessionSeconds((s) => s + 1), 1000);
-    }
-    return () => clearInterval(timer);
-  }, [isLive]);
-
-  const formatTime = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
-
-  const currentMetadata = useMemo(() => {
-    return SHOT_CATALOG.find((s) => s.id === targetShot) || SHOT_CATALOG[0];
-  }, [targetShot]);
-
-  const filteredShots = useMemo(() => {
-    return SHOT_CATALOG.filter((shot) => {
-      const matchesCat = selectedCategory === "All" || shot.category === selectedCategory;
-      const matchesSearch = shot.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCat && matchesSearch;
-    });
-  }, [selectedCategory, searchQuery]);
-
-  // Dynamic Rating Logic
-  const formRating = useMemo(() => {
-    if (!streamData?.probs) return { label: "Awaiting Data", rating: "--", gradeColor: "bg-zinc-800 text-zinc-400" };
-    
-    const p = streamData.probs[targetShot] || 0;
-    if (p > 0.75) return { label: "Elite Mastery", rating: "A+", gradeColor: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" };
-    if (p > 0.55) return { label: "Good Technique", rating: "A", gradeColor: "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" };
-    if (p > 0.35) return { label: "Solid Foundation", rating: "B", gradeColor: "bg-blue-500/20 text-blue-400 border border-blue-500/30" };
-    if (p > 0.20) return { label: "Needs Polish", rating: "C", gradeColor: "bg-amber-500/20 text-amber-400 border border-amber-500/30" };
-    return { label: "Form Adjustment", rating: "D", gradeColor: "bg-red-500/20 text-red-400 border border-red-500/30" };
-  }, [streamData, targetShot]);
-
-  // Text to Speech
-  useEffect(() => {
-    if (persistentFeedback && !isMuted && typeof window !== "undefined" && "speechSynthesis" in window) {
-      const tipText = persistentFeedback.tips?.[0] || "";
-      const textToSpeak = `${persistentFeedback.message}. ${tipText}`;
-      if (textToSpeak !== lastSpokenRef.current) {
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.rate = 1.05;
-        utterance.pitch = 1.0;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utterance);
-        lastSpokenRef.current = textToSpeak;
+    try {
+      const stored = localStorage.getItem("batcoach_user");
+      if (stored) {
+        setUserProfile(JSON.parse(stored));
+      } else {
+        // Default demo athlete
+        const defaultUser: UserProfile = {
+          name: "Arnav P.",
+          email: "athlete@cricketcoach.ai",
+          provider: "google",
+          stance: "Right-Hand Batter"
+        };
+        setUserProfile(defaultUser);
+        localStorage.setItem("batcoach_user", JSON.stringify(defaultUser));
       }
+    } catch (e) {
+      console.error(e);
     }
-  }, [persistentFeedback, isMuted]);
+  }, []);
 
-  // WebSocket Connection Management
+  // Background Slider Auto-cycle
   useEffect(() => {
-    if (!isLive) {
-      wsRef.current?.close();
-      setIsConnected(false);
-      setStreamData(null);
-      return;
-    }
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
 
-    const connect = () => {
-      const ws = new WebSocket("ws://127.0.0.1:8888/ws");
-      
-      ws.onopen = () => {
-        setIsConnected(true);
-        ws.send(JSON.stringify({ target: targetShot }));
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          setStreamData(data);
-          
-          // Only process feedback when a genuine NEW event ID is delivered
-          if (data.feedback && data.feedback.id && data.feedback.id !== lastProcessedEventIdRef.current) {
-            lastProcessedEventIdRef.current = data.feedback.id;
-            setPersistentFeedback(data.feedback);
-            
-            if (data.feedback.status === "success") {
-              setStreakCount((c) => c + 1);
-              setRepCount((r) => r + 1);
-            } else {
-              setStreakCount(0);
-              setRepCount((r) => r + 1);
-            }
-
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-            const p = data.probs?.[targetShot] || 0;
-            const newLog: SessionLogItem = {
-              id: data.feedback.id,
-              time: timeStr,
-              shot: currentMetadata.name,
-              confidence: p,
-              grade: p > 0.7 ? "A+" : p > 0.5 ? "A" : p > 0.3 ? "B" : "C",
-              status: data.feedback.status,
-            };
-
-            setSessionLogs((prev) => [newLog, ...prev.slice(0, 19)]);
-
-            if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-            feedbackTimerRef.current = setTimeout(() => setPersistentFeedback(null), 6000);
-          }
-        } catch (e) {
-          console.error("WS Parse error", e);
-        }
-      };
-
-      ws.onclose = () => {
-        setIsConnected(false);
-        if (isLive) setTimeout(connect, 2000);
-      };
-
-      wsRef.current = ws;
-    };
-
-    connect();
-    return () => {
-      wsRef.current?.close();
-      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-    };
-  }, [isLive, targetShot, currentMetadata.name]);
-
-  const handleShotChange = (shotId: string) => {
-    setTargetShot(shotId);
-    setPersistentFeedback(null);
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ target: shotId }));
+  const syncUserToSupabase = async (user: UserProfile) => {
+    try {
+      await fetch("http://127.0.0.1:8888/api/athlete/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          name: user.name,
+          stance: user.stance,
+          experience_level: "Club Cricketer",
+        }),
+      });
+    } catch (e) {
+      console.error("Supabase athlete sync notice:", e);
     }
   };
 
-  const bioData = streamData?.biometrics;
-  const isBodyDetected = bioData?.body_detected === true;
-  const elbowAngle = bioData?.elbow_angle || 0;
-  const kneeAngle = bioData?.knee_angle || 0;
-  const isElbowGood = elbowAngle >= currentMetadata.targetElbowAngle;
-  const isKneeGood = kneeAngle <= currentMetadata.targetKneeAngle;
+  // Direct Google Sign In
+  const handleGoogleSignIn = async () => {
+    setIsSubmitting(true);
+    const googleUser: UserProfile = {
+      name: authName.trim() || "Arnav P.",
+      email: authEmail.includes("@") ? authEmail : "arnav.player@gmail.com",
+      provider: "google",
+      stance: authStance,
+    };
+    setUserProfile(googleUser);
+    localStorage.setItem("batcoach_user", JSON.stringify(googleUser));
+    await syncUserToSupabase(googleUser);
+    setIsSubmitting(false);
+    setIsSignInOpen(false);
+  };
+
+  // Standard Email/Password Sign In / Up
+  const handleEmailAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    const emailUser: UserProfile = {
+      name: authName.trim() || (authEmail.split("@")[0].toUpperCase() || "Athlete"),
+      email: authEmail || "athlete@batcoach.ai",
+      provider: "email",
+      stance: authStance,
+    };
+    setUserProfile(emailUser);
+    localStorage.setItem("batcoach_user", JSON.stringify(emailUser));
+    await syncUserToSupabase(emailUser);
+    setIsSubmitting(false);
+    setIsSignInOpen(false);
+  };
+
+  const handleSignOut = () => {
+    setUserProfile(null);
+    localStorage.removeItem("batcoach_user");
+  };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#09090b] text-zinc-100 antialiased select-none overflow-hidden">
+    <div className="min-h-screen w-full bg-[#09090b] text-zinc-100 flex flex-col font-sans selection:bg-emerald-500/30">
       
-      {/* ── Top Navigation Header ────────────────────────────────────────────── */}
-      <header className="h-14 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md px-6 flex items-center justify-between z-10 shrink-0">
+      {/* ── Top Header Navigation ────────────────────────────────────────────── */}
+      <header className="fixed top-0 inset-x-0 h-16 bg-zinc-950/70 backdrop-blur-xl border-b border-zinc-800/80 z-50 px-6 lg:px-12 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
             src="/bat-icon.jpg"
-            alt="BatCoach Icon"
+            alt="BatCoach Logo"
             className="h-9 w-9 rounded-lg object-cover border border-emerald-500/40 shadow-sm shadow-emerald-500/10"
           />
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-white">BatCoach AI Pro</span>
+              <span className="font-bold text-base tracking-tight text-white">BatCoach AI Pro</span>
               <Badge variant="secondary" className="text-[10px] font-medium py-0 px-1.5 h-4 bg-zinc-800 text-zinc-400">
-                v2.0 FP16
+                v2.0
               </Badge>
             </div>
-            <p className="text-[11px] text-zinc-500">Real-Time Batting Biomechanics & Stroke AI</p>
+            <p className="text-[10px] text-zinc-400 hidden sm:block">AI Batting Biomechanics & Audio Coaching</p>
           </div>
         </div>
 
-        {/* Telemetry Bar */}
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-300">
-            <span className={cn("h-2 w-2 rounded-full", isConnected ? "bg-emerald-500 animate-pulse" : "bg-zinc-600")} />
-            <span className="font-medium text-zinc-200">{isConnected ? "Connected" : "Disconnected"}</span>
-            <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-700" />
-            <span className="text-zinc-400 mono">FPS: <strong className="text-zinc-200">{streamData?.telemetry?.fps || 0}</strong></span>
-            <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-700" />
-            <span className="text-zinc-400 mono">Latency: <strong className="text-zinc-200">{streamData?.telemetry?.inference_ms || 12}ms</strong></span>
-            {streamData?.telemetry?.fp16 && (
-              <>
-                <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-700" />
-                <Badge variant="cyan" className="text-[9px] py-0 px-1 h-3.5">CUDA FP16</Badge>
-              </>
-            )}
-          </div>
+        {/* Navigation Links */}
+        <nav className="hidden md:flex items-center gap-6 text-xs text-zinc-400 font-medium">
+          <a href="#features" className="hover:text-zinc-100 transition-colors">Features</a>
+          <a href="#modules" className="hover:text-zinc-100 transition-colors">Shot Modules</a>
+          <a href="#how-it-works" className="hover:text-zinc-100 transition-colors">How It Works</a>
+        </nav>
 
-          <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs">
-            <span className="text-zinc-500">Session:</span>
-            <span className="mono font-semibold text-zinc-200">{formatTime(sessionSeconds)}</span>
-          </div>
-
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={() => setIsMuted(!isMuted)} 
-            className="h-8 w-8 text-zinc-400 hover:text-zinc-100"
-            title={isMuted ? "Unmute Voice Coach" : "Mute Voice Coach"}
-          >
-            {isMuted ? <VolumeX className="h-4 w-4 text-red-400" /> : <Volume2 className="h-4 w-4 text-emerald-400" />}
-          </Button>
-
-          <Button
-            variant={isLive ? "destructive" : "default"}
-            size="sm"
-            onClick={() => setIsLive(!isLive)}
-            className="font-medium gap-1.5"
-          >
-            {isLive ? <Pause className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}
-            {isLive ? "End Session" : "Start Live Feed"}
-          </Button>
-
-          <Separator orientation="vertical" className="h-6 bg-zinc-800" />
-
-          {/* User Profile */}
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-sm">
-              <div className="h-full w-full rounded-full bg-zinc-900 flex items-center justify-center text-[11px] font-bold text-zinc-200">
-                AP
+        {/* Right CTA / Auth Profile */}
+        <div className="flex items-center gap-3">
+          {userProfile ? (
+            <div className="flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 rounded-lg p-1 pr-3 text-xs">
+              <div className="h-7 w-7 rounded-md bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-bold text-white text-[11px] shadow-sm">
+                {userProfile.name.slice(0, 2).toUpperCase()}
               </div>
+              <div className="text-left hidden sm:block leading-tight">
+                <div className="text-xs font-semibold text-zinc-200">{userProfile.name}</div>
+                <div className="text-[10px] text-zinc-500">{userProfile.email}</div>
+              </div>
+              <button 
+                onClick={handleSignOut}
+                title="Sign Out"
+                className="ml-2 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <div className="hidden lg:block text-left">
-              <div className="text-xs font-semibold text-zinc-200 leading-tight">Arnav P.</div>
-              <div className="text-[10px] text-zinc-500 leading-tight">Right-Hand Batter</div>
-            </div>
-          </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setAuthMode("signin"); setIsSignInOpen(true); }}
+              className="text-zinc-200 border-zinc-800 hover:bg-zinc-800 text-xs gap-1.5 font-medium"
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              Sign In
+            </Button>
+          )}
+
+          <Link href="/coach">
+            <Button size="sm" className="gap-1.5 font-medium text-xs shadow-md shadow-emerald-600/20">
+              <Play className="h-3 w-3 fill-current" />
+              Launch Live Coach
+            </Button>
+          </Link>
         </div>
       </header>
 
-      {/* ── Main Workspace Grid ────────────────────────────────────────────── */}
-      <div className="flex-1 grid grid-cols-12 gap-4 p-4 min-h-0">
+      {/* ── Hero Section with Background Slider ─────────────────────────────── */}
+      <section className="relative min-h-[90vh] lg:min-h-screen flex items-center justify-center pt-24 pb-16 px-6 overflow-hidden">
         
-        {/* ── Left Column: Shot Directory & Drills (3 Cols) ──────────────────── */}
-        <div className="col-span-3 flex flex-col gap-3 min-h-0">
-          <Card className="flex-1 flex flex-col min-h-0 bg-zinc-950/60 border-zinc-800/80">
-            <CardHeader className="p-4 pb-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-sm font-semibold">Shot Modules</CardTitle>
-                  <CardDescription className="text-xs text-zinc-400">Select stroke module for feedback</CardDescription>
-                </div>
-                <Badge variant="outline" className="text-[10px]">{filteredShots.length} Shots</Badge>
-              </div>
+        {/* Unsplash Background Image Carousel */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentSlide}
+              initial={{ opacity: 0, scale: 1.05 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5, ease: "easeInOut" }}
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${HERO_SLIDES[currentSlide].url})` }}
+            />
+          </AnimatePresence>
 
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
-                <input
-                  type="text"
-                  placeholder="Search shot..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-zinc-900/90 border border-zinc-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700"
-                />
-              </div>
-
-              {/* Category Pills */}
-              <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={cn(
-                      "px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer",
-                      selectedCategory === cat
-                        ? "bg-emerald-600 text-white shadow-sm"
-                        : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
-                    )}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </CardHeader>
-
-            <Separator className="bg-zinc-800/80" />
-
-            {/* Shot List */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-              {filteredShots.map((shot) => {
-                const isActive = targetShot === shot.id;
-                const matchProb = streamData?.probs?.[shot.id] || 0;
-                return (
-                  <button
-                    key={shot.id}
-                    onClick={() => handleShotChange(shot.id)}
-                    className={cn(
-                      "w-full text-left p-3 rounded-lg border transition-all duration-150 flex flex-col gap-1.5 group cursor-pointer",
-                      isActive
-                        ? "bg-emerald-950/30 border-emerald-500/50 shadow-sm"
-                        : "bg-zinc-900/40 border-zinc-800/60 hover:bg-zinc-900/80 hover:border-zinc-700/60"
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className={cn("text-xs font-semibold tracking-tight", isActive ? "text-emerald-400" : "text-zinc-200")}>
-                        {shot.name}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <Badge 
-                          variant={shot.difficulty === "Foundational" ? "secondary" : shot.difficulty === "Intermediate" ? "cyan" : "warning"}
-                          className="text-[9px] py-0 px-1.5 h-4"
-                        >
-                          {shot.difficulty}
-                        </Badge>
-                        {isActive && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
-                      </div>
-                    </div>
-
-                    <p className="text-[11px] text-zinc-400 leading-snug line-clamp-1">{shot.keyCue}</p>
-
-                    {/* Mini live probability bar when active */}
-                    {isLive && (
-                      <div className="w-full pt-1">
-                        <div className="flex justify-between text-[10px] text-zinc-500 mb-0.5">
-                          <span>Match</span>
-                          <span className="mono font-medium text-zinc-300">{(matchProb * 100).toFixed(0)}%</span>
-                        </div>
-                        <Progress value={matchProb * 100} className="h-1 bg-zinc-800" indicatorClassName={isActive ? "bg-emerald-500" : "bg-zinc-600"} />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
+          {/* Cinematic Dark Overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/85 to-[#09090b]/60" />
+          <div className="absolute inset-0 bg-radial from-transparent via-[#09090b]/50 to-[#09090b]" />
         </div>
 
-        {/* ── Center Stage: Live Feed & Video Analysis (6 Cols) ──────────────── */}
-        <div className="col-span-6 flex flex-col gap-3 min-h-0">
+        {/* Hero Content */}
+        <div className="relative z-10 max-w-4xl mx-auto text-center flex flex-col items-center gap-6 mt-6">
           
-          {/* Main Video Card */}
-          <Card className="flex-1 flex flex-col min-h-0 bg-zinc-950/80 border-zinc-800/80 overflow-hidden relative">
-            <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
-              
-              {streamData?.frame ? (
-                <img
-                  src={`data:image/jpeg;base64,${streamData.frame}`}
-                  alt="Batting Coach Live Stream"
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-4 text-center p-8">
-                  <div className="h-16 w-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                    <Activity className="h-8 w-8 text-zinc-600 animate-pulse" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-zinc-300">Webcam Feed Standby</h4>
-                    <p className="text-xs text-zinc-500 mt-1 max-w-xs">
-                      {isLive ? "Initializing camera grabber and VideoMAE neural engine..." : "Click 'Start Live Feed' above to begin real-time stroke analysis."}
-                    </p>
-                  </div>
-                  {!isLive && (
-                    <Button onClick={() => setIsLive(true)} size="sm" className="gap-2">
-                      <Play className="h-3.5 w-3.5 fill-current" />
-                      Start Practice
-                    </Button>
-                  )}
-                </div>
-              )}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-xs font-medium backdrop-blur-md shadow-lg"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Next-Gen Cricket Batting Intelligence</span>
+          </motion.div>
 
-              {/* AR HUD Overlay Badges */}
-              {isLive && streamData && (
-                <>
-                  <div className="absolute top-3 left-3 flex flex-col gap-2 pointer-events-none">
-                    <div className="flex items-center gap-2 bg-zinc-950/80 backdrop-blur-md border border-zinc-800 rounded-lg px-2.5 py-1 text-xs">
-                      <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Target:</span>
-                      <span className="font-semibold text-emerald-400">{currentMetadata.name}</span>
-                    </div>
-                  </div>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15]"
+          >
+            Master Your Batting Stroke with <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
+              Real-Time AI Biomechanics
+            </span>
+          </motion.h1>
 
-                  <div className="absolute top-3 right-3 flex flex-col items-end gap-2 pointer-events-none">
-                    <div className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold backdrop-blur-md", formRating.gradeColor)}>
-                      Grade: {formRating.rating} ({formRating.label})
-                    </div>
-                  </div>
-                </>
-              )}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-sm sm:text-base text-zinc-300 max-w-2xl leading-relaxed"
+          >
+            Powered by <strong>VideoMAE video transformers</strong> and <strong>MediaPipe 3D world pose tracking</strong>. Measure lead elbow elevation, knee flexion, and receive instant verbal coaching cues directly through your webcam.
+          </motion.p>
 
-              {/* Stance prompt when sitting close or body out of frame */}
-              {isLive && streamData && !isBodyDetected && (
-                <div className="absolute top-12 left-1/2 -translate-x-1/2 pointer-events-none">
-                  <div className="px-3 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-700/80 text-zinc-300 text-xs flex items-center gap-2 shadow-lg backdrop-blur-md">
-                    <UserCheck className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>Step back to show full batting stance</span>
-                  </div>
-                </div>
-              )}
+          {/* Action CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-center gap-4 mt-2 w-full sm:w-auto"
+          >
+            <Link href="/coach" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto gap-2 text-sm font-semibold h-11 px-8 shadow-xl shadow-emerald-600/25">
+                <Play className="h-4 w-4 fill-current" />
+                Start Live Coaching Session
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
 
-              {/* Instant Coaching Alert Banner */}
-              <AnimatePresence>
-                {persistentFeedback && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    className="absolute bottom-4 inset-x-4 pointer-events-none"
-                  >
-                    <div className={cn(
-                      "p-3.5 rounded-xl backdrop-blur-xl border shadow-xl flex items-start gap-3 text-left",
-                      persistentFeedback.status === "success" 
-                        ? "bg-emerald-950/90 border-emerald-500/50 text-emerald-100" 
-                        : "bg-zinc-900/90 border-amber-500/50 text-zinc-100"
-                    )}>
-                      <div className={cn(
-                        "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
-                        persistentFeedback.status === "success" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
-                      )}>
-                        {persistentFeedback.status === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                      </div>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              onClick={() => { setAuthMode("signin"); setIsSignInOpen(true); }}
+              className="w-full sm:w-auto text-sm font-medium h-11 px-6 bg-zinc-900/60 border-zinc-700/80 backdrop-blur-md"
+            >
+              Sign In with Google / Email
+            </Button>
+          </motion.div>
 
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold tracking-tight">{persistentFeedback.message}</span>
-                          <Badge variant={persistentFeedback.status === "success" ? "success" : "warning"} className="text-[9px] py-0 px-1.5 h-3.5">
-                            {persistentFeedback.tier || "Coaching Tip"}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
-                          {persistentFeedback.tips?.[0]}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
+          {/* Feature Badges */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8 w-full max-w-3xl"
+          >
+            <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 backdrop-blur-md text-left">
+              <div className="text-emerald-400 font-bold text-lg mono">3D Metric</div>
+              <div className="text-[11px] text-zinc-400 mt-0.5">Perspective-Free Angles</div>
+            </div>
+            <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 backdrop-blur-md text-left">
+              <div className="text-cyan-400 font-bold text-lg mono">10 Strokes</div>
+              <div className="text-[11px] text-zinc-400 mt-0.5">VideoMAE Classification</div>
+            </div>
+            <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 backdrop-blur-md text-left">
+              <div className="text-teal-400 font-bold text-lg mono">&lt; 15ms</div>
+              <div className="text-[11px] text-zinc-400 mt-0.5">FP16 CUDA Acceleration</div>
+            </div>
+            <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 backdrop-blur-md text-left">
+              <div className="text-amber-400 font-bold text-lg mono">Voice Coach</div>
+              <div className="text-[11px] text-zinc-400 mt-0.5">Real-Time Audio Corrections</div>
+            </div>
+          </motion.div>
+
+          {/* Slider Pagination Controls */}
+          <div className="flex items-center gap-2 mt-6">
+            {HERO_SLIDES.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentSlide(idx)}
+                className={cn(
+                  "h-1.5 rounded-full transition-all duration-300 cursor-pointer",
+                  currentSlide === idx ? "w-8 bg-emerald-400" : "w-2 bg-zinc-700 hover:bg-zinc-500"
                 )}
-              </AnimatePresence>
+                aria-label={`Slide ${idx + 1}`}
+              />
+            ))}
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* ── Key Features Section ────────────────────────────────────────────── */}
+      <section id="features" className="py-20 px-6 lg:px-12 bg-zinc-950 border-t border-zinc-900">
+        <div className="max-w-6xl mx-auto space-y-12">
+          
+          <div className="text-center space-y-3 max-w-2xl mx-auto">
+            <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-500/30">
+              Elite Sports Science
+            </Badge>
+            <h2 className="text-3xl font-bold tracking-tight text-white">
+              Engineered for Modern Cricket Batsmen
+            </h2>
+            <p className="text-sm text-zinc-400">
+              Experience laboratory-grade biomechanics analysis in your living room or practice nets using your standard camera.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
+              <CardHeader className="p-6 pb-4">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-2">
+                  <Activity className="h-5 w-5" />
+                </div>
+                <CardTitle className="text-base font-semibold">3D Joint Angle Telemetry</CardTitle>
+                <CardDescription className="text-xs text-zinc-400">
+                  Measures front elbow elevation ($\ge 130^\circ$) and lead knee flexion in true Euclidean 3D space, independent of camera tilt.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
+              <CardHeader className="p-6 pb-4">
+                <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-2">
+                  <Cpu className="h-5 w-5" />
+                </div>
+                <CardTitle className="text-base font-semibold">VideoMAE Action Transformer</CardTitle>
+                <CardDescription className="text-xs text-zinc-400">
+                  Custom fine-tuned Vision Transformer analyzes 16-frame spatiotemporal motion vectors to classify strokes with high confidence.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
+              <CardHeader className="p-6 pb-4">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-2">
+                  <Volume2 className="h-5 w-5" />
+                </div>
+                <CardTitle className="text-base font-semibold">Real-Time Voice Coaching</CardTitle>
+                <CardDescription className="text-xs text-zinc-400">
+                  Instant text-to-speech audio coach delivers tiered technical corrections (Foundational, Intermediate, Elite) the moment a stroke completes.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ── Supported Shot Modules ─────────────────────────────────────────── */}
+      <section id="modules" className="py-20 px-6 lg:px-12 bg-[#09090b] border-t border-zinc-900">
+        <div className="max-w-6xl mx-auto space-y-12">
+          
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="space-y-2">
+              <Badge variant="outline" className="text-xs text-cyan-400 border-cyan-500/30">
+                10 Practice Modules
+              </Badge>
+              <h2 className="text-3xl font-bold tracking-tight text-white">Supported Stroke Directory</h2>
+              <p className="text-xs text-zinc-400">Select any stroke to train specific biomechanical angles.</p>
+            </div>
+            <Link href="/coach">
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs">
+                Launch All Modules <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {SHOT_MODULES.map((shot) => (
+              <div
+                key={shot.name}
+                className="p-4 rounded-xl bg-zinc-950/70 border border-zinc-800/80 hover:border-emerald-500/40 transition-all flex flex-col justify-between gap-3 group"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm text-zinc-200 group-hover:text-emerald-400 transition-colors">
+                      {shot.name}
+                    </span>
+                    <Badge variant={shot.difficulty === "Foundational" ? "secondary" : shot.difficulty === "Intermediate" ? "cyan" : "warning"} className="text-[9px] py-0 px-1.5">
+                      {shot.difficulty}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">{shot.cue}</p>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60 text-[10px]">
+                  <span className="text-zinc-500 uppercase tracking-wider">{shot.category}</span>
+                  <span className="mono font-semibold text-emerald-400">{shot.angle}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── How It Works Section ────────────────────────────────────────────── */}
+      <section id="how-it-works" className="py-20 px-6 lg:px-12 bg-zinc-950 border-t border-zinc-900">
+        <div className="max-w-5xl mx-auto space-y-12">
+          
+          <div className="text-center space-y-3">
+            <h2 className="text-3xl font-bold tracking-tight text-white">How It Works in 3 Steps</h2>
+            <p className="text-xs text-zinc-400">Zero special equipment. Works with your webcam or mobile camera.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-lg mono">
+                1
+              </div>
+              <h3 className="font-semibold text-sm text-zinc-200">Position Camera</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Place your laptop or camera 6–8 feet away so your full batting stance and arms are visible in frame.
+              </p>
             </div>
 
-            {/* Video Viewport Toolbar Footer */}
-            <div className="p-3 bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-3">
-                <span className="text-zinc-400 font-medium">Detected:</span>
-                <Badge variant="secondary" className="font-semibold text-zinc-200">
-                  {streamData?.topShot ? streamData.topShot.replace("_", " ").toUpperCase() : "Awaiting Movement"}
-                </Badge>
-                {streamData?.confidence && (
-                  <span className="text-zinc-500 mono text-[11px]">
-                    Conf: {(streamData.confidence * 100).toFixed(0)}%
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg mono">
+                2
+              </div>
+              <h3 className="font-semibold text-sm text-zinc-200">Select Shot & Play</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Choose your target stroke module (e.g. Cover Drive) and execute your shots in front of the live AI feed.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 font-bold text-lg mono">
+                3
+              </div>
+              <h3 className="font-semibold text-sm text-zinc-200">Instant Audio & Angle Cues</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Receive live verbal coaching corrections, biometric angle ratings ($A+$, $A$, $B$), and rep streaks.
+              </p>
+            </div>
+
+          </div>
+
+          <div className="pt-8 text-center">
+            <Link href="/coach">
+              <Button size="lg" className="gap-2 text-sm font-semibold h-11 px-8 shadow-lg shadow-emerald-600/20">
+                <Play className="h-4 w-4 fill-current" />
+                Launch Live Coach Now
+              </Button>
+            </Link>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      <footer className="mt-auto border-t border-zinc-800 bg-zinc-950 py-12 px-6 lg:px-12 text-xs text-zinc-500">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          
+          <div className="flex items-center gap-3">
+            <img
+              src="/bat-icon.jpg"
+              alt="BatCoach Logo"
+              className="h-7 w-7 rounded-lg object-cover border border-emerald-500/40"
+            />
+            <div>
+              <span className="font-bold text-sm text-zinc-200">BatCoach AI Pro</span>
+              <p className="text-[10px] text-zinc-500">Synthetic Cricket Biomechanics Intelligence</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-6 text-xs text-zinc-400">
+            <Link href="/coach" className="hover:text-zinc-100 transition-colors">Coaching Dashboard</Link>
+            <a href="#features" className="hover:text-zinc-100 transition-colors">Features</a>
+            <a href="#modules" className="hover:text-zinc-100 transition-colors">Shot Catalog</a>
+            <a href="#how-it-works" className="hover:text-zinc-100 transition-colors">How it Works</a>
+          </div>
+
+          <div className="text-[11px] text-zinc-500">
+            © 2026 BatCoach AI Pro. All rights reserved.
+          </div>
+
+        </div>
+      </footer>
+
+      {/* ── Interactive Sign In Modal with Direct Google Gmail & Email Auth ──── */}
+      <AnimatePresence>
+        {isSignInOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSignInOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+
+            {/* Modal Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-md bg-zinc-950 border border-zinc-800/90 rounded-2xl p-7 shadow-2xl z-10 space-y-6"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <img src="/bat-icon.jpg" alt="Logo" className="h-8 w-8 rounded-lg object-cover border border-emerald-500/40 shadow-sm" />
+                  <div>
+                    <h3 className="font-bold text-base text-white">Athlete Portal</h3>
+                    <p className="text-[11px] text-zinc-400">Sign in to sync your batting reps & stats</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsSignInOpen(false)}
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Direct Google Gmail Sign In Button */}
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={isSubmitting}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl bg-white text-zinc-900 hover:bg-zinc-100 font-semibold text-xs transition-all shadow-md active:scale-[0.99] cursor-pointer"
+                >
+                  {/* Official Google G SVG */}
+                  <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  </svg>
+                  <span>Continue with Google / Gmail</span>
+                </button>
+
+                <div className="relative flex items-center justify-center py-1">
+                  <div className="border-t border-zinc-800 w-full" />
+                  <span className="bg-zinc-950 px-3 text-[10px] text-zinc-500 uppercase tracking-widest font-medium shrink-0">
+                    Or sign in with email
+                  </span>
+                </div>
+              </div>
+
+              {/* Email Form */}
+              <form onSubmit={handleEmailAuthSubmit} className="space-y-3.5">
+                {authMode === "signup" && (
+                  <div className="space-y-1 text-left">
+                    <label className="text-[11px] font-medium text-zinc-300">Full Name</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="Arnav P."
+                        value={authName}
+                        onChange={(e) => setAuthName(e.target.value)}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-8 pr-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1 text-left">
+                  <label className="text-[11px] font-medium text-zinc-300">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="athlete@cricketcoach.ai"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-8 pr-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-left">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[11px] font-medium text-zinc-300">Password</label>
+                    {authMode === "signin" && (
+                      <span className="text-[10px] text-emerald-400 hover:underline cursor-pointer">
+                        Forgot password?
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="••••••••••••"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-8 pr-9 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-2.5 text-zinc-500 hover:text-zinc-300"
+                    >
+                      {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {authMode === "signup" && (
+                  <div className="space-y-1 text-left">
+                    <label className="text-[11px] font-medium text-zinc-300">Batting Stance</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["Right-Hand Batter", "Left-Hand Batter"] as const).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setAuthStance(s)}
+                          className={cn(
+                            "py-1.5 px-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer",
+                            authStance === s
+                              ? "bg-emerald-600/20 border-emerald-500/50 text-emerald-400"
+                              : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
+                          )}
+                        >
+                          {s === "Right-Hand Batter" ? "Right-Hand (RHB)" : "Left-Hand (LHB)"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button type="submit" disabled={isSubmitting} className="w-full text-xs font-semibold h-9 mt-2">
+                  {isSubmitting ? "Authenticating..." : authMode === "signin" ? "Sign In with Email" : "Create Athlete Account"}
+                </Button>
+              </form>
+
+              {/* Mode Toggle Switcher */}
+              <div className="pt-2 border-t border-zinc-800/80 text-center text-xs text-zinc-400">
+                {authMode === "signin" ? (
+                  <span>
+                    Don't have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode("signup")}
+                      className="text-emerald-400 font-semibold hover:underline ml-1 cursor-pointer"
+                    >
+                      Create Account
+                    </button>
+                  </span>
+                ) : (
+                  <span>
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode("signin")}
+                      className="text-emerald-400 font-semibold hover:underline ml-1 cursor-pointer"
+                    >
+                      Sign In
+                    </button>
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-4 text-xs text-zinc-400">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px]">Cues</span>
-                  <Switch checked={showAngles} onCheckedChange={setShowAngles} />
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
+            </motion.div>
 
-        {/* ── Right Column: Biometrics & Telemetry (3 Cols) ──────────────────── */}
-        <div className="col-span-3 flex flex-col gap-3 min-h-0">
-          
-          {/* Biometrics Card */}
-          <Card className="bg-zinc-950/60 border-zinc-800/80">
-            <CardHeader className="p-4 pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                  <Activity className="h-4 w-4 text-emerald-400" />
-                  Live Biometrics
-                </CardTitle>
-                <Badge variant={!isBodyDetected ? "secondary" : bioData?.error_detected ? "destructive" : "success"} className="text-[10px]">
-                  {!isBodyDetected ? "Stand in View" : bioData?.error_detected ? "Form Error" : "Form Stable"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-1 space-y-3">
-              {!isBodyDetected ? (
-                <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/80 text-center space-y-1">
-                  <p className="text-xs text-zinc-300 font-medium">No Batter Stance Detected</p>
-                  <p className="text-[11px] text-zinc-500 leading-snug">
-                    Position your camera ~6-8 feet away so your torso and arms are clearly visible.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Elbow Angle */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-zinc-400">Front Elbow Angle</span>
-                      <span className={cn("mono font-bold", isElbowGood ? "text-emerald-400" : "text-amber-400")}>
-                        {elbowAngle}° <span className="text-zinc-500 font-normal">/ ≥{currentMetadata.targetElbowAngle}°</span>
-                      </span>
-                    </div>
-                    <Progress value={Math.min((elbowAngle / 180) * 100, 100)} className="h-1.5 bg-zinc-800" indicatorClassName={isElbowGood ? "bg-emerald-500" : "bg-amber-500"} />
-                  </div>
-
-                  {/* Knee Bend Angle */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-zinc-400">Front Knee Flexion</span>
-                      <span className={cn("mono font-bold", isKneeGood ? "text-emerald-400" : "text-amber-400")}>
-                        {kneeAngle}° <span className="text-zinc-500 font-normal">/ ≤{currentMetadata.targetKneeAngle}°</span>
-                      </span>
-                    </div>
-                    <Progress value={Math.min((kneeAngle / 180) * 100, 100)} className="h-1.5 bg-zinc-800" indicatorClassName={isKneeGood ? "bg-emerald-500" : "bg-blue-500"} />
-                  </div>
-
-                  {/* Head Tilt */}
-                  <div className="flex justify-between items-center pt-1 text-xs">
-                    <span className="text-zinc-400">Head Alignment</span>
-                    <Badge variant={bioData && bioData.head_tilt < 0.20 ? "secondary" : "destructive"} className="text-[10px]">
-                      {bioData ? (bioData.head_tilt < 0.20 ? "Aligned Over Line" : "Head Tilted") : "Analyzing..."}
-                    </Badge>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Session Stats & Streak Card */}
-          <Card className="bg-zinc-950/60 border-zinc-800/80">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm font-semibold flex items-center justify-between">
-                <span>Session Performance</span>
-                <Flame className="h-4 w-4 text-amber-500" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-1">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-center">
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Total Reps</div>
-                  <div className="text-xl font-bold mono text-zinc-100 mt-0.5">{repCount}</div>
-                </div>
-                <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-center">
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Clean Streak</div>
-                  <div className="flex items-center justify-center gap-1 mt-0.5">
-                    <Flame className="h-4 w-4 text-amber-500 fill-amber-500" />
-                    <span className="text-xl font-bold mono text-emerald-400">{streakCount}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Stroke History Log */}
-          <Card className="flex-1 flex flex-col min-h-0 bg-zinc-950/60 border-zinc-800/80">
-            <CardHeader className="p-4 pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold">Activity Timeline</CardTitle>
-                <Badge variant="outline" className="text-[10px]">{sessionLogs.length} Events</Badge>
-              </div>
-            </CardHeader>
-            <Separator className="bg-zinc-800/80" />
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-              {sessionLogs.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-4 text-zinc-500 text-xs">
-                  <Info className="h-5 w-5 mb-2 text-zinc-600" />
-                  No stroke events recorded yet. Perform shots in stance to log feedback.
-                </div>
-              ) : (
-                sessionLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="p-2 rounded-lg bg-zinc-900/40 border border-zinc-800/60 flex items-center justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "h-2 w-2 rounded-full",
-                        log.status === "success" ? "bg-emerald-500" : "bg-amber-500"
-                      )} />
-                      <div>
-                        <div className="font-semibold text-zinc-200">{log.shot}</div>
-                        <div className="text-[10px] text-zinc-500 mono">{log.time}</div>
-                      </div>
-                    </div>
-                    <Badge variant={log.status === "success" ? "success" : "secondary"} className="mono text-[10px]">
-                      {log.grade} ({(log.confidence * 100).toFixed(0)}%)
-                    </Badge>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
-
-        </div>
-
-      </div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

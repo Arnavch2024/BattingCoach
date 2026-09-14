@@ -421,6 +421,115 @@ def get_coaching_feedback(detected_shot: str, target_shot: str, confidence: floa
         }
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Supabase PostgreSQL Database Integration
+# ──────────────────────────────────────────────────────────────────────────────
+
+import psycopg2
+from psycopg2 import pool
+from pydantic import BaseModel
+
+DATABASE_URL = "postgresql://postgres:000%40Rnav200@db.swwjmugxzlriklspxqpu.supabase.co:5432/postgres"
+
+db_pool = None
+try:
+    db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, DATABASE_URL)
+    print("[Database] Supabase PostgreSQL connection pool initialized.")
+except Exception as e:
+    print(f"[Database] Warning: Could not initialize DB pool: {e}")
+
+def get_db_conn():
+    if db_pool:
+        return db_pool.getconn()
+    return psycopg2.connect(DATABASE_URL, connect_timeout=5)
+
+def release_db_conn(conn):
+    if db_pool and conn:
+        try:
+            db_pool.putconn(conn)
+        except Exception:
+            pass
+    elif conn:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+def init_db():
+    conn = None
+    try:
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS athletes (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                stance VARCHAR(50) DEFAULT 'Right-Hand Batter',
+                experience_level VARCHAR(50) DEFAULT 'Club Cricketer',
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS practice_sessions (
+                id SERIAL PRIMARY KEY,
+                athlete_email VARCHAR(255),
+                session_duration_seconds INT DEFAULT 0,
+                target_shot VARCHAR(100),
+                total_reps INT DEFAULT 0,
+                successful_reps INT DEFAULT 0,
+                best_streak INT DEFAULT 0,
+                avg_confidence FLOAT DEFAULT 0.0,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS stroke_telemetry_logs (
+                id SERIAL PRIMARY KEY,
+                session_id INT REFERENCES practice_sessions(id) ON DELETE CASCADE,
+                athlete_email VARCHAR(255),
+                shot_name VARCHAR(100),
+                status VARCHAR(50),
+                confidence FLOAT,
+                elbow_angle FLOAT,
+                knee_angle FLOAT,
+                coach_feedback TEXT,
+                recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        conn.commit()
+        cur.close()
+        print("[Database] Schema verified in Supabase.")
+    except Exception as e:
+        print(f"[Database] Init schema error: {e}")
+    finally:
+        release_db_conn(conn)
+
+# Run schema init on startup
+init_db()
+
+class AthleteSyncRequest(BaseModel):
+    email: str
+    name: str
+    stance: Optional[str] = "Right-Hand Batter"
+    experience_level: Optional[str] = "Club Cricketer"
+
+class StrokeLogItem(BaseModel):
+    shot_name: str
+    status: str
+    confidence: float
+    elbow_angle: Optional[float] = 0.0
+    knee_angle: Optional[float] = 0.0
+    coach_feedback: Optional[str] = ""
+
+class PracticeSessionSaveRequest(BaseModel):
+    athlete_email: str
+    session_duration_seconds: int
+    target_shot: str
+    total_reps: int
+    successful_reps: int
+    best_streak: int
+    avg_confidence: float
+    strokes: Optional[List[StrokeLogItem]] = []
+
+# ──────────────────────────────────────────────────────────────────────────────
 # FastAPI App & WebSocket Endpoint with Swing Motion State Machine
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -436,12 +545,182 @@ app.add_middleware(
 
 @app.get("/health")
 async def health():
+    db_ok = False
+    try:
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT 1;")
+        cur.close()
+        release_db_conn(conn)
+        db_ok = True
+    except Exception:
+        db_ok = False
+
     return {
         "status": "online",
         "device": str(device),
         "cuda_available": torch.cuda.is_available(),
         "fp16": use_fp16,
+        "database": "connected" if db_ok else "disconnected",
     }
+
+@app.post("/api/athlete/sync")
+async def sync_athlete(req: AthleteSyncRequest):
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO athletes (email, name, stance, experience_level)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (email) 
+                DO UPDATE SET 
+                    name = EXCLUDED.name,
+                    stance = EXCLUDED.stance,
+                    experience_level = EXCLUDED.experience_level
+                RETURNING id, email, name, stance, experience_level, created_at;
+            """, (req.email, req.name, req.stance, req.experience_level))
+            row = cur.fetchone()
+            conn.commit()
+            cur.close()
+            return {
+                "id": row[0],
+                "email": row[1],
+                "name": row[2],
+                "stance": row[3],
+                "experience_level": row[4],
+                "created_at": str(row[5])
+            }
+        finally:
+            release_db_conn(conn)
+
+    try:
+        result = await asyncio.to_thread(_db_op)
+        return {"success": True, "athlete": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/sessions/save")
+async def save_session(req: PracticeSessionSaveRequest):
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO practice_sessions 
+                    (athlete_email, session_duration_seconds, target_shot, total_reps, successful_reps, best_streak, avg_confidence)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id;
+            """, (
+                req.athlete_email,
+                req.session_duration_seconds,
+                req.target_shot,
+                req.total_reps,
+                req.successful_reps,
+                req.best_streak,
+                req.avg_confidence
+            ))
+            session_id = cur.fetchone()[0]
+
+            if req.strokes:
+                for stroke in req.strokes:
+                    cur.execute("""
+                        INSERT INTO stroke_telemetry_logs
+                            (session_id, athlete_email, shot_name, status, confidence, elbow_angle, knee_angle, coach_feedback)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+                    """, (
+                        session_id,
+                        req.athlete_email,
+                        stroke.shot_name,
+                        stroke.status,
+                        stroke.confidence,
+                        stroke.elbow_angle,
+                        stroke.knee_angle,
+                        stroke.coach_feedback
+                    ))
+
+            conn.commit()
+            cur.close()
+            return session_id
+        finally:
+            release_db_conn(conn)
+
+    try:
+        session_id = await asyncio.to_thread(_db_op)
+        return {"success": True, "session_id": session_id}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/sessions/history")
+async def get_session_history(email: str = "athlete@batcoach.ai"):
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, session_duration_seconds, target_shot, total_reps, successful_reps, best_streak, avg_confidence, created_at
+                FROM practice_sessions
+                WHERE athlete_email = %s
+                ORDER BY created_at DESC
+                LIMIT 20;
+            """, (email,))
+            rows = cur.fetchall()
+            cur.close()
+            return [
+                {
+                    "id": r[0],
+                    "duration_seconds": r[1],
+                    "target_shot": r[2],
+                    "total_reps": r[3],
+                    "successful_reps": r[4],
+                    "best_streak": r[5],
+                    "avg_confidence": round(r[6] or 0.0, 2),
+                    "created_at": str(r[7]),
+                }
+                for r in rows
+            ]
+        finally:
+            release_db_conn(conn)
+
+    try:
+        sessions = await asyncio.to_thread(_db_op)
+        return {"success": True, "sessions": sessions}
+    except Exception as e:
+        return {"success": False, "error": str(e), "sessions": []}
+
+@app.get("/api/stats")
+async def get_stats(email: str = "athlete@batcoach.ai"):
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT 
+                    COALESCE(SUM(total_reps), 0),
+                    COALESCE(SUM(successful_reps), 0),
+                    COALESCE(MAX(best_streak), 0),
+                    COALESCE(AVG(avg_confidence), 0.0),
+                    COALESCE(SUM(session_duration_seconds), 0)
+                FROM practice_sessions
+                WHERE athlete_email = %s;
+            """, (email,))
+            row = cur.fetchone()
+            cur.close()
+            return {
+                "total_reps": int(row[0]),
+                "successful_reps": int(row[1]),
+                "best_streak": int(row[2]),
+                "avg_confidence": round(float(row[3]), 2),
+                "total_practice_time_seconds": int(row[4]),
+            }
+        finally:
+            release_db_conn(conn)
+
+    try:
+        stats = await asyncio.to_thread(_db_op)
+        return {"success": True, "stats": stats}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
