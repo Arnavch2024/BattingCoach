@@ -3,8 +3,11 @@ import base64
 import collections
 import json
 import random
+import threading
 import time
+import uuid
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import cv2
 import mediapipe as mp
@@ -14,6 +17,13 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from transformers import VideoMAEForVideoClassification, VideoMAEImageProcessor
+
+# ──────────────────────────────────────────────────────────────────────────────
+# System & Thread Limits (Prevents CPU Core Starvation & Laptop Lag)
+# ──────────────────────────────────────────────────────────────────────────────
+
+torch.set_num_threads(2)
+cv2.setNumThreads(2)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Configuration
@@ -32,13 +42,11 @@ CLASS_NAMES = [
     "lofted", "pull", "square_cut", "straight", "sweep",
 ]
 
-# Expanded Coaching Tips Mapping with Tiers
-# Each shot has: Foundational (0-2), Intermediate (3-6), Elite (7+)
 COACHING_TIPS = {
     "cover": [
         "FOUNDATIONAL: Lean forward with your head over the front knee.",
         "FOUNDATIONAL: Step firmly into the line of the shot.",
-        "TECHNICAL: Keep your front elbow high throughout the swing.",
+        "TECHNICAL: Keep your front elbow high (≥130°) throughout the swing.",
         "TECHNICAL: Maintain a stable base with your back foot anchored.",
         "TECHNICAL: Transfer weight smoothly during the pivot.",
         "TECHNICAL: Focus on driving through the line, not across it.",
@@ -75,7 +83,7 @@ COACHING_TIPS = {
         "FOUNDATIONAL: Transfer weight quickly to your back foot.",
         "FOUNDATIONAL: Pivot on your front foot to clear your hips.",
         "TECHNICAL: Roll your wrists downward to keep the shot low.",
-        "TECHNICAL: Fully extend your arms to generate power.",
+        "TECHNICAL: Fully extend your arms for a wide swing arc.",
         "TECHNICAL: Maintain balance on the balls of your feet.",
         "TECHNICAL: Swing in a horizontal arc from high to low.",
         "ELITE: Keep your eyes focused on the target even as you rotate.",
@@ -159,36 +167,223 @@ COACHING_TIPS = {
 
 NUM_FRAMES = 16
 IMAGE_SIZE = 224
-INFER_EVERY = 24  # Run inference roughly once per second at 30fps
-COOLDOWN_SECONDS = 3.0  # Minimum time between new coaching tips
-CONSENSUS_WINDOW = 3   # Number of consecutive inferences to average for a stable result
+INFER_EVERY = 30
+COOLDOWN_SECONDS = 3.0
+CONSENSUS_WINDOW = 3
+TARGET_FPS = 24
+FRAME_DURATION = 1.0 / TARGET_FPS
 
 # ──────────────────────────────────────────────────────────────────────────────
-# AI Model & MediaPipe Setup
+# AI Model & Hardware Acceleration Setup
 # ──────────────────────────────────────────────────────────────────────────────
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Device: {device}")
+use_fp16 = torch.cuda.is_available()
+print(f"[AI Pipeline] Device: {device} | Mixed Precision FP16: {use_fp16}")
 
-print(f"Loading model from: {MODEL_DIR}")
+print(f"[AI Pipeline] Loading VideoMAE model from: {MODEL_DIR}")
 processor = VideoMAEImageProcessor.from_pretrained(str(MODEL_DIR))
 model = VideoMAEForVideoClassification.from_pretrained(str(MODEL_DIR))
 model.to(device).eval()
 
+# MediaPipe Pose Engine (Fast mode)
 mp_pose = mp.solutions.pose
 pose_engine = mp_pose.Pose(
     static_image_mode=False,
-    model_complexity=1,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5,
+    model_complexity=0,
+    min_detection_confidence=0.6,
+    min_tracking_confidence=0.6,
 )
 mp_draw = mp.solutions.drawing_utils
 
 # ──────────────────────────────────────────────────────────────────────────────
-# FastAPI App
+# Threaded Camera Grabber
 # ──────────────────────────────────────────────────────────────────────────────
 
-app = FastAPI()
+class ThreadedCamera:
+    """Efficient camera reader synced to webcam frame delivery."""
+    def __init__(self, src=0):
+        self.cap = cv2.VideoCapture(src, cv2.CAP_DSHOW if cv2.CAP_DSHOW else 0)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.cap.set(cv2.CAP_PROP_FPS, 30)
+        self.ret = False
+        self.frame = None
+        self.stopped = False
+        self.lock = threading.Lock()
+        
+        self.ret, self.frame = self.cap.read()
+        self.thread = threading.Thread(target=self._update, daemon=True)
+        self.thread.start()
+
+    def _update(self):
+        while not self.stopped:
+            if not self.cap.isOpened():
+                break
+            ret, frame = self.cap.read()
+            if ret:
+                with self.lock:
+                    self.ret = ret
+                    self.frame = frame
+            else:
+                time.sleep(0.01)
+
+    def read(self) -> Tuple[bool, Optional[np.ndarray]]:
+        with self.lock:
+            if self.frame is not None:
+                return self.ret, self.frame.copy()
+            return self.ret, None
+
+    def release(self):
+        self.stopped = True
+        if self.thread.is_alive():
+            self.thread.join(timeout=0.5)
+        self.cap.release()
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Biometrics with Strict Batter Stance Detection
+# ──────────────────────────────────────────────────────────────────────────────
+
+def calculate_angle(a, b, c) -> float:
+    a_pt = np.array([a.x, a.y])
+    b_pt = np.array([b.x, b.y])
+    c_pt = np.array([c.x, c.y])
+    
+    radians = np.arctan2(c_pt[1] - b_pt[1], c_pt[0] - b_pt[0]) - np.arctan2(a_pt[1] - b_pt[1], a_pt[0] - b_pt[0])
+    angle = np.abs(radians * 180.0 / np.pi)
+    if angle > 180.0:
+        angle = 360.0 - angle
+    return float(angle)
+
+def extract_biometrics(landmarks, target_shot: str) -> Optional[Dict]:
+    """
+    Extracts joint angles only if a standing batter (shoulders & arms) is genuinely in view.
+    Returns None if only a face/close-up is detected.
+    """
+    nose = landmarks[mp_pose.PoseLandmark.NOSE]
+    l_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
+    r_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+    l_elbow = landmarks[mp_pose.PoseLandmark.LEFT_ELBOW]
+    r_elbow = landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW]
+    l_wrist = landmarks[mp_pose.PoseLandmark.LEFT_WRIST]
+    r_wrist = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST]
+    l_knee = landmarks[mp_pose.PoseLandmark.LEFT_KNEE]
+    l_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
+    l_ankle = landmarks[mp_pose.PoseLandmark.LEFT_ANKLE]
+
+    # Stance Validation: Check if upper torso & arms are genuinely visible in frame
+    shoulder_vis = (l_shoulder.visibility + r_shoulder.visibility) / 2.0
+    arm_vis = max(l_elbow.visibility, r_elbow.visibility)
+    
+    # If user is sitting close to webcam with only face visible, discard
+    if shoulder_vis < 0.65 or arm_vis < 0.45:
+        return None
+
+    # Calculate lead arm angle (use left arm for right-hand stance or right if more visible)
+    lead_shoulder = l_shoulder if l_elbow.visibility >= r_elbow.visibility else r_shoulder
+    lead_elbow = l_elbow if l_elbow.visibility >= r_elbow.visibility else r_elbow
+    lead_wrist = l_wrist if l_wrist.visibility >= r_wrist.visibility else r_wrist
+
+    elbow_angle = calculate_angle(lead_shoulder, lead_elbow, lead_wrist)
+    
+    # Knee angle if legs are visible in frame
+    knee_angle = None
+    if l_knee.visibility > 0.45 and l_hip.visibility > 0.45 and l_ankle.visibility > 0.35:
+        knee_angle = round(calculate_angle(l_hip, l_knee, l_ankle), 1)
+
+    mid_shoulder_x = (l_shoulder.x + r_shoulder.x) / 2.0
+    shoulder_width = max(abs(l_shoulder.x - r_shoulder.x), 1e-4)
+    head_tilt = abs(nose.x - mid_shoulder_x) / shoulder_width
+
+    error_detected = False
+    priority_tip = None
+
+    if head_tilt > 0.20:
+        error_detected = True
+        priority_tip = "Keep your head still and positioned forward over the line."
+    elif ("drive" in target_shot or "cover" in target_shot or "straight" in target_shot) and elbow_angle < 125:
+        error_detected = True
+        priority_tip = "Keep your front elbow high (≥130°) throughout the swing for control."
+    elif ("pull" in target_shot or "hook" in target_shot) and elbow_angle < 110:
+        error_detected = True
+        priority_tip = "Extend your arms fully for a wider and more powerful swing arc."
+    elif knee_angle and ("drive" in target_shot or "cover" in target_shot) and knee_angle > 165:
+        error_detected = True
+        priority_tip = "Bend your front knee forward into the line to lower your center of gravity."
+
+    return {
+        "body_detected": True,
+        "elbow_angle": round(elbow_angle, 1),
+        "knee_angle": knee_angle if knee_angle else 150.0,
+        "knee_visible": knee_angle is not None,
+        "head_tilt": round(head_tilt, 2),
+        "error_detected": error_detected,
+        "priority_tip": priority_tip
+    }
+
+@torch.inference_mode()
+def execute_model_inference(frames_rgb_list: List[np.ndarray]) -> Tuple[np.ndarray, float]:
+    t0 = time.perf_counter()
+    inputs = processor(frames_rgb_list, return_tensors="pt")
+    pixel_values = inputs["pixel_values"].to(device)
+    
+    if use_fp16:
+        with torch.autocast(device_type="cuda", dtype=torch.float16):
+            outputs = model(pixel_values=pixel_values)
+    else:
+        outputs = model(pixel_values=pixel_values)
+        
+    probs = torch.softmax(outputs.logits, dim=-1)[0].cpu().numpy()
+    inference_time_ms = (time.perf_counter() - t0) * 1000.0
+    return probs, inference_time_ms
+
+def get_coaching_feedback(detected_shot: str, target_shot: str, confidence: float, bio_data: Optional[Dict]) -> Dict:
+    all_tips = COACHING_TIPS.get(target_shot, [])
+    if confidence < 0.35:
+        eligible_tips = all_tips[0:2]
+        tier = "Foundational"
+    elif confidence < 0.70:
+        eligible_tips = all_tips[2:6]
+        tier = "Technical"
+    else:
+        eligible_tips = all_tips[6:]
+        tier = "Elite"
+    
+    shuffled_tips = random.sample(eligible_tips, min(len(eligible_tips), 3))
+    event_id = str(uuid.uuid4())
+
+    if bio_data and bio_data.get("error_detected") and bio_data.get("priority_tip"):
+        return {
+            "id": event_id,
+            "status": "improving",
+            "tier": "Biometric Adjustment",
+            "message": "Form Check: Biometric Alert",
+            "tips": [bio_data["priority_tip"]] + shuffled_tips[:2]
+        }
+
+    if detected_shot == target_shot and confidence > 0.40:
+        msg = "Excellent Shot! High technical precision." if confidence > 0.75 else "Good Shot! Keep solidifying posture."
+        return {
+            "id": event_id,
+            "status": "success",
+            "tier": tier,
+            "message": msg,
+            "tips": shuffled_tips[:2]
+        }
+    else:
+        return {
+            "id": event_id,
+            "status": "improving",
+            "tier": tier,
+            "message": f"Form Adjustment: Focus on {target_shot.replace('_', ' ').title()}.",
+            "tips": shuffled_tips
+        }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# FastAPI App & WebSocket Endpoint
+# ──────────────────────────────────────────────────────────────────────────────
+
+app = FastAPI(title="BatCoach AI Pro Backend", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -198,213 +393,154 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class CoachState:
-    def __init__(self):
-        self.target_shot = "cover"
-        self.frame_buffer = collections.deque(maxlen=NUM_FRAMES)
-        self.running = False
-        self.cap = None
-
-state = CoachState()
-
-@torch.no_grad()
-def run_inference(frames_rgb):
-    inputs = processor(frames_rgb, return_tensors="pt")
-    pixel_values = inputs["pixel_values"].to(device)
-    outputs = model(pixel_values=pixel_values)
-    probs = torch.softmax(outputs.logits, dim=-1)[0].cpu().numpy()
-    return probs
-
-def calculate_angle(a, b, c):
-    """Calculates the angle between three points (a, b, c) at joint b."""
-    a = np.array([a.x, a.y])
-    b = np.array([b.x, b.y])
-    c = np.array([c.x, c.y])
-    
-    radians = np.arctan2(c[1] - b[1], c[0] - b[0]) - np.arctan2(a[1] - b[1], a[0] - b[0])
-    angle = np.abs(radians * 180.0 / np.pi)
-    
-    if angle > 180.0:
-        angle = 360 - angle
-    return angle
-
-def analyze_biometrics(landmarks, target_shot):
-    """
-    Analyzes body landmarks to find technical errors based on target shot.
-    Returns (error_detected, priority_tip).
-    """
-    # Key Landmarks
-    nose = landmarks[mp_pose.PoseLandmark.NOSE]
-    l_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
-    r_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
-    l_elbow = landmarks[mp_pose.PoseLandmark.LEFT_ELBOW]
-    l_wrist = landmarks[mp_pose.PoseLandmark.LEFT_WRIST]
-    l_knee = landmarks[mp_pose.PoseLandmark.LEFT_KNEE]
-    l_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
-    l_ankle = landmarks[mp_pose.PoseLandmark.LEFT_ANKLE]
-
-    # 1. Head Stability (Priority #1)
-    # Check if nose is too far from mid-shoulder line (Head Tilt)
-    mid_shoulder_x = (l_shoulder.x + r_shoulder.x) / 2
-    head_tilt = abs(nose.x - mid_shoulder_x) / abs(l_shoulder.x - r_shoulder.x) # Normalized
-    if head_tilt > 0.15:
-        return True, "Keep your head still and positioned forward over the line."
-
-    # 2. Shot Specific Biometrics
-    if "drive" in target_shot or "cover" in target_shot or "straight" in target_shot:
-        # Elbow Height (Front elbow)
-        elbow_angle = calculate_angle(l_shoulder, l_elbow, l_wrist)
-        if elbow_angle < 130:
-            return True, "Keep your front elbow high throughout the swing for better control."
-        
-        # Front Knee Bend
-        knee_angle = calculate_angle(l_hip, l_knee, l_ankle)
-        if knee_angle > 160:
-            return True, "Lean forward and flex your front knee to maintain a stable base."
-
-    if "pull" in target_shot or "hook" in target_shot:
-        # Arm Extension
-        elbow_angle = calculate_angle(l_shoulder, l_elbow, l_wrist)
-        if elbow_angle < 110:
-            return True, "Extend your arms fully for a wider and more powerful swing arc."
-
-    return False, None
-
-def get_coaching_feedback(detected_idx, target_shot, probs, landmarks=None):
-    detected_shot = CLASS_NAMES[detected_idx]
-    confidence = float(probs[target_shot])
-    
-    # 1. Select Tip Tier based on Model Probability
-    # Foundational: 0-2, Technical: 2-6, Elite: 6-10
-    all_tips = COACHING_TIPS.get(target_shot, [])
-    if confidence < 0.3:
-        # Focus on fundamentals (Foundational)
-        eligible_tips = all_tips[0:2]
-    elif confidence < 0.7:
-        # Focus on refinement (Technical)
-        eligible_tips = all_tips[2:6]
-    else:
-        # focus on elite mastery (Elite)
-        eligible_tips = all_tips[6:]
-    
-    shuffled_tips = random.sample(eligible_tips, min(len(eligible_tips), 3))
-
-    # 2. Check for Biometric/Form Errors First (if landmarks available)
-    if landmarks:
-        error_detected, bio_tip = analyze_biometrics(landmarks, target_shot)
-        if error_detected:
-            return {
-                "status": "improving",
-                "message": "Form Check: Biometric Alert",
-                "tips": [bio_tip] + shuffled_tips[:2]
-            }
-
-    # 3. Global Feedback based on Classification
-    if detected_shot == target_shot:
-        msg = "Perfect Shot! Great mastery." if confidence > 0.8 else "Good Shot! Keep refining."
-        return {
-            "status": "success",
-            "message": msg,
-            "tips": shuffled_tips[:2]
-        }
-    else:
-        return {
-            "status": "improving",
-            "message": f"Form Adjustment: Aim for {target_shot.replace('_', ' ')}.",
-            "tips": shuffled_tips
-        }
+@app.get("/health")
+async def health():
+    return {
+        "status": "online",
+        "device": str(device),
+        "cuda_available": torch.cuda.is_available(),
+        "fp16": use_fp16,
+    }
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    print("Websocket client connected")
+    print("[WebSocket] Client connected")
+
+    camera = ThreadedCamera(0)
+    target_shot = "cover"
+    frame_buffer = collections.deque(maxlen=NUM_FRAMES)
+    inference_history = collections.deque(maxlen=CONSENSUS_WINDOW)
+    smooth_probs = np.ones(len(CLASS_NAMES)) / len(CLASS_NAMES)
     
+    last_feedback_time = 0.0
+    last_infer_time_ms = 12.0
+    frame_idx = 0
+    
+    fps_start_time = time.time()
+    fps_counter = 0
+    current_fps = float(TARGET_FPS)
+
+    inference_task = None
+
     try:
-        # Start camera
-        cap = cv2.VideoCapture(0)
-        frame_count = 0
-        smooth_probs = np.ones(len(CLASS_NAMES)) / len(CLASS_NAMES)
-        
-        # Stability tracking
-        inference_history = collections.deque(maxlen=CONSENSUS_WINDOW)
-        last_feedback_sent_time = 0
-        
         while True:
-            # Check for incoming messages (like target shot changes)
+            loop_start = time.perf_counter()
+
+            # 1. Check for incoming control messages
             try:
                 msg = await asyncio.wait_for(websocket.receive_text(), timeout=0.001)
                 data = json.loads(msg)
                 if "target" in data:
-                    state.target_shot = data["target"]
-                    # Reset feedback cooldown so user gets a tip immediately for the new shot
-                    last_feedback_sent_time = 0
-                    print(f"Target shot changed to: {state.target_shot}")
+                    target_shot = data["target"]
+                    last_feedback_time = 0.0
+                    print(f"[Control] Target shot switched to: {target_shot}")
             except (asyncio.TimeoutError, json.JSONDecodeError):
                 pass
 
-            ret, frame = cap.read()
-            if not ret:
-                break
-            
-            frame_count += 1
-            H, W = frame.shape[:2]
-            
-            # MediaPipe Pose
+            # 2. Grab frame from threaded camera
+            ret, frame = camera.read()
+            if not ret or frame is None:
+                await asyncio.sleep(0.01)
+                continue
+
+            frame_idx += 1
+            fps_counter += 1
+            now = time.time()
+            if now - fps_start_time >= 1.0:
+                current_fps = round(fps_counter / (now - fps_start_time), 1)
+                fps_counter = 0
+                fps_start_time = now
+
+            # 3. MediaPipe Pose processing on downsampled frame
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            pose_results = pose_engine.process(rgb_frame)
-            if pose_results.pose_landmarks:
-                mp_draw.draw_landmarks(
-                    frame, pose_results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
-                    mp_draw.DrawingSpec(color=(0, 200, 120), thickness=2, circle_radius=2),
-                    mp_draw.DrawingSpec(color=(50, 150, 255), thickness=2)
-                )
-
-            # Buffer for inference
-            small_frame = cv2.resize(rgb_frame, (IMAGE_SIZE, IMAGE_SIZE))
-            state.frame_buffer.append(small_frame)
+            small_pose_frame = cv2.resize(rgb_frame, (320, 240))
+            pose_results = pose_engine.process(small_pose_frame)
             
-            feedback = None
-            if len(state.frame_buffer) == NUM_FRAMES and frame_count % INFER_EVERY == 0:
-                raw_probs = run_inference(list(state.frame_buffer))
-                inference_history.append(raw_probs)
+            bio_data = None
+            if pose_results.pose_landmarks:
+                # Extract biometrics & check if user is actually standing in batter stance
+                bio_data = extract_biometrics(pose_results.pose_landmarks.landmark, target_shot)
                 
-                # Use averaged probabilities over the consensus window
-                consensus_probs = np.mean(list(inference_history), axis=0)
-                smooth_probs = 0.5 * consensus_probs + 0.5 * smooth_probs
-                
-                top_idx = int(smooth_probs.argmax())
-                
-                # Only generate coaching feedback if cooldown has passed
-                current_time = time.time()
-                if (current_time - last_feedback_sent_time) > COOLDOWN_SECONDS:
-                    # Pass landmarks for biometric analysis and probs for tiered feedback
-                    landmarks = pose_results.pose_landmarks.landmark if pose_results.pose_landmarks else None
-                    feedback = get_coaching_feedback(top_idx, state.target_shot, smooth_probs, landmarks)
-                    last_feedback_sent_time = current_time
+                # Only draw skeleton if batter body is genuinely in view (not on close-up face)
+                if bio_data and bio_data.get("body_detected"):
+                    mp_draw.draw_landmarks(
+                        frame,
+                        pose_results.pose_landmarks,
+                        mp_pose.POSE_CONNECTIONS,
+                        mp_draw.DrawingSpec(color=(16, 185, 129), thickness=2, circle_radius=2),
+                        mp_draw.DrawingSpec(color=(59, 130, 246), thickness=2)
+                    )
 
-            # Encode frame to base64
-            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            # 4. Buffer frame for VideoMAE
+            small_frame = cv2.resize(rgb_frame, (IMAGE_SIZE, IMAGE_SIZE))
+            frame_buffer.append(small_frame)
+
+            # 5. Non-blocking Asynchronous Inference
+            if len(frame_buffer) == NUM_FRAMES and frame_idx % INFER_EVERY == 0:
+                if inference_task is None or inference_task.done():
+                    frames_snapshot = list(frame_buffer)
+                    inference_task = asyncio.create_task(
+                        asyncio.to_thread(execute_model_inference, frames_snapshot)
+                    )
+
+            if inference_task is not None and inference_task.done() and not inference_task.cancelled():
+                try:
+                    raw_probs, infer_ms = inference_task.result()
+                    last_infer_time_ms = round(infer_ms, 1)
+                    inference_history.append(raw_probs)
+                    consensus_probs = np.mean(list(inference_history), axis=0)
+                    smooth_probs = 0.5 * consensus_probs + 0.5 * smooth_probs
+                except Exception as e:
+                    print(f"[Inference Error]: {e}")
+                inference_task = None
+
+            top_idx = int(smooth_probs.argmax())
+            top_shot = CLASS_NAMES[top_idx]
+            target_conf = float(smooth_probs[CLASS_NAMES.index(target_shot)])
+
+            # 6. Single-Fire Event Feedback Generation (ONLY when cooldown elapsed)
+            new_feedback_event = None
+            if (now - last_feedback_time) > COOLDOWN_SECONDS and bio_data and bio_data.get("body_detected"):
+                new_feedback_event = get_coaching_feedback(top_shot, target_shot, target_conf, bio_data)
+                last_feedback_time = now
+
+            # 7. JPEG Compression
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
             frame_base64 = base64.b64encode(buffer).decode('utf-8')
 
-            # Prepare data to send
+            # 8. Dispatch Payload (feedback is ONLY non-null when a new event fires!)
             payload = {
                 "frame": frame_base64,
                 "probs": {CLASS_NAMES[i]: float(smooth_probs[i]) for i in range(len(CLASS_NAMES))},
-                "topShot": CLASS_NAMES[int(smooth_probs.argmax())],
+                "topShot": top_shot,
                 "confidence": float(np.max(smooth_probs)),
-                "feedback": feedback
+                "targetShot": target_shot,
+                "targetConfidence": target_conf,
+                "feedback": new_feedback_event,  # None on normal frames, dictionary only on new event!
+                "biometrics": bio_data,
+                "telemetry": {
+                    "fps": current_fps,
+                    "inference_ms": last_infer_time_ms,
+                    "device": str(device),
+                    "fp16": use_fp16
+                }
             }
-            
+
             await websocket.send_text(json.dumps(payload))
             
-            # Small delay to regulate FPS
-            await asyncio.sleep(0.03)
+            elapsed = time.perf_counter() - loop_start
+            sleep_time = max(0.005, FRAME_DURATION - elapsed)
+            await asyncio.sleep(sleep_time)
 
     except WebSocketDisconnect:
-        print("Websocket client disconnected")
+        print("[WebSocket] Client disconnected")
+    except Exception as e:
+        print(f"[WebSocket Loop Exception]: {e}")
     finally:
-        if cap:
-            cap.release()
+        camera.release()
+        if inference_task and not inference_task.done():
+            inference_task.cancel()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8888)

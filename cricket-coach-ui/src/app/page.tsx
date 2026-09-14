@@ -2,110 +2,216 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { 
-  Play, Pause, Award, Target, Info, MessageSquare, 
-  ChevronRight, RefreshCw, Activity, User, ShieldCheck,
-  Cpu, BarChart3, Settings, HelpCircle, Triangle,
-  Volume2, VolumeX
+  Play, Pause, Target, Volume2, VolumeX, Activity, User, 
+  Settings, Zap, CheckCircle2, AlertTriangle, Flame, 
+  RotateCcw, Shield, Award, Cpu, Search, Sparkles, SlidersHorizontal,
+  ChevronRight, BarChart2, Radio, Info, UserCheck, HelpCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Utilities
+// Shot Catalog & Metadata
 // ──────────────────────────────────────────────────────────────────────────────
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+interface ShotMetadata {
+  id: string;
+  name: string;
+  category: "Drives" | "Power & Cross-Bat" | "Defensive & Technical" | "Whips & Sweeps";
+  difficulty: "Foundational" | "Intermediate" | "Advanced";
+  keyCue: string;
+  targetElbowAngle: number;
+  targetKneeAngle: number;
 }
 
-const CLASS_NAMES = [
-  "cover", "defense", "flick", "hook", "late_cut",
-  "lofted", "pull", "square_cut", "straight", "sweep",
+const SHOT_CATALOG: ShotMetadata[] = [
+  {
+    id: "cover",
+    name: "Cover Drive",
+    category: "Drives",
+    difficulty: "Intermediate",
+    keyCue: "Lead with high elbow, head over front knee",
+    targetElbowAngle: 130,
+    targetKneeAngle: 155,
+  },
+  {
+    id: "straight",
+    name: "Straight Drive",
+    category: "Drives",
+    difficulty: "Foundational",
+    keyCue: "Full bat face presentation down the ground",
+    targetElbowAngle: 135,
+    targetKneeAngle: 155,
+  },
+  {
+    id: "pull",
+    name: "Pull Shot",
+    category: "Power & Cross-Bat",
+    difficulty: "Intermediate",
+    keyCue: "Weight on back foot, full arm extension",
+    targetElbowAngle: 120,
+    targetKneeAngle: 160,
+  },
+  {
+    id: "hook",
+    name: "Hook Shot",
+    category: "Power & Cross-Bat",
+    difficulty: "Advanced",
+    keyCue: "Pivot front hip, roll wrists over top",
+    targetElbowAngle: 115,
+    targetKneeAngle: 165,
+  },
+  {
+    id: "square_cut",
+    name: "Square Cut",
+    category: "Power & Cross-Bat",
+    difficulty: "Intermediate",
+    keyCue: "Back & across, slice through point",
+    targetElbowAngle: 125,
+    targetKneeAngle: 160,
+  },
+  {
+    id: "lofted",
+    name: "Lofted Drive",
+    category: "Power & Cross-Bat",
+    difficulty: "Advanced",
+    keyCue: "Vertical swing plane with clean extension",
+    targetElbowAngle: 140,
+    targetKneeAngle: 150,
+  },
+  {
+    id: "defense",
+    name: "Forward Defense",
+    category: "Defensive & Technical",
+    difficulty: "Foundational",
+    keyCue: "Soft hands, bat beside front pad",
+    targetElbowAngle: 110,
+    targetKneeAngle: 150,
+  },
+  {
+    id: "late_cut",
+    name: "Late Cut",
+    category: "Defensive & Technical",
+    difficulty: "Advanced",
+    keyCue: "Guide ball late with relaxed wrists",
+    targetElbowAngle: 115,
+    targetKneeAngle: 160,
+  },
+  {
+    id: "flick",
+    name: "Wrist Flick",
+    category: "Whips & Sweeps",
+    difficulty: "Intermediate",
+    keyCue: "Snap wrists through mid-wicket line",
+    targetElbowAngle: 125,
+    targetKneeAngle: 155,
+  },
+  {
+    id: "sweep",
+    name: "Sweep Shot",
+    category: "Whips & Sweeps",
+    difficulty: "Intermediate",
+    keyCue: "Drop back knee, horizontal blade sweep",
+    targetElbowAngle: 120,
+    targetKneeAngle: 140,
+  },
 ];
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Components
-// ──────────────────────────────────────────────────────────────────────────────
+const CATEGORIES = ["All", "Drives", "Power & Cross-Bat", "Defensive & Technical", "Whips & Sweeps"] as const;
 
-const HexButton = ({ name, active, onClick }: { name: string, active: boolean, onClick: () => void }) => (
-  <motion.button
-    whileHover={{ scale: 1.02, x: 5 }}
-    whileTap={{ scale: 0.98 }}
-    onClick={onClick}
-    className={cn(
-      "w-full group relative flex items-center justify-between p-4 rounded-lg border transition-all duration-300 font-technical",
-      active 
-        ? "bg-emerald-500/10 border-emerald-500/60 text-emerald-400 glow-cyan shadow-[inset_0_0_20px_rgba(16,185,129,0.1)]" 
-        : "bg-white/[0.02] border-white/5 text-white/40 hover:border-white/20 hover:text-white/60"
-    )}
-  >
-    <div className="flex items-center gap-4">
-      <div className={cn(
-        "w-2 h-2 rotate-45 transition-all duration-500",
-        active ? "bg-emerald-400 scale-125" : "bg-white/10"
-      )} />
-      <span className="uppercase text-[11px] font-bold tracking-widest">{name.replace("_", " ")}</span>
-    </div>
-    {active && (
-      <motion.div layoutId="active-indicator" className="absolute left-0 w-1 h-2/3 bg-emerald-500 rounded-full" />
-    )}
-  </motion.button>
-);
+interface SessionLogItem {
+  id: string;
+  time: string;
+  shot: string;
+  confidence: number;
+  grade: string;
+  status: "success" | "improving";
+}
 
-const MetricGauge = ({ label, value, rating, color }: { label: string, value: string, rating: string, color: string }) => (
-  <div className={cn("telemetry-border p-5 rounded-lg glass-obsidian flex flex-col gap-1", color)}>
-    <span className="text-[10px] font-technical text-white/30 uppercase">{label}</span>
-    <div className="flex items-baseline justify-between">
-      <span className="text-2xl font-black italic tracking-tighter text-white">{value}</span>
-      <span className={cn("text-xs font-technical border px-2 py-0.5 rounded", color)}>{rating}</span>
-    </div>
-  </div>
-);
+export default function BatCoachDashboard() {
+  const [targetShot, setTargetShot] = useState<string>("cover");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isLive, setIsLive] = useState<boolean>(false);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [showAngles, setShowAngles] = useState<boolean>(true);
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Main Dashboard
-// ──────────────────────────────────────────────────────────────────────────────
-
-export default function ObsidianCoachDashboard() {
-  const [targetShot, setTargetShot] = useState("cover");
+  // Live Stream & Telemetry State
   const [streamData, setStreamData] = useState<any>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isLive, setIsLive] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const [persistentFeedback, setPersistentFeedback] = useState<any>(null);
-  
+  const [sessionLogs, setSessionLogs] = useState<SessionLogItem[]>([]);
+  const [repCount, setRepCount] = useState<number>(0);
+  const [streakCount, setStreakCount] = useState<number>(0);
+  const [sessionSeconds, setSessionSeconds] = useState<number>(0);
+
   const wsRef = useRef<WebSocket | null>(null);
   const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastProcessedEventIdRef = useRef<string>("");
   const lastSpokenRef = useRef<string>("");
+
+  // Session elapsed timer
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isLive) {
+      timer = setInterval(() => setSessionSeconds((s) => s + 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isLive]);
+
+  const formatTime = (secs: number) => {
+    const mins = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const currentMetadata = useMemo(() => {
+    return SHOT_CATALOG.find((s) => s.id === targetShot) || SHOT_CATALOG[0];
+  }, [targetShot]);
+
+  const filteredShots = useMemo(() => {
+    return SHOT_CATALOG.filter((shot) => {
+      const matchesCat = selectedCategory === "All" || shot.category === selectedCategory;
+      const matchesSearch = shot.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCat && matchesSearch;
+    });
+  }, [selectedCategory, searchQuery]);
 
   // Dynamic Rating Logic
   const formRating = useMemo(() => {
-    if (!streamData?.probs) return { label: "N/A", rating: "--", color: "text-white/20 border-white/10" };
+    if (!streamData?.probs) return { label: "Awaiting Data", rating: "--", gradeColor: "bg-zinc-800 text-zinc-400" };
     
     const p = streamData.probs[targetShot] || 0;
-    
-    if (p > 0.8) return { label: "EXCELLENT", rating: "A+", color: "text-emerald-400 border-emerald-500/30" };
-    if (p > 0.6) return { label: "PROFESSIONAL", rating: "A", color: "text-cyan-400 border-cyan-500/30" };
-    if (p > 0.4) return { label: "GOOD FORM", rating: "B", color: "text-lime-400 border-lime-500/30" };
-    if (p > 0.2) return { label: "IMPROVING", rating: "C", color: "text-amber-400 border-amber-500/30" };
-    return { label: "TECHNICAL ERROR", rating: "F", color: "text-red-500 border-red-500/30" };
+    if (p > 0.75) return { label: "Elite Mastery", rating: "A+", gradeColor: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" };
+    if (p > 0.55) return { label: "Good Technique", rating: "A", gradeColor: "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" };
+    if (p > 0.35) return { label: "Solid Foundation", rating: "B", gradeColor: "bg-blue-500/20 text-blue-400 border border-blue-500/30" };
+    if (p > 0.20) return { label: "Needs Polish", rating: "C", gradeColor: "bg-amber-500/20 text-amber-400 border border-amber-500/30" };
+    return { label: "Form Adjustment", rating: "D", gradeColor: "bg-red-500/20 text-red-400 border border-red-500/30" };
   }, [streamData, targetShot]);
 
+  // Text to Speech
   useEffect(() => {
-    if (persistentFeedback && !isMuted) {
-      const textToSpeak = `${persistentFeedback.message}. ${persistentFeedback.tips[0]}`;
+    if (persistentFeedback && !isMuted && typeof window !== "undefined" && "speechSynthesis" in window) {
+      const tipText = persistentFeedback.tips?.[0] || "";
+      const textToSpeak = `${persistentFeedback.message}. ${tipText}`;
       if (textToSpeak !== lastSpokenRef.current) {
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.rate = 1.0;
+        utterance.rate = 1.05;
         utterance.pitch = 1.0;
-        window.speechSynthesis.cancel(); // Stop current speech
+        window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
         lastSpokenRef.current = textToSpeak;
       }
     }
   }, [persistentFeedback, isMuted]);
 
+  // WebSocket Connection Management
   useEffect(() => {
     if (!isLive) {
       wsRef.current?.close();
@@ -123,13 +229,42 @@ export default function ObsidianCoachDashboard() {
       };
 
       ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        setStreamData(data);
-        
-        if (data.feedback) {
-          setPersistentFeedback(data.feedback);
-          if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-          feedbackTimerRef.current = setTimeout(() => setPersistentFeedback(null), 8000);
+        try {
+          const data = JSON.parse(event.data);
+          setStreamData(data);
+          
+          // Only process feedback when a genuine NEW event ID is delivered
+          if (data.feedback && data.feedback.id && data.feedback.id !== lastProcessedEventIdRef.current) {
+            lastProcessedEventIdRef.current = data.feedback.id;
+            setPersistentFeedback(data.feedback);
+            
+            if (data.feedback.status === "success") {
+              setStreakCount((c) => c + 1);
+              setRepCount((r) => r + 1);
+            } else {
+              setStreakCount(0);
+              setRepCount((r) => r + 1);
+            }
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            const p = data.probs?.[targetShot] || 0;
+            const newLog: SessionLogItem = {
+              id: data.feedback.id,
+              time: timeStr,
+              shot: currentMetadata.name,
+              confidence: p,
+              grade: p > 0.7 ? "A+" : p > 0.5 ? "A" : p > 0.3 ? "B" : "C",
+              status: data.feedback.status,
+            };
+
+            setSessionLogs((prev) => [newLog, ...prev.slice(0, 19)]);
+
+            if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+            feedbackTimerRef.current = setTimeout(() => setPersistentFeedback(null), 6000);
+          }
+        } catch (e) {
+          console.error("WS Parse error", e);
         }
       };
 
@@ -146,276 +281,455 @@ export default function ObsidianCoachDashboard() {
       wsRef.current?.close();
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     };
-  }, [isLive]);
+  }, [isLive, targetShot, currentMetadata.name]);
 
-  const handleShotChange = (shot: string) => {
-    console.log("Shot selected:", shot);
-    setTargetShot(shot);
-    
-    // Clear old feedback so the advisor refreshes immediately
+  const handleShotChange = (shotId: string) => {
+    setTargetShot(shotId);
     setPersistentFeedback(null);
-    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-    
-    // Ensure isLive is true to initiate connection
-    if (!isLive) {
-      setIsLive(true);
-    } else if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ target: shot }));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ target: shotId }));
     }
   };
 
+  const bioData = streamData?.biometrics;
+  const isBodyDetected = bioData?.body_detected === true;
+  const elbowAngle = bioData?.elbow_angle || 0;
+  const kneeAngle = bioData?.knee_angle || 0;
+  const isElbowGood = elbowAngle >= currentMetadata.targetElbowAngle;
+  const isKneeGood = kneeAngle <= currentMetadata.targetKneeAngle;
+
   return (
-    <div className="h-screen w-full flex bg-[#030303] text-white p-4 gap-4 overflow-hidden selection:bg-emerald-500/30">
+    <div className="flex flex-col h-screen w-full bg-[#09090b] text-zinc-100 antialiased select-none overflow-hidden">
       
-      {/* ── Left Sidebar: Mission Control ────────────────────────────────────── */}
-      <aside className="w-80 flex flex-col gap-4 h-full">
-        <div className="px-4 py-6 glass-obsidian rounded-2xl flex flex-col gap-6 items-center">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center glow-cyan">
-            <Cpu className="w-10 h-10 text-black stroke-[2.5]" />
-          </div>
-          <div className="text-center">
-            <h1 className="font-technical text-sm font-black tracking-[0.3em] uppercase mb-1">C.O.A.C.H</h1>
-            <p className="text-[9px] text-white/30 uppercase tracking-[0.2em] font-medium">Synthetic Intelligence Link</p>
-          </div>
-        </div>
-
-        <div className="flex-1 glass-obsidian rounded-2xl p-4 overflow-y-auto space-y-2 custom-scrollbar">
-          <div className="flex items-center gap-2 mb-4 px-2">
-            <Target className="w-3 h-3 text-emerald-400" />
-            <span className="text-[10px] font-technical text-white/30 uppercase">Practice Modules</span>
-          </div>
-          {CLASS_NAMES.map((shot) => (
-            <HexButton 
-              key={shot} 
-              name={shot} 
-              active={targetShot === shot} 
-              onClick={() => handleShotChange(shot)} 
-            />
-          ))}
-        </div>
-        
-        <div className="flex justify-between px-2">
-           <div className="flex gap-4">
-              <Settings className="w-4 h-4 text-white/20 cursor-pointer hover:text-white/60 transition-colors" />
-              <HelpCircle className="w-4 h-4 text-white/20 cursor-pointer hover:text-white/60 transition-colors" />
-           </div>
-           <span className="text-[9px] font-technical text-white/10 uppercase">System v4.2.1-OBB</span>
-        </div>
-      </aside>
-
-      {/* ── Main Operations Feed ────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col gap-4 h-full relative">
-        
-        {/* Cinematic Video Layer */}
-        <div className="flex-1 relative glass-obsidian rounded-[2rem] overflow-hidden group shadow-[0_0_100px_rgba(0,0,0,1)] border border-white/5">
-          <div className="scanline" />
-          
-          {streamData?.frame ? (
-            <img 
-              src={`data:image/jpeg;base64,${streamData.frame}`} 
-              alt="Live Feed"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-8 bg-black">
-               <motion.div 
-                 animate={{ rotate: 360 }} 
-                 transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
-                 className="relative w-32 h-32"
-               >
-                 <div className="absolute inset-0 border-2 border-emerald-500/20 rounded-full" />
-                 <div className="absolute inset-0 border-t-2 border-emerald-500 rounded-full" />
-               </motion.div>
-               <div className="text-center space-y-2">
-                 <p className="text-xs font-technical text-white/40 uppercase tracking-[0.3em]">Awaiting Visual Input</p>
-                 <p className="text-[10px] text-emerald-400 alpha-pulse uppercase font-medium">Link Established: Port 8888</p>
-               </div>
+      {/* ── Top Navigation Header ────────────────────────────────────────────── */}
+      <header className="h-14 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md px-6 flex items-center justify-between z-10 shrink-0">
+        <div className="flex items-center gap-3">
+          <img
+            src="/bat-icon.jpg"
+            alt="BatCoach Icon"
+            className="h-9 w-9 rounded-lg object-cover border border-emerald-500/40 shadow-sm shadow-emerald-500/10"
+          />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm tracking-tight text-white">BatCoach AI Pro</span>
+              <Badge variant="secondary" className="text-[10px] font-medium py-0 px-1.5 h-4 bg-zinc-800 text-zinc-400">
+                v2.0 FP16
+              </Badge>
             </div>
-          )}
-
-          {/* Holographic Overlays */}
-          <div className="absolute inset-x-8 top-8 flex justify-between pointer-events-none">
-             <div className="flex flex-col gap-4">
-                <MetricGauge 
-                  label="Dynamic Form Rating" 
-                  value={formRating.label} 
-                  rating={formRating.rating}
-                  color={formRating.color}
-                />
-                <div className="flex gap-2">
-                   <div className="px-3 py-1 bg-white/5 backdrop-blur-md rounded border border-white/10 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,1)]" />
-                      <span className="text-[9px] font-technical uppercase">Live Telemetry</span>
-                   </div>
-                   <div className="px-3 py-1 bg-white/5 backdrop-blur-md rounded border border-white/10">
-                      <span className="text-[9px] font-technical uppercase text-white/40">FPS: 30.0</span>
-                   </div>
-                </div>
-             </div>
-             
-             <div className="flex flex-col items-end gap-4">
-                <div className="telemetry-border p-4 glass-obsidian rounded-lg flex flex-col items-end">
-                   <span className="text-[10px] font-technical text-white/30 uppercase mb-1">Target Efficiency</span>
-                   <span className="text-lg font-black text-emerald-400 text-glow">{(streamData?.probs?.[targetShot] * 100 || 0).toFixed(1)}%</span>
-                </div>
-                <div className="w-48 p-2 glass-obsidian rounded-lg border border-white/5">
-                   <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                      <motion.div 
-                        animate={{ width: `${(streamData?.probs?.[targetShot] * 100 || 0)}%` }}
-                        className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" 
-                      />
-                   </div>
-                </div>
-             </div>
-          </div>
-
-          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-[500px] pointer-events-none">
-            <AnimatePresence mode="wait">
-              {persistentFeedback && (
-                <motion.div
-                  key={persistentFeedback.message}
-                  initial={{ opacity: 0, scale: 0.95, y: 30 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                  className={cn(
-                    "p-6 rounded-2xl glass-obsidian border-t-2 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] transition-colors duration-500",
-                    persistentFeedback.status === "success" ? "border-emerald-500/40" : "border-amber-500/40"
-                  )}
-                >
-                  <p className="text-xs font-bold text-white mb-2 uppercase tracking-wide">{persistentFeedback.message}</p>
-                  <div className="flex items-start gap-4 p-3 bg-white/[0.03] rounded-lg">
-                    <div className="w-1 h-full bg-emerald-500/50 rounded-full mt-1" />
-                    <p className="text-[11px] text-white/50 leading-relaxed italic">{persistentFeedback.tips[0]}</p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <p className="text-[11px] text-zinc-500">Real-Time Batting Biomechanics & Stroke AI</p>
           </div>
         </div>
 
-        {/* Action Bar */}
-        <div className="h-24 px-8 glass-obsidian rounded-3xl flex items-center justify-between border border-white/5">
-           <div className="flex gap-16">
-              <div className="flex flex-col gap-1">
-                <span className="text-[9px] font-technical text-white/30 uppercase">Neural Stream</span>
-                <div className="flex items-center gap-2">
-                   <span className={cn("w-1.5 h-1.5 rounded-full transition-all duration-300", isConnected ? "bg-emerald-500 glow-cyan" : "bg-red-500")} />
-                   <span className="text-xs font-bold font-technical tracking-widest">{isConnected ? "ONLINE" : "LINK TERMINATED"}</span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[9px] font-technical text-white/30 uppercase">Detected Action</span>
-                <span className="text-xs font-bold text-white font-technical">{streamData?.topShot?.replace("_", " ") || "---"}</span>
-              </div>
-           </div>
+        {/* Telemetry Bar */}
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-300">
+            <span className={cn("h-2 w-2 rounded-full", isConnected ? "bg-emerald-500 animate-pulse" : "bg-zinc-600")} />
+            <span className="font-medium text-zinc-200">{isConnected ? "Connected" : "Disconnected"}</span>
+            <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-700" />
+            <span className="text-zinc-400 mono">FPS: <strong className="text-zinc-200">{streamData?.telemetry?.fps || 0}</strong></span>
+            <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-700" />
+            <span className="text-zinc-400 mono">Latency: <strong className="text-zinc-200">{streamData?.telemetry?.inference_ms || 12}ms</strong></span>
+            {streamData?.telemetry?.fp16 && (
+              <>
+                <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-700" />
+                <Badge variant="cyan" className="text-[9px] py-0 px-1 h-3.5">CUDA FP16</Badge>
+              </>
+            )}
+          </div>
 
-           <div className="flex items-center gap-6">
-              <button 
-                onClick={() => setIsMuted(!isMuted)}
-                className={cn(
-                  "p-3 rounded-full border transition-all",
-                  isMuted ? "border-red-500/30 text-red-500" : "border-white/10 text-white/40 hover:text-white"
-                )}
-              >
-                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </button>
+          <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs">
+            <span className="text-zinc-500">Session:</span>
+            <span className="mono font-semibold text-zinc-200">{formatTime(sessionSeconds)}</span>
+          </div>
 
-              <button 
-                onClick={() => setIsLive(!isLive)}
-                className={cn(
-                  "relative group px-10 py-3 rounded-full font-technical text-[11px] font-black tracking-[0.2em] transition-all",
-                  isLive 
-                    ? "bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20" 
-                    : "bg-emerald-500 text-black hover:scale-105 shadow-[0_0_30px_rgba(16,185,129,0.3)]"
-                )}
-              >
-                {isLive ? "TERMINATE" : "INITIATE COACH"}
-              </button>
-              
-              <div className="w-px h-8 bg-white/10" />
-              
-              <div className="flex items-center gap-4">
-                 <div className="flex flex-col items-end">
-                    <span className="text-[9px] font-technical text-white/20 uppercase">Athlete</span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest">ARNAV_P</span>
-                 </div>
-                 <div className="w-10 h-10 rounded-full border border-white/10 p-0.5">
-                    <div className="w-full h-full rounded-full bg-gradient-to-br from-emerald-500/20 to-transparent flex items-center justify-center">
-                       <User className="w-5 h-5 text-white/40" />
-                    </div>
-                 </div>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => setIsMuted(!isMuted)} 
+            className="h-8 w-8 text-zinc-400 hover:text-zinc-100"
+            title={isMuted ? "Unmute Voice Coach" : "Mute Voice Coach"}
+          >
+            {isMuted ? <VolumeX className="h-4 w-4 text-red-400" /> : <Volume2 className="h-4 w-4 text-emerald-400" />}
+          </Button>
+
+          <Button
+            variant={isLive ? "destructive" : "default"}
+            size="sm"
+            onClick={() => setIsLive(!isLive)}
+            className="font-medium gap-1.5"
+          >
+            {isLive ? <Pause className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+            {isLive ? "End Session" : "Start Live Feed"}
+          </Button>
+
+          <Separator orientation="vertical" className="h-6 bg-zinc-800" />
+
+          {/* User Profile */}
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-sm">
+              <div className="h-full w-full rounded-full bg-zinc-900 flex items-center justify-center text-[11px] font-bold text-zinc-200">
+                AP
               </div>
-           </div>
+            </div>
+            <div className="hidden lg:block text-left">
+              <div className="text-xs font-semibold text-zinc-200 leading-tight">Arnav P.</div>
+              <div className="text-[10px] text-zinc-500 leading-tight">Right-Hand Batter</div>
+            </div>
+          </div>
         </div>
-      </main>
+      </header>
 
-      {/* ── Right Panel: Performance Analytics ───────────────────────────────── */}
-      <aside className="w-96 flex flex-col gap-4">
+      {/* ── Main Workspace Grid ────────────────────────────────────────────── */}
+      <div className="flex-1 grid grid-cols-12 gap-4 p-4 min-h-0">
         
-        <div className="glass-obsidian rounded-[2rem] p-6 flex flex-col gap-8 h-1/2">
-          <div className="flex justify-between items-center">
-            <h3 className="text-[10px] font-technical uppercase tracking-[0.2em] text-white/30">System Analytics</h3>
-            <BarChart3 className="w-4 h-4 text-emerald-500/40" />
-          </div>
-
-          <div className="flex-1 space-y-5 overflow-y-auto custom-scrollbar pr-4">
-             {CLASS_NAMES.map((shot) => (
-                <div key={shot} className="space-y-2">
-                   <div className="flex justify-between text-[9px] font-technical uppercase">
-                      <span className={shot === targetShot ? "text-emerald-400" : "text-white/40"}>{shot}</span>
-                      <span className="text-white/20">{(streamData?.probs?.[shot] * 100 || 0).toFixed(0)}%</span>
-                   </div>
-                   <div className="h-0.5 w-full bg-white/[0.02] rounded-full overflow-hidden">
-                      <motion.div 
-                        animate={{ width: `${(streamData?.probs?.[shot] * 100 || 0)}%` }}
-                        className={cn("h-full transition-all duration-700", shot === targetShot ? "bg-emerald-500" : "bg-white/10")} 
-                      />
-                   </div>
+        {/* ── Left Column: Shot Directory & Drills (3 Cols) ──────────────────── */}
+        <div className="col-span-3 flex flex-col gap-3 min-h-0">
+          <Card className="flex-1 flex flex-col min-h-0 bg-zinc-950/60 border-zinc-800/80">
+            <CardHeader className="p-4 pb-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold">Shot Modules</CardTitle>
+                  <CardDescription className="text-xs text-zinc-400">Select stroke module for feedback</CardDescription>
                 </div>
-             ))}
-          </div>
-        </div>
+                <Badge variant="outline" className="text-[10px]">{filteredShots.length} Shots</Badge>
+              </div>
 
-        <div className="glass-obsidian rounded-[2rem] flex-1 p-6 flex flex-col gap-6 relative overflow-hidden">
-           <div className="flex justify-between items-center">
-            <h3 className="text-[10px] font-technical uppercase tracking-[0.2em] text-white/30">Advisory Feed</h3>
-            <MessageSquare className="w-4 h-4 text-emerald-500/40" />
-          </div>
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search shot..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-zinc-900/90 border border-zinc-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700"
+                />
+              </div>
 
-          <div className="flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
-             {!persistentFeedback ? (
-               <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-4">
-                  <div className="w-12 h-12 rounded-full border border-white/5 flex items-center justify-center">
-                    <Activity className="w-6 h-6 text-white/5" />
-                  </div>
-                  <p className="text-[10px] font-technical text-white/20 uppercase tracking-widest leading-loose">Awaiting sufficient frame data for technical feedback</p>
-               </div>
-             ) : (
-               persistentFeedback.tips.map((tip: string, i: number) => (
-                 <motion.div 
-                   key={i}
-                   initial={{ opacity: 0, x: 20 }}
-                   animate={{ opacity: 1, x: 0 }}
-                   className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex gap-4 group"
-                 >
-                    <div className="w-5 h-5 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0 text-[10px] font-black border border-emerald-500/20">
-                      {i + 1}
+              {/* Category Pills */}
+              <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer",
+                      selectedCategory === cat
+                        ? "bg-emerald-600 text-white shadow-sm"
+                        : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                    )}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </CardHeader>
+
+            <Separator className="bg-zinc-800/80" />
+
+            {/* Shot List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+              {filteredShots.map((shot) => {
+                const isActive = targetShot === shot.id;
+                const matchProb = streamData?.probs?.[shot.id] || 0;
+                return (
+                  <button
+                    key={shot.id}
+                    onClick={() => handleShotChange(shot.id)}
+                    className={cn(
+                      "w-full text-left p-3 rounded-lg border transition-all duration-150 flex flex-col gap-1.5 group cursor-pointer",
+                      isActive
+                        ? "bg-emerald-950/30 border-emerald-500/50 shadow-sm"
+                        : "bg-zinc-900/40 border-zinc-800/60 hover:bg-zinc-900/80 hover:border-zinc-700/60"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={cn("text-xs font-semibold tracking-tight", isActive ? "text-emerald-400" : "text-zinc-200")}>
+                        {shot.name}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Badge 
+                          variant={shot.difficulty === "Foundational" ? "secondary" : shot.difficulty === "Intermediate" ? "cyan" : "warning"}
+                          className="text-[9px] py-0 px-1.5 h-4"
+                        >
+                          {shot.difficulty}
+                        </Badge>
+                        {isActive && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
+                      </div>
                     </div>
-                    <p className="text-[11px] leading-relaxed text-white/60 tracking-tight font-medium uppercase">{tip}</p>
-                 </motion.div>
-               ))
-             )}
-          </div>
-          
-          <div className="pt-6 border-t border-white/5">
-             <div className="flex justify-between items-center px-2">
-                <span className="text-[10px] font-technical text-white/20 uppercase">Confidence</span>
-                <span className="text-[10px] font-technical text-emerald-400">OPTIMIZIED</span>
-             </div>
-          </div>
+
+                    <p className="text-[11px] text-zinc-400 leading-snug line-clamp-1">{shot.keyCue}</p>
+
+                    {/* Mini live probability bar when active */}
+                    {isLive && (
+                      <div className="w-full pt-1">
+                        <div className="flex justify-between text-[10px] text-zinc-500 mb-0.5">
+                          <span>Match</span>
+                          <span className="mono font-medium text-zinc-300">{(matchProb * 100).toFixed(0)}%</span>
+                        </div>
+                        <Progress value={matchProb * 100} className="h-1 bg-zinc-800" indicatorClassName={isActive ? "bg-emerald-500" : "bg-zinc-600"} />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
         </div>
 
-      </aside>
+        {/* ── Center Stage: Live Feed & Video Analysis (6 Cols) ──────────────── */}
+        <div className="col-span-6 flex flex-col gap-3 min-h-0">
+          
+          {/* Main Video Card */}
+          <Card className="flex-1 flex flex-col min-h-0 bg-zinc-950/80 border-zinc-800/80 overflow-hidden relative">
+            <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+              
+              {streamData?.frame ? (
+                <img
+                  src={`data:image/jpeg;base64,${streamData.frame}`}
+                  alt="Batting Coach Live Stream"
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-4 text-center p-8">
+                  <div className="h-16 w-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                    <Activity className="h-8 w-8 text-zinc-600 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-zinc-300">Webcam Feed Standby</h4>
+                    <p className="text-xs text-zinc-500 mt-1 max-w-xs">
+                      {isLive ? "Initializing camera grabber and VideoMAE neural engine..." : "Click 'Start Live Feed' above to begin real-time stroke analysis."}
+                    </p>
+                  </div>
+                  {!isLive && (
+                    <Button onClick={() => setIsLive(true)} size="sm" className="gap-2">
+                      <Play className="h-3.5 w-3.5 fill-current" />
+                      Start Practice
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* AR HUD Overlay Badges */}
+              {isLive && streamData && (
+                <>
+                  <div className="absolute top-3 left-3 flex flex-col gap-2 pointer-events-none">
+                    <div className="flex items-center gap-2 bg-zinc-950/80 backdrop-blur-md border border-zinc-800 rounded-lg px-2.5 py-1 text-xs">
+                      <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Target:</span>
+                      <span className="font-semibold text-emerald-400">{currentMetadata.name}</span>
+                    </div>
+                  </div>
+
+                  <div className="absolute top-3 right-3 flex flex-col items-end gap-2 pointer-events-none">
+                    <div className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold backdrop-blur-md", formRating.gradeColor)}>
+                      Grade: {formRating.rating} ({formRating.label})
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Stance prompt when sitting close or body out of frame */}
+              {isLive && streamData && !isBodyDetected && (
+                <div className="absolute top-12 left-1/2 -translate-x-1/2 pointer-events-none">
+                  <div className="px-3 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-700/80 text-zinc-300 text-xs flex items-center gap-2 shadow-lg backdrop-blur-md">
+                    <UserCheck className="h-3.5 w-3.5 text-emerald-400" />
+                    <span>Step back to show full batting stance</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Instant Coaching Alert Banner */}
+              <AnimatePresence>
+                {persistentFeedback && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    className="absolute bottom-4 inset-x-4 pointer-events-none"
+                  >
+                    <div className={cn(
+                      "p-3.5 rounded-xl backdrop-blur-xl border shadow-xl flex items-start gap-3 text-left",
+                      persistentFeedback.status === "success" 
+                        ? "bg-emerald-950/90 border-emerald-500/50 text-emerald-100" 
+                        : "bg-zinc-900/90 border-amber-500/50 text-zinc-100"
+                    )}>
+                      <div className={cn(
+                        "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                        persistentFeedback.status === "success" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
+                      )}>
+                        {persistentFeedback.status === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold tracking-tight">{persistentFeedback.message}</span>
+                          <Badge variant={persistentFeedback.status === "success" ? "success" : "warning"} className="text-[9px] py-0 px-1.5 h-3.5">
+                            {persistentFeedback.tier || "Coaching Tip"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
+                          {persistentFeedback.tips?.[0]}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Video Viewport Toolbar Footer */}
+            <div className="p-3 bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-3">
+                <span className="text-zinc-400 font-medium">Detected:</span>
+                <Badge variant="secondary" className="font-semibold text-zinc-200">
+                  {streamData?.topShot ? streamData.topShot.replace("_", " ").toUpperCase() : "Awaiting Movement"}
+                </Badge>
+                {streamData?.confidence && (
+                  <span className="text-zinc-500 mono text-[11px]">
+                    Conf: {(streamData.confidence * 100).toFixed(0)}%
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4 text-xs text-zinc-400">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px]">Cues</span>
+                  <Switch checked={showAngles} onCheckedChange={setShowAngles} />
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* ── Right Column: Biometrics & Telemetry (3 Cols) ──────────────────── */}
+        <div className="col-span-3 flex flex-col gap-3 min-h-0">
+          
+          {/* Biometrics Card */}
+          <Card className="bg-zinc-950/60 border-zinc-800/80">
+            <CardHeader className="p-4 pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <Activity className="h-4 w-4 text-emerald-400" />
+                  Live Biometrics
+                </CardTitle>
+                <Badge variant={!isBodyDetected ? "secondary" : bioData?.error_detected ? "destructive" : "success"} className="text-[10px]">
+                  {!isBodyDetected ? "Stand in View" : bioData?.error_detected ? "Form Error" : "Form Stable"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-1 space-y-3">
+              {!isBodyDetected ? (
+                <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/80 text-center space-y-1">
+                  <p className="text-xs text-zinc-300 font-medium">No Batter Stance Detected</p>
+                  <p className="text-[11px] text-zinc-500 leading-snug">
+                    Position your camera ~6-8 feet away so your torso and arms are clearly visible.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Elbow Angle */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-400">Front Elbow Angle</span>
+                      <span className={cn("mono font-bold", isElbowGood ? "text-emerald-400" : "text-amber-400")}>
+                        {elbowAngle}° <span className="text-zinc-500 font-normal">/ ≥{currentMetadata.targetElbowAngle}°</span>
+                      </span>
+                    </div>
+                    <Progress value={Math.min((elbowAngle / 180) * 100, 100)} className="h-1.5 bg-zinc-800" indicatorClassName={isElbowGood ? "bg-emerald-500" : "bg-amber-500"} />
+                  </div>
+
+                  {/* Knee Bend Angle */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-400">Front Knee Flexion</span>
+                      <span className={cn("mono font-bold", isKneeGood ? "text-emerald-400" : "text-amber-400")}>
+                        {kneeAngle}° <span className="text-zinc-500 font-normal">/ ≤{currentMetadata.targetKneeAngle}°</span>
+                      </span>
+                    </div>
+                    <Progress value={Math.min((kneeAngle / 180) * 100, 100)} className="h-1.5 bg-zinc-800" indicatorClassName={isKneeGood ? "bg-emerald-500" : "bg-blue-500"} />
+                  </div>
+
+                  {/* Head Tilt */}
+                  <div className="flex justify-between items-center pt-1 text-xs">
+                    <span className="text-zinc-400">Head Alignment</span>
+                    <Badge variant={bioData && bioData.head_tilt < 0.20 ? "secondary" : "destructive"} className="text-[10px]">
+                      {bioData ? (bioData.head_tilt < 0.20 ? "Aligned Over Line" : "Head Tilted") : "Analyzing..."}
+                    </Badge>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Session Stats & Streak Card */}
+          <Card className="bg-zinc-950/60 border-zinc-800/80">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                <span>Session Performance</span>
+                <Flame className="h-4 w-4 text-amber-500" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-1">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-center">
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Total Reps</div>
+                  <div className="text-xl font-bold mono text-zinc-100 mt-0.5">{repCount}</div>
+                </div>
+                <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-center">
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Clean Streak</div>
+                  <div className="flex items-center justify-center gap-1 mt-0.5">
+                    <Flame className="h-4 w-4 text-amber-500 fill-amber-500" />
+                    <span className="text-xl font-bold mono text-emerald-400">{streakCount}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Stroke History Log */}
+          <Card className="flex-1 flex flex-col min-h-0 bg-zinc-950/60 border-zinc-800/80">
+            <CardHeader className="p-4 pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold">Activity Timeline</CardTitle>
+                <Badge variant="outline" className="text-[10px]">{sessionLogs.length} Events</Badge>
+              </div>
+            </CardHeader>
+            <Separator className="bg-zinc-800/80" />
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+              {sessionLogs.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-4 text-zinc-500 text-xs">
+                  <Info className="h-5 w-5 mb-2 text-zinc-600" />
+                  No stroke events recorded yet. Perform shots in stance to log feedback.
+                </div>
+              ) : (
+                sessionLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="p-2 rounded-lg bg-zinc-900/40 border border-zinc-800/60 flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "h-2 w-2 rounded-full",
+                        log.status === "success" ? "bg-emerald-500" : "bg-amber-500"
+                      )} />
+                      <div>
+                        <div className="font-semibold text-zinc-200">{log.shot}</div>
+                        <div className="text-[10px] text-zinc-500 mono">{log.time}</div>
+                      </div>
+                    </div>
+                    <Badge variant={log.status === "success" ? "success" : "secondary"} className="mono text-[10px]">
+                      {log.grade} ({(log.confidence * 100).toFixed(0)}%)
+                    </Badge>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+
+        </div>
+
+      </div>
+
     </div>
   );
 }
