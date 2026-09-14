@@ -239,39 +239,44 @@ class ThreadedCamera:
         self.cap.release()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Strict Batter Stance Validation & Biometrics
+# Strict Batter Stance Validation & 3D World Biometrics
 # ──────────────────────────────────────────────────────────────────────────────
 
-def calculate_angle(a, b, c) -> float:
-    a_pt = np.array([a.x, a.y])
-    b_pt = np.array([b.x, b.y])
-    c_pt = np.array([c.x, c.y])
+def calculate_3d_angle(a, b, c) -> float:
+    """Calculates true 3D Euclidean angle at joint b in degrees using real-world metric vectors (x, y, z)."""
+    ba = np.array([a.x - b.x, a.y - b.y, a.z - b.z], dtype=np.float32)
+    bc = np.array([c.x - b.x, c.y - b.y, c.z - b.z], dtype=np.float32)
     
-    radians = np.arctan2(c_pt[1] - b_pt[1], c_pt[0] - b_pt[0]) - np.arctan2(a_pt[1] - b_pt[1], a_pt[0] - b_pt[0])
-    angle = np.abs(radians * 180.0 / np.pi)
-    if angle > 180.0:
-        angle = 360.0 - angle
+    norm_ba = np.linalg.norm(ba)
+    norm_bc = np.linalg.norm(bc)
+    
+    if norm_ba < 1e-5 or norm_bc < 1e-5:
+        return 0.0
+        
+    cos_angle = np.dot(ba, bc) / (norm_ba * norm_bc)
+    cos_angle = np.clip(cos_angle, -1.0, 1.0)
+    
+    angle = np.arccos(cos_angle) * (180.0 / np.pi)
     return float(angle)
 
-def extract_biometrics(landmarks, target_shot: str) -> Optional[Dict]:
+def extract_biometrics(landmarks_2d, target_shot: str, world_landmarks=None) -> Optional[Dict]:
     """
-    Validates true batting posture:
+    Validates true batting posture and calculates perspective-invariant 3D angles.
     Requires shoulders, hips, and arms to be in frame with vertical torso separation.
-    Rejects head-only / close-up webcam desk views.
     """
-    nose = landmarks[mp_pose.PoseLandmark.NOSE]
-    l_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
-    r_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
-    l_elbow = landmarks[mp_pose.PoseLandmark.LEFT_ELBOW]
-    r_elbow = landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW]
-    l_wrist = landmarks[mp_pose.PoseLandmark.LEFT_WRIST]
-    r_wrist = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST]
-    l_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
-    r_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP]
-    l_knee = landmarks[mp_pose.PoseLandmark.LEFT_KNEE]
-    l_ankle = landmarks[mp_pose.PoseLandmark.LEFT_ANKLE]
+    nose = landmarks_2d[mp_pose.PoseLandmark.NOSE]
+    l_shoulder = landmarks_2d[mp_pose.PoseLandmark.LEFT_SHOULDER]
+    r_shoulder = landmarks_2d[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+    l_elbow = landmarks_2d[mp_pose.PoseLandmark.LEFT_ELBOW]
+    r_elbow = landmarks_2d[mp_pose.PoseLandmark.RIGHT_ELBOW]
+    l_wrist = landmarks_2d[mp_pose.PoseLandmark.LEFT_WRIST]
+    r_wrist = landmarks_2d[mp_pose.PoseLandmark.RIGHT_WRIST]
+    l_hip = landmarks_2d[mp_pose.PoseLandmark.LEFT_HIP]
+    r_hip = landmarks_2d[mp_pose.PoseLandmark.RIGHT_HIP]
+    l_knee = landmarks_2d[mp_pose.PoseLandmark.LEFT_KNEE]
+    l_ankle = landmarks_2d[mp_pose.PoseLandmark.LEFT_ANKLE]
 
-    # 1. Torso & Shoulder Geometry Check
+    # 1. Torso & Shoulder Geometry Check in 2D image plane
     shoulder_y = (l_shoulder.y + r_shoulder.y) / 2.0
     hip_y = (l_hip.y + r_hip.y) / 2.0
     torso_length = hip_y - shoulder_y
@@ -294,17 +299,38 @@ def extract_biometrics(landmarks, target_shot: str) -> Optional[Dict]:
         return None
 
     # Choose lead arm
-    lead_shoulder = l_shoulder if l_elbow.visibility >= r_elbow.visibility else r_shoulder
-    lead_elbow = l_elbow if l_elbow.visibility >= r_elbow.visibility else r_elbow
-    lead_wrist = l_wrist if l_wrist.visibility >= r_wrist.visibility else r_wrist
+    is_left_lead = l_elbow.visibility >= r_elbow.visibility
+    lead_shoulder_idx = mp_pose.PoseLandmark.LEFT_SHOULDER if is_left_lead else mp_pose.PoseLandmark.RIGHT_SHOULDER
+    lead_elbow_idx = mp_pose.PoseLandmark.LEFT_ELBOW if is_left_lead else mp_pose.PoseLandmark.RIGHT_ELBOW
+    lead_wrist_idx = mp_pose.PoseLandmark.LEFT_WRIST if is_left_lead else mp_pose.PoseLandmark.RIGHT_WRIST
 
-    elbow_angle = calculate_angle(lead_shoulder, lead_elbow, lead_wrist)
+    # Use 3D World Landmarks (metric coordinates in meters) for angle if available
+    if world_landmarks:
+        s_pt = world_landmarks[lead_shoulder_idx]
+        e_pt = world_landmarks[lead_elbow_idx]
+        w_pt = world_landmarks[lead_wrist_idx]
+        elbow_angle = calculate_3d_angle(s_pt, e_pt, w_pt)
+    else:
+        s_pt = landmarks_2d[lead_shoulder_idx]
+        e_pt = landmarks_2d[lead_elbow_idx]
+        w_pt = landmarks_2d[lead_wrist_idx]
+        elbow_angle = calculate_3d_angle(s_pt, e_pt, w_pt)
     
     # Knee angle if legs are in view
     knee_angle = None
     if l_knee.visibility > 0.50 and l_ankle.visibility > 0.40 and l_knee.y > hip_y:
-        knee_angle = round(calculate_angle(l_hip, l_knee, l_ankle), 1)
+        if world_landmarks:
+            h_pt = world_landmarks[mp_pose.PoseLandmark.LEFT_HIP]
+            k_pt = world_landmarks[mp_pose.PoseLandmark.LEFT_KNEE]
+            a_pt = world_landmarks[mp_pose.PoseLandmark.LEFT_ANKLE]
+            knee_angle = round(calculate_3d_angle(h_pt, k_pt, a_pt), 1)
+        else:
+            h_pt = landmarks_2d[mp_pose.PoseLandmark.LEFT_HIP]
+            k_pt = landmarks_2d[mp_pose.PoseLandmark.LEFT_KNEE]
+            a_pt = landmarks_2d[mp_pose.PoseLandmark.LEFT_ANKLE]
+            knee_angle = round(calculate_3d_angle(h_pt, k_pt, a_pt), 1)
 
+    lead_wrist_2d = landmarks_2d[lead_wrist_idx]
     mid_shoulder_x = (l_shoulder.x + r_shoulder.x) / 2.0
     head_tilt = abs(nose.x - mid_shoulder_x) / max(shoulder_width, 1e-4)
 
@@ -326,11 +352,12 @@ def extract_biometrics(landmarks, target_shot: str) -> Optional[Dict]:
 
     return {
         "body_detected": True,
+        "is_3d": world_landmarks is not None,
         "elbow_angle": round(elbow_angle, 1),
         "knee_angle": knee_angle if knee_angle else 150.0,
         "knee_visible": knee_angle is not None,
         "head_tilt": round(head_tilt, 2),
-        "wrist_pos": (float(lead_wrist.x), float(lead_wrist.y)),
+        "wrist_pos": (float(lead_wrist_2d.x), float(lead_wrist_2d.y)),
         "error_detected": error_detected,
         "priority_tip": priority_tip
     }
@@ -479,7 +506,8 @@ async def websocket_endpoint(websocket: WebSocket):
             wrist_speed = 0.0
 
             if pose_results.pose_landmarks:
-                bio_data = extract_biometrics(pose_results.pose_landmarks.landmark, target_shot)
+                world_lms = pose_results.pose_world_landmarks.landmark if pose_results.pose_world_landmarks else None
+                bio_data = extract_biometrics(pose_results.pose_landmarks.landmark, target_shot, world_landmarks=world_lms)
                 
                 if bio_data and bio_data.get("body_detected"):
                     # Draw skeleton only when batter is genuinely standing in view
