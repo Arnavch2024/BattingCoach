@@ -748,7 +748,7 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("[WebSocket] Client connected")
 
-    camera = ThreadedCamera(0)
+    camera = None
     target_shot = "cover"
     frame_buffer = collections.deque(maxlen=NUM_FRAMES)
     smooth_probs = np.ones(len(CLASS_NAMES)) / len(CLASS_NAMES)
@@ -772,22 +772,44 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             loop_start = time.perf_counter()
+            client_frame = None
 
-            # 1. Control messages
+            # 1. Control & Client Image Messages
             try:
-                msg = await asyncio.wait_for(websocket.receive_text(), timeout=0.001)
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=0.005)
                 data = json.loads(msg)
                 if "target" in data:
                     target_shot = data["target"]
-                    print(f"[Control] Target shot switched to: {target_shot}")
+                
+                # Cloud mode: Decode client stream from browser / phone
+                if "image" in data and data["image"]:
+                    img_data = data["image"]
+                    if "," in img_data:
+                        img_data = img_data.split(",", 1)[1]
+                    img_bytes = base64.b64decode(img_data)
+                    np_arr = np.frombuffer(img_bytes, np.uint8)
+                    client_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
             except (asyncio.TimeoutError, json.JSONDecodeError):
                 pass
 
-            # 2. Camera Frame
-            ret, frame = camera.read()
-            if not ret or frame is None:
-                await asyncio.sleep(0.01)
-                continue
+            # 2. Acquire Frame (Client stream or Local Hardware Camera)
+            if client_frame is not None:
+                frame = client_frame
+            else:
+                if camera is None:
+                    try:
+                        camera = ThreadedCamera(0)
+                    except Exception as cam_err:
+                        print(f"[Camera Notice]: {cam_err}")
+                
+                if camera is not None:
+                    ret, frame = camera.read()
+                    if not ret or frame is None:
+                        await asyncio.sleep(0.01)
+                        continue
+                else:
+                    await asyncio.sleep(0.02)
+                    continue
 
             frame_idx += 1
             fps_counter += 1

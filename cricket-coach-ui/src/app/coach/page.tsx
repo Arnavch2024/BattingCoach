@@ -164,7 +164,10 @@ export default function BatCoachDashboard() {
   const [dbSavedMessage, setDbSavedMessage] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const streamIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastProcessedEventIdRef = useRef<string>("");
   const lastSpokenRef = useRef<string>("");
 
@@ -246,21 +249,70 @@ export default function BatCoachDashboard() {
     }
   }, [persistentFeedback, isMuted]);
 
-  // WebSocket Connection Management
+  // WebSocket Connection & Dual-Mode Camera Streaming
   useEffect(() => {
     if (!isLive) {
       wsRef.current?.close();
       setIsConnected(false);
       setStreamData(null);
+      if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
+      }
       return;
     }
 
+    let localStream: MediaStream | null = null;
+
     const connect = () => {
-      const ws = new WebSocket("ws://127.0.0.1:8888/ws");
-      
+      const defaultWsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://127.0.0.1:8888/ws";
+      const ws = new WebSocket(defaultWsUrl);
+
       ws.onopen = () => {
         setIsConnected(true);
         ws.send(JSON.stringify({ target: targetShot }));
+
+        // Start Browser Camera capture if supported
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices
+            .getUserMedia({
+              video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+              audio: false,
+            })
+            .then((stream) => {
+              localStream = stream;
+              if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                videoRef.current.play().catch(console.error);
+              }
+
+              // Send browser frames to backend at 24 FPS
+              if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
+              streamIntervalRef.current = setInterval(() => {
+                if (
+                  ws.readyState === WebSocket.OPEN &&
+                  videoRef.current &&
+                  canvasRef.current &&
+                  videoRef.current.videoWidth > 0
+                ) {
+                  const canvas = canvasRef.current;
+                  canvas.width = 640;
+                  canvas.height = 480;
+                  const ctx = canvas.getContext("2d");
+                  if (ctx) {
+                    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+                    const base64Img = canvas.toDataURL("image/jpeg", 0.65);
+                    ws.send(JSON.stringify({ image: base64Img, target: targetShot }));
+                  }
+                }
+              }, 42); // ~24 FPS
+            })
+            .catch((err) => {
+              console.log("[Browser Camera Notice]: Using backend camera grabber:", err);
+            });
+        }
       };
 
       ws.onmessage = (event) => {
@@ -320,6 +372,10 @@ export default function BatCoachDashboard() {
     return () => {
       wsRef.current?.close();
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+      }
     };
   }, [isLive, targetShot, currentMetadata.name]);
 
@@ -631,6 +687,10 @@ export default function BatCoachDashboard() {
             {/* Viewport Frame */}
             <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
               
+              {/* Hidden browser camera capture elements */}
+              <video ref={videoRef} className="hidden" playsInline muted autoPlay />
+              <canvas ref={canvasRef} className="hidden" />
+
               {streamData?.frame ? (
                 <img
                   src={`data:image/jpeg;base64,${streamData.frame}`}

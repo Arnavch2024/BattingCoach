@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: batcoach-backend
+    ports:
+      - "8888:8888"
+    environment:
+      - DATABASE_URL=postgresql://postgres:000%40Rnav200@db.swwjmugxzlriklspxqpu.supabase.co:5432/postgres
+      - PORT=8888
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./cricket-coach-ui
+      dockerfile: Dockerfile
+    container_name: batcoach-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8888
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8888/ws
+    depends_on:
+      - backend
+    restart: unless-stopped
