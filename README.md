@@ -123,7 +123,7 @@ cd ..
 Create or verify `.env.local` inside `cricket-coach-ui/`:
 
 ```env
-DATABASE_URL=postgresql://postgres:000%40Rnav200@db.swwjmugxzlriklspxqpu.supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8888
 NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8888/ws
 ```

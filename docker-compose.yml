@@ -9,7 +9,7 @@ services:
     ports:
       - "8888:8888"
     environment:
-      - DATABASE_URL=postgresql://postgres:000%40Rnav200@db.swwjmugxzlriklspxqpu.supabase.co:5432/postgres
+      - DATABASE_URL=${DATABASE_URL}
       - PORT=8888
     restart: unless-stopped
 

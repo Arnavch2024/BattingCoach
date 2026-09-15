@@ -471,23 +471,28 @@ def get_coaching_feedback(detected_shot: str, target_shot: str, confidence: floa
 # Supabase PostgreSQL Database Integration
 # ──────────────────────────────────────────────────────────────────────────────
 
+import os
 import psycopg2
 from psycopg2 import pool
 from pydantic import BaseModel
 
-DATABASE_URL = "postgresql://postgres:000%40Rnav200@db.swwjmugxzlriklspxqpu.supabase.co:5432/postgres"
+# Read strictly from environment variable (never hardcoded in source)
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 db_pool = None
-try:
-    db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, DATABASE_URL)
-    print("[Database] Supabase PostgreSQL connection pool initialized.")
-except Exception as e:
-    print(f"[Database] Warning: Could not initialize DB pool: {e}")
+if DATABASE_URL:
+    try:
+        db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, DATABASE_URL)
+        print("[Database] Supabase PostgreSQL connection pool initialized.")
+    except Exception as e:
+        print(f"[Database] Notice: DB pool init: {e}")
 
 def get_db_conn():
     if db_pool:
         return db_pool.getconn()
-    return psycopg2.connect(DATABASE_URL, connect_timeout=5)
+    if DATABASE_URL:
+        return psycopg2.connect(DATABASE_URL, connect_timeout=5)
+    raise ValueError("DATABASE_URL environment variable is not set.")
 
 def release_db_conn(conn):
     if db_pool and conn:
@@ -502,6 +507,9 @@ def release_db_conn(conn):
             pass
 
 def init_db():
+    if not DATABASE_URL:
+        print("[Database] Notice: DATABASE_URL not provided, skipping database schema init.")
+        return
     conn = None
     try:
         conn = get_db_conn()

@@ -17,8 +17,8 @@ The Next.js 16 frontend is pre-configured with PWA manifest, service worker, and
    ```env
    NEXT_PUBLIC_API_URL=https://your-backend-url.com
    NEXT_PUBLIC_WS_URL=wss://your-backend-url.com/ws
-   NEXT_PUBLIC_GOOGLE_CLIENT_ID=1052308639879-asjh48bensq4qto0bv29t7h70km9e9lm.apps.googleusercontent.com
-   DATABASE_URL=postgresql://postgres:000%40Rnav200@db.swwjmugxzlriklspxqpu.supabase.co:5432/postgres
+   NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+   DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres
    ```
 6. Click **Deploy**. Vercel will build and assign you a global domain (e.g., `https://batcoach.vercel.app`).
 
@@ -34,7 +34,7 @@ The backend is packaged with a `Dockerfile` that includes OpenCV headless, Media
 3. Railway automatically detects the root `Dockerfile`.
 4. Add the following **Environment Variables**:
    ```env
-   DATABASE_URL=postgresql://postgres:000%40Rnav200@db.swwjmugxzlriklspxqpu.supabase.co:5432/postgres
+   DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres
    PORT=8888
    ```
 5. In the service settings, generate a **Public Domain** (e.g., `https://batcoach-backend.up.railway.app`).
@@ -47,7 +47,7 @@ The backend is packaged with a `Dockerfile` that includes OpenCV headless, Media
 2. Connect your GitHub repository.
 3. Select **Docker** as the Runtime.
 4. Set the Environment Variables:
-   - `DATABASE_URL`: `postgresql://postgres:000%40Rnav200@db.swwjmugxzlriklspxqpu.supabase.co:5432/postgres`
+   - `DATABASE_URL`: `postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres`
    - `PORT`: `8888`
 5. Click **Create Web Service**.
 
