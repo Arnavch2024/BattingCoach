@@ -28,7 +28,34 @@ The Next.js 16 frontend is pre-configured with PWA manifest, service worker, and
 
 The backend is packaged with a `Dockerfile` that includes OpenCV headless, MediaPipe, PyTorch VideoMAE, and the Supabase PostgreSQL connection pool.
 
-### Option A: Deploy on Railway (Recommended)
+### Option A: Deploy on Lightning AI (Free GPU / CPU Studio - Recommended)
+Lightning AI provides free monthly computing credits with instant GPU (NVIDIA T4 / L4 / A10G) and CPU environments with persistent port forwarding and public URLs.
+
+#### Step-by-Step Setup:
+1. Go to [lightning.ai](https://lightning.ai) and sign in / create an account.
+2. Click **"New Studio"** (Select **Free CPU** or **T4 GPU**).
+3. Open the **Terminal** in your Studio and run:
+   ```bash
+   git clone https://github.com/Arnavch2024/BattingCoach.git
+   cd BattingCoach
+   pip install -r requirements.txt
+   ```
+4. Set your database connection string and launch the backend:
+   ```bash
+   export DATABASE_URL="postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres"
+   python -m uvicorn coach_backend:app --host 0.0.0.0 --port 8888
+   ```
+5. **Expose Public URL / WebSockets**:
+   - In the Studio sidebar / bottom panel, click on the **Ports** plugin (or **Port Forwarding**).
+   - Enter port `8888` and toggle the visibility to **Public**.
+   - Lightning AI will give you a public HTTPS URL (e.g., `https://8888-01hxxxxxx.studios.lightning.ai`).
+6. **Connect your Frontend on Vercel**:
+   - `NEXT_PUBLIC_API_URL`: `https://8888-01hxxxxxx.studios.lightning.ai`
+   - `NEXT_PUBLIC_WS_URL`: `wss://8888-01hxxxxxx.studios.lightning.ai/ws`
+
+---
+
+### Option B: Deploy on Railway
 1. Go to [Railway.app](https://railway.app) and click **"New Project"** -> **"Deploy from GitHub repo"**.
 2. Select your repository.
 3. Railway automatically detects the root `Dockerfile`.
@@ -42,7 +69,7 @@ The backend is packaged with a `Dockerfile` that includes OpenCV headless, Media
 
 ---
 
-### Option B: Deploy on Render
+### Option C: Deploy on Render
 1. Go to [Render Dashboard](https://dashboard.render.com) and create a **New Web Service**.
 2. Connect your GitHub repository.
 3. Select **Docker** as the Runtime.
@@ -53,7 +80,7 @@ The backend is packaged with a `Dockerfile` that includes OpenCV headless, Media
 
 ---
 
-### Option C: Deploy on Hugging Face Spaces (Free GPU Option)
+### Option D: Deploy on Hugging Face Spaces (Free GPU Option)
 1. Create a new Space at [huggingface.co/spaces](https://huggingface.co/spaces).
 2. Select **Docker** as the SDK.
 3. Push the repository files to the Space.
