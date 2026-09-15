@@ -132,7 +132,8 @@ interface SessionLogItem {
   shot: string;
   confidence: number;
   grade: string;
-  status: "success" | "improving";
+  status: "success" | "wrong_shot" | "form_error" | "improving";
+  message?: string;
 }
 
 export default function BatCoachDashboard() {
@@ -148,7 +149,8 @@ export default function BatCoachDashboard() {
   const [streamData, setStreamData] = useState<any>(null);
   const [persistentFeedback, setPersistentFeedback] = useState<any>(null);
   const [sessionLogs, setSessionLogs] = useState<SessionLogItem[]>([]);
-  const [repCount, setRepCount] = useState<number>(0);
+  const [repCount, setRepCount] = useState<number>(0); // Clean, verified reps
+  const [totalSwings, setTotalSwings] = useState<number>(0); // All physical attempts
   const [streakCount, setStreakCount] = useState<number>(0);
   const [sessionSeconds, setSessionSeconds] = useState<number>(0);
   const [userProfile, setUserProfile] = useState<{ name: string; email: string; stance: string }>({
@@ -156,6 +158,10 @@ export default function BatCoachDashboard() {
     email: "athlete@cricketcoach.ai",
     stance: "Right-Hand Batter",
   });
+
+  // Supabase Database Sync State
+  const [isSavingDb, setIsSavingDb] = useState<boolean>(false);
+  const [dbSavedMessage, setDbSavedMessage] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -188,6 +194,18 @@ export default function BatCoachDashboard() {
     return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  const getInitials = (name: string) => {
+    return (
+      name
+        .split(" ")
+        .map((n) => n[0])
+        .filter(Boolean)
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() || "BC"
+    );
+  };
+
   const currentMetadata = useMemo(() => {
     return SHOT_CATALOG.find((s) => s.id === targetShot) || SHOT_CATALOG[0];
   }, [targetShot]);
@@ -212,7 +230,7 @@ export default function BatCoachDashboard() {
     return { label: "Form Adjustment", rating: "D", gradeColor: "bg-red-500/20 text-red-400 border border-red-500/30" };
   }, [streamData, targetShot]);
 
-  // Text to Speech
+  // Text to Speech Voice Coach
   useEffect(() => {
     if (persistentFeedback && !isMuted && typeof window !== "undefined" && "speechSynthesis" in window) {
       const tipText = persistentFeedback.tips?.[0] || "";
@@ -255,12 +273,16 @@ export default function BatCoachDashboard() {
             lastProcessedEventIdRef.current = data.feedback.id;
             setPersistentFeedback(data.feedback);
             
+            // Increment total physical swing attempts
+            setTotalSwings((s) => s + 1);
+
+            // ONLY increment valid reps and streak when the shot is a genuine SUCCESS
             if (data.feedback.status === "success") {
               setStreakCount((c) => c + 1);
               setRepCount((r) => r + 1);
             } else {
+              // Wrong shot or form error resets streak and DOES NOT count towards clean reps!
               setStreakCount(0);
-              setRepCount((r) => r + 1);
             }
 
             const now = new Date();
@@ -271,8 +293,9 @@ export default function BatCoachDashboard() {
               time: timeStr,
               shot: currentMetadata.name,
               confidence: p,
-              grade: p > 0.7 ? "A+" : p > 0.5 ? "A" : p > 0.3 ? "B" : "C",
+              grade: data.feedback.status === "success" ? (p > 0.7 ? "A+" : "A") : data.feedback.status === "wrong_shot" ? "Wrong" : "Alert",
               status: data.feedback.status,
+              message: data.feedback.message,
             };
 
             setSessionLogs((prev) => [newLog, ...prev.slice(0, 19)]);
@@ -306,22 +329,6 @@ export default function BatCoachDashboard() {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ target: shotId }));
     }
-  };
-
-  // Supabase Database Sync
-  const [isSavingDb, setIsSavingDb] = useState(false);
-  const [dbSavedMessage, setDbSavedMessage] = useState<string | null>(null);
-
-  const getInitials = (name: string) => {
-    return (
-      name
-        .split(" ")
-        .map((n) => n[0])
-        .filter(Boolean)
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() || "BC"
-    );
   };
 
   const saveSessionToDatabase = async () => {
@@ -371,7 +378,6 @@ export default function BatCoachDashboard() {
 
   const handleToggleLive = () => {
     if (isLive) {
-      // Ending session -> save to DB
       saveSessionToDatabase();
       setIsLive(false);
     } else {
@@ -387,7 +393,7 @@ export default function BatCoachDashboard() {
   const isKneeGood = kneeAngle <= currentMetadata.targetKneeAngle;
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#09090b] text-zinc-100 antialiased select-none overflow-hidden relative">
+    <div className="flex flex-col h-screen w-full bg-[#09090b] text-zinc-100 antialiased select-none overflow-hidden relative font-sans">
       
       {/* ── Top DB Sync Banner ──────────────────────────────────────────────── */}
       <AnimatePresence>
@@ -396,73 +402,73 @@ export default function BatCoachDashboard() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 text-xs px-4 py-2 rounded-full shadow-lg backdrop-blur-md flex items-center gap-2"
+            className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-950/95 border border-emerald-500/60 text-emerald-300 text-xs px-4 py-2 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2"
           >
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            <span>{dbSavedMessage}</span>
+            <span className="font-semibold">{dbSavedMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Top Navigation Header ────────────────────────────────────────────── */}
-      <header className="h-14 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md px-6 flex items-center justify-between z-10 shrink-0">
+      {/* ── Studio Navigation Header ────────────────────────────────────────── */}
+      <header className="h-14 border-b border-zinc-800 bg-zinc-950 px-6 flex items-center justify-between z-20 shrink-0">
         <div className="flex items-center gap-4">
           <Link 
             href="/"
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 px-2.5 py-1.5 rounded-lg hover:bg-zinc-900 border border-transparent hover:border-zinc-800 transition-all"
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-zinc-900 border border-zinc-800/80 transition-all font-medium"
             title="Back to Home"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span className="font-medium">Home</span>
+            <span>Home</span>
           </Link>
 
           <Separator orientation="vertical" className="h-5 bg-zinc-800" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <img
               src="/bat-icon.jpg"
               alt="BatCoach Icon"
-              className="h-8 w-8 rounded-lg object-cover border border-emerald-500/40 shadow-sm shadow-emerald-500/10"
+              className="h-8 w-8 rounded-lg object-cover border border-emerald-500/40 shadow-sm"
             />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm tracking-tight text-white">BatCoach AI Pro</span>
-                <Badge variant="secondary" className="text-[10px] font-medium py-0 px-1.5 h-4 bg-zinc-800 text-zinc-400">
+                <span className="font-bold text-sm text-white">BatCoach AI Pro</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-900 text-emerald-400 border border-zinc-800">
                   v2.0 FP16
-                </Badge>
+                </span>
               </div>
-              <p className="text-[11px] text-zinc-500">Real-Time Batting Biomechanics & Stroke AI</p>
+              <p className="text-[10px] text-zinc-500 leading-tight">Live 3D Biomechanics & VideoMAE Neural Hub</p>
             </div>
           </div>
         </div>
 
         {/* Telemetry Bar */}
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-300">
+          <div className="hidden md:flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-300">
             <span className={cn("h-2 w-2 rounded-full", isConnected ? "bg-emerald-500 animate-pulse" : "bg-zinc-600")} />
-            <span className="font-medium text-zinc-200">{isConnected ? "Connected" : "Disconnected"}</span>
-            <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-700" />
-            <span className="text-zinc-400 mono">FPS: <strong className="text-zinc-200">{streamData?.telemetry?.fps || 0}</strong></span>
-            <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-700" />
-            <span className="text-zinc-400 mono">Latency: <strong className="text-zinc-200">{streamData?.telemetry?.inference_ms || 12}ms</strong></span>
+            <span className="font-medium">{isConnected ? "Connected" : "Standby"}</span>
+            <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-800" />
+            <span className="text-zinc-400 mono">FPS: <strong className="text-white">{streamData?.telemetry?.fps || 0}</strong></span>
+            <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-800" />
+            <span className="text-zinc-400 mono">Latency: <strong className="text-white">{streamData?.telemetry?.inference_ms || 12}ms</strong></span>
             {streamData?.telemetry?.fp16 && (
               <>
-                <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-700" />
-                <Badge variant="cyan" className="text-[9px] py-0 px-1 h-3.5">CUDA FP16</Badge>
+                <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-800" />
+                <span className="text-[10px] font-mono text-cyan-400 font-bold">CUDA FP16</span>
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs">
+          <div className="flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs">
             <span className="text-zinc-500">Session:</span>
-            <span className="mono font-semibold text-zinc-200">{formatTime(sessionSeconds)}</span>
+            <span className="mono font-bold text-white">{formatTime(sessionSeconds)}</span>
           </div>
 
           <Button 
             variant="outline" 
             size="icon" 
             onClick={() => setIsMuted(!isMuted)} 
-            className="h-8 w-8 text-zinc-400 hover:text-zinc-100"
+            className="h-8 w-8 text-zinc-400 hover:text-white border-zinc-800"
             title={isMuted ? "Unmute Voice Coach" : "Mute Voice Coach"}
           >
             {isMuted ? <VolumeX className="h-4 w-4 text-red-400" /> : <Volume2 className="h-4 w-4 text-emerald-400" />}
@@ -472,7 +478,10 @@ export default function BatCoachDashboard() {
             variant={isLive ? "destructive" : "default"}
             size="sm"
             onClick={handleToggleLive}
-            className="font-medium gap-1.5"
+            className={cn(
+              "font-bold text-xs gap-1.5 h-8",
+              isLive ? "bg-red-600 hover:bg-red-700" : "bg-emerald-500 hover:bg-emerald-600 text-white"
+            )}
           >
             {isLive ? <Pause className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}
             {isLive ? "End Session" : "Start Live Feed"}
@@ -484,8 +493,8 @@ export default function BatCoachDashboard() {
               size="sm"
               onClick={saveSessionToDatabase}
               disabled={isSavingDb}
-              className="text-xs h-8 bg-zinc-900 border-zinc-700 text-zinc-300 hover:text-white"
-              title="Save Session Telemetry to Supabase PostgreSQL"
+              className="text-xs h-8 bg-zinc-900 border-zinc-800 text-zinc-200 hover:text-white"
+              title="Save Session to Supabase PostgreSQL"
             >
               <Shield className="h-3.5 w-3.5 mr-1 text-emerald-400" />
               {isSavingDb ? "Syncing..." : "Sync DB"}
@@ -496,10 +505,8 @@ export default function BatCoachDashboard() {
 
           {/* User Profile */}
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-sm">
-              <div className="h-full w-full rounded-full bg-zinc-900 flex items-center justify-center text-[11px] font-bold text-zinc-200">
-                {getInitials(userProfile.name)}
-              </div>
+            <div className="h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
+              {getInitials(userProfile.name)}
             </div>
             <div className="hidden lg:block text-left">
               <div className="text-xs font-semibold text-zinc-200 leading-tight truncate max-w-[120px]">
@@ -518,14 +525,18 @@ export default function BatCoachDashboard() {
         
         {/* ── Left Column: Shot Directory & Drills (3 Cols) ──────────────────── */}
         <div className="col-span-3 flex flex-col gap-3 min-h-0">
-          <Card className="flex-1 flex flex-col min-h-0 bg-zinc-950/60 border-zinc-800/80">
-            <CardHeader className="p-4 pb-3 space-y-3">
+          <div className="flex-1 flex flex-col min-h-0 bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+            
+            {/* Search & Header */}
+            <div className="p-4 pb-3 space-y-3 border-b border-zinc-800">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-sm font-semibold">Shot Modules</CardTitle>
-                  <CardDescription className="text-xs text-zinc-400">Select stroke module for feedback</CardDescription>
+                  <h3 className="text-sm font-bold text-white">Shot Syllabus</h3>
+                  <p className="text-[11px] text-zinc-400">Target stroke to evaluate</p>
                 </div>
-                <Badge variant="outline" className="text-[10px]">{filteredShots.length} Shots</Badge>
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+                  {filteredShots.length} Drills
+                </span>
               </div>
 
               {/* Search Bar */}
@@ -533,10 +544,10 @@ export default function BatCoachDashboard() {
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
                 <input
                   type="text"
-                  placeholder="Search shot..."
+                  placeholder="Search strokes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-zinc-900/90 border border-zinc-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -549,7 +560,7 @@ export default function BatCoachDashboard() {
                     className={cn(
                       "px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer",
                       selectedCategory === cat
-                        ? "bg-emerald-600 text-white shadow-sm"
+                        ? "bg-emerald-500 text-white font-semibold"
                         : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
                     )}
                   >
@@ -557,9 +568,7 @@ export default function BatCoachDashboard() {
                   </button>
                 ))}
               </div>
-            </CardHeader>
-
-            <Separator className="bg-zinc-800/80" />
+            </div>
 
             {/* Shot List */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
@@ -571,51 +580,55 @@ export default function BatCoachDashboard() {
                     key={shot.id}
                     onClick={() => handleShotChange(shot.id)}
                     className={cn(
-                      "w-full text-left p-3 rounded-lg border transition-all duration-150 flex flex-col gap-1.5 group cursor-pointer",
+                      "w-full text-left p-3 rounded-xl border transition-all duration-150 flex flex-col gap-1.5 group cursor-pointer",
                       isActive
-                        ? "bg-emerald-950/30 border-emerald-500/50 shadow-sm"
-                        : "bg-zinc-900/40 border-zinc-800/60 hover:bg-zinc-900/80 hover:border-zinc-700/60"
+                        ? "bg-emerald-950/40 border-emerald-500/60 shadow-md"
+                        : "bg-zinc-900/40 border-zinc-800/80 hover:bg-zinc-900/80 hover:border-zinc-700"
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={cn("text-xs font-semibold tracking-tight", isActive ? "text-emerald-400" : "text-zinc-200")}>
+                      <span className={cn("text-xs font-bold", isActive ? "text-emerald-400" : "text-white")}>
                         {shot.name}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <Badge 
-                          variant={shot.difficulty === "Foundational" ? "secondary" : shot.difficulty === "Intermediate" ? "cyan" : "warning"}
-                          className="text-[9px] py-0 px-1.5 h-4"
-                        >
+                        <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
                           {shot.difficulty}
-                        </Badge>
+                        </span>
                         {isActive && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
                       </div>
                     </div>
 
                     <p className="text-[11px] text-zinc-400 leading-snug line-clamp-1">{shot.keyCue}</p>
 
-                    {/* Mini live probability bar when active */}
+                    {/* Live probability indicator */}
                     {isLive && (
                       <div className="w-full pt-1">
                         <div className="flex justify-between text-[10px] text-zinc-500 mb-0.5">
-                          <span>Match</span>
-                          <span className="mono font-medium text-zinc-300">{(matchProb * 100).toFixed(0)}%</span>
+                          <span>Match Confidence</span>
+                          <span className="mono font-bold text-zinc-300">{(matchProb * 100).toFixed(0)}%</span>
                         </div>
-                        <Progress value={matchProb * 100} className="h-1 bg-zinc-800" indicatorClassName={isActive ? "bg-emerald-500" : "bg-zinc-600"} />
+                        <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all duration-200", isActive ? "bg-emerald-500" : "bg-zinc-600")}
+                            style={{ width: `${matchProb * 100}%` }}
+                          />
+                        </div>
                       </div>
                     )}
                   </button>
                 );
               })}
             </div>
-          </Card>
+
+          </div>
         </div>
 
         {/* ── Center Stage: Live Feed & Video Analysis (6 Cols) ──────────────── */}
         <div className="col-span-6 flex flex-col gap-3 min-h-0">
           
-          {/* Main Video Card */}
-          <Card className="flex-1 flex flex-col min-h-0 bg-zinc-950/80 border-zinc-800/80 overflow-hidden relative">
+          <div className="flex-1 flex flex-col min-h-0 bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl relative">
+            
+            {/* Viewport Frame */}
             <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
               
               {streamData?.frame ? (
@@ -626,17 +639,17 @@ export default function BatCoachDashboard() {
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center gap-4 text-center p-8">
-                  <div className="h-16 w-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                    <Activity className="h-8 w-8 text-zinc-600 animate-pulse" />
+                  <div className="h-16 w-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-600">
+                    <Activity className="h-8 w-8 animate-pulse text-emerald-500" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-zinc-300">Webcam Feed Standby</h4>
+                    <h4 className="text-sm font-bold text-white">Camera Standby</h4>
                     <p className="text-xs text-zinc-500 mt-1 max-w-xs">
                       {isLive ? "Initializing camera grabber and VideoMAE neural engine..." : "Click 'Start Live Feed' above to begin real-time stroke analysis."}
                     </p>
                   </div>
                   {!isLive && (
-                    <Button onClick={() => setIsLive(true)} size="sm" className="gap-2">
+                    <Button onClick={() => setIsLive(true)} size="sm" className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs">
                       <Play className="h-3.5 w-3.5 fill-current" />
                       Start Practice
                     </Button>
@@ -648,26 +661,26 @@ export default function BatCoachDashboard() {
               {isLive && streamData && (
                 <>
                   <div className="absolute top-3 left-3 flex flex-col gap-2 pointer-events-none">
-                    <div className="flex items-center gap-2 bg-zinc-950/80 backdrop-blur-md border border-zinc-800 rounded-lg px-2.5 py-1 text-xs">
-                      <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Target:</span>
-                      <span className="font-semibold text-emerald-400">{currentMetadata.name}</span>
+                    <div className="flex items-center gap-2 bg-zinc-950/85 backdrop-blur-md border border-zinc-800 rounded-lg px-3 py-1.5 text-xs shadow-lg">
+                      <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Target Drill:</span>
+                      <span className="font-bold text-emerald-400">{currentMetadata.name}</span>
                     </div>
                   </div>
 
                   <div className="absolute top-3 right-3 flex flex-col items-end gap-2 pointer-events-none">
-                    <div className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold backdrop-blur-md", formRating.gradeColor)}>
-                      Grade: {formRating.rating} ({formRating.label})
+                    <div className={cn("px-3 py-1.5 rounded-lg text-xs font-bold backdrop-blur-md shadow-lg", formRating.gradeColor)}>
+                      Form Rating: {formRating.rating}
                     </div>
                   </div>
                 </>
               )}
 
-              {/* Stance prompt when sitting close or body out of frame */}
+              {/* Stance prompt when body not in frame */}
               {isLive && streamData && !isBodyDetected && (
                 <div className="absolute top-12 left-1/2 -translate-x-1/2 pointer-events-none">
-                  <div className="px-3 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-700/80 text-zinc-300 text-xs flex items-center gap-2 shadow-lg backdrop-blur-md">
-                    <UserCheck className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>Step back to show full batting stance</span>
+                  <div className="px-3.5 py-1.5 rounded-full bg-zinc-950/90 border border-emerald-500/50 text-zinc-200 text-xs flex items-center gap-2 shadow-2xl backdrop-blur-md">
+                    <UserCheck className="h-4 w-4 text-emerald-400" />
+                    <span>Step back ~6–8 ft to frame full stance</span>
                   </div>
                 </div>
               )}
@@ -682,24 +695,24 @@ export default function BatCoachDashboard() {
                     className="absolute bottom-4 inset-x-4 pointer-events-none"
                   >
                     <div className={cn(
-                      "p-3.5 rounded-xl backdrop-blur-xl border shadow-xl flex items-start gap-3 text-left",
+                      "p-4 rounded-xl backdrop-blur-xl border shadow-2xl flex items-start gap-3.5 text-left",
                       persistentFeedback.status === "success" 
-                        ? "bg-emerald-950/90 border-emerald-500/50 text-emerald-100" 
-                        : "bg-zinc-900/90 border-amber-500/50 text-zinc-100"
+                        ? "bg-emerald-950/95 border-emerald-500/70 text-emerald-100" 
+                        : "bg-zinc-950/95 border-amber-500/70 text-zinc-100"
                     )}>
                       <div className={cn(
-                        "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                        "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
                         persistentFeedback.status === "success" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
                       )}>
-                        {persistentFeedback.status === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                        {persistentFeedback.status === "success" ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
                       </div>
 
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold tracking-tight">{persistentFeedback.message}</span>
-                          <Badge variant={persistentFeedback.status === "success" ? "success" : "warning"} className="text-[9px] py-0 px-1.5 h-3.5">
-                            {persistentFeedback.tier || "Coaching Tip"}
-                          </Badge>
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+                            {persistentFeedback.tier || "Coaching Cue"}
+                          </span>
                         </div>
                         <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
                           {persistentFeedback.tips?.[0]}
@@ -711,124 +724,131 @@ export default function BatCoachDashboard() {
               </AnimatePresence>
             </div>
 
-            {/* Video Viewport Toolbar Footer */}
-            <div className="p-3 bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between text-xs">
+            {/* Viewport Toolbar Footer */}
+            <div className="p-3 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between text-xs">
               <div className="flex items-center gap-3">
-                <span className="text-zinc-400 font-medium">Detected:</span>
-                <Badge variant="secondary" className="font-semibold text-zinc-200">
+                <span className="text-zinc-400 font-semibold">Detected Action:</span>
+                <span className="font-bold text-white px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800">
                   {streamData?.topShot ? streamData.topShot.replace("_", " ").toUpperCase() : "Awaiting Movement"}
-                </Badge>
+                </span>
                 {streamData?.confidence && (
-                  <span className="text-zinc-500 mono text-[11px]">
-                    Conf: {(streamData.confidence * 100).toFixed(0)}%
+                  <span className="text-emerald-400 mono font-bold text-xs">
+                    {(streamData.confidence * 100).toFixed(0)}%
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-4 text-xs text-zinc-400">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px]">Cues</span>
-                  <Switch checked={showAngles} onCheckedChange={setShowAngles} />
-                </div>
+              <div className="flex items-center gap-2 text-xs text-zinc-400">
+                <span className="text-[11px] font-medium">Telemetry Overlay</span>
+                <Switch checked={showAngles} onCheckedChange={setShowAngles} />
               </div>
             </div>
-          </Card>
+
+          </div>
         </div>
 
         {/* ── Right Column: Biometrics & Telemetry (3 Cols) ──────────────────── */}
         <div className="col-span-3 flex flex-col gap-3 min-h-0">
           
-          {/* Biometrics Card */}
-          <Card className="bg-zinc-950/60 border-zinc-800/80">
-            <CardHeader className="p-4 pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                  <Activity className="h-4 w-4 text-emerald-400" />
-                  Live Biometrics
-                </CardTitle>
-                <Badge variant={!isBodyDetected ? "secondary" : bioData?.error_detected ? "destructive" : "success"} className="text-[10px]">
-                  {!isBodyDetected ? "Stand in View" : bioData?.error_detected ? "Form Error" : "Form Stable"}
-                </Badge>
+          {/* Circular Precision Biometrics Card */}
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-4">
+            
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">Live Biometrics</h3>
               </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-1 space-y-3">
-              {!isBodyDetected ? (
-                <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/80 text-center space-y-1">
-                  <p className="text-xs text-zinc-300 font-medium">No Batter Stance Detected</p>
-                  <p className="text-[11px] text-zinc-500 leading-snug">
-                    Position your camera ~6-8 feet away so your torso and arms are clearly visible.
-                  </p>
+              <span className={cn(
+                "text-[10px] font-semibold px-2 py-0.5 rounded border",
+                !isBodyDetected ? "bg-zinc-900 border-zinc-800 text-zinc-500" : isElbowGood && isKneeGood ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+              )}>
+                {!isBodyDetected ? "No Stance" : isElbowGood && isKneeGood ? "Optimal Shape" : "Form Adjustment"}
+              </span>
+            </div>
+
+            {!isBodyDetected ? (
+              <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/80 text-center space-y-1">
+                <p className="text-xs text-zinc-300 font-bold">No Batter Stance Detected</p>
+                <p className="text-[11px] text-zinc-500 leading-snug">
+                  Stand in frame with your torso and arms visible to stream live joint angles.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                
+                {/* Lead Elbow Metric Gauge */}
+                <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Lead Elbow</span>
+                  <div className={cn("text-2xl font-black mono", isElbowGood ? "text-emerald-400" : "text-amber-400")}>
+                    {elbowAngle.toFixed(0)}°
+                  </div>
+                  <span className={cn(
+                    "text-[9px] font-bold px-1.5 py-0.5 rounded",
+                    isElbowGood ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
+                  )}>
+                    REQ: ≥{currentMetadata.targetElbowAngle}°
+                  </span>
                 </div>
-              ) : (
-                <>
-                  {/* Elbow Angle */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-zinc-400">Front Elbow Angle</span>
-                      <span className={cn("mono font-bold", isElbowGood ? "text-emerald-400" : "text-amber-400")}>
-                        {elbowAngle}° <span className="text-zinc-500 font-normal">/ ≥{currentMetadata.targetElbowAngle}°</span>
-                      </span>
-                    </div>
-                    <Progress value={Math.min((elbowAngle / 180) * 100, 100)} className="h-1.5 bg-zinc-800" indicatorClassName={isElbowGood ? "bg-emerald-500" : "bg-amber-500"} />
-                  </div>
 
-                  {/* Knee Bend Angle */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-zinc-400">Front Knee Flexion</span>
-                      <span className={cn("mono font-bold", isKneeGood ? "text-emerald-400" : "text-amber-400")}>
-                        {kneeAngle}° <span className="text-zinc-500 font-normal">/ ≤{currentMetadata.targetKneeAngle}°</span>
-                      </span>
-                    </div>
-                    <Progress value={Math.min((kneeAngle / 180) * 100, 100)} className="h-1.5 bg-zinc-800" indicatorClassName={isKneeGood ? "bg-emerald-500" : "bg-blue-500"} />
+                {/* Lead Knee Metric Gauge */}
+                <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Lead Knee</span>
+                  <div className={cn("text-2xl font-black mono", isKneeGood ? "text-teal-400" : "text-amber-400")}>
+                    {kneeAngle.toFixed(0)}°
                   </div>
+                  <span className={cn(
+                    "text-[9px] font-bold px-1.5 py-0.5 rounded",
+                    isKneeGood ? "bg-teal-500/20 text-teal-400" : "bg-amber-500/20 text-amber-400"
+                  )}>
+                    REQ: ≤{currentMetadata.targetKneeAngle}°
+                  </span>
+                </div>
 
-                  {/* Head Tilt */}
-                  <div className="flex justify-between items-center pt-1 text-xs">
-                    <span className="text-zinc-400">Head Alignment</span>
-                    <Badge variant={bioData && bioData.head_tilt < 0.20 ? "secondary" : "destructive"} className="text-[10px]">
-                      {bioData ? (bioData.head_tilt < 0.20 ? "Aligned Over Line" : "Head Tilted") : "Analyzing..."}
-                    </Badge>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            )}
 
-          {/* Session Stats & Streak Card */}
-          <Card className="bg-zinc-950/60 border-zinc-800/80">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm font-semibold flex items-center justify-between">
-                <span>Session Performance</span>
+          </div>
+
+          {/* Session Performance Card */}
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-3">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Session Performance</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-zinc-400 font-mono">
+                  {totalSwings > 0 ? `${((repCount / totalSwings) * 100).toFixed(0)}% Accuracy` : "0% Accuracy"}
+                </span>
                 <Flame className="h-4 w-4 text-amber-500" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-1">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-center">
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Total Reps</div>
-                  <div className="text-xl font-bold mono text-zinc-100 mt-0.5">{repCount}</div>
-                </div>
-                <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-center">
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Clean Streak</div>
-                  <div className="flex items-center justify-center gap-1 mt-0.5">
-                    <Flame className="h-4 w-4 text-amber-500 fill-amber-500" />
-                    <span className="text-xl font-bold mono text-emerald-400">{streakCount}</span>
-                  </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center">
+                <div className="text-[9px] text-zinc-500 uppercase font-semibold">Clean Reps</div>
+                <div className="text-xl font-black mono text-emerald-400 mt-0.5">{repCount}</div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center">
+                <div className="text-[9px] text-zinc-500 uppercase font-semibold">Total Swings</div>
+                <div className="text-xl font-black mono text-zinc-300 mt-0.5">{totalSwings}</div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center">
+                <div className="text-[9px] text-zinc-500 uppercase font-semibold">Streak</div>
+                <div className="flex items-center justify-center gap-0.5 mt-0.5">
+                  <Flame className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                  <span className="text-xl font-black mono text-emerald-400">{streakCount}</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Recent Stroke History Log */}
-          <Card className="flex-1 flex flex-col min-h-0 bg-zinc-950/60 border-zinc-800/80">
-            <CardHeader className="p-4 pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold">Activity Timeline</CardTitle>
-                <Badge variant="outline" className="text-[10px]">{sessionLogs.length} Events</Badge>
-              </div>
-            </CardHeader>
-            <Separator className="bg-zinc-800/80" />
+          <div className="flex-1 flex flex-col min-h-0 bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+            <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Activity Timeline</h4>
+              <span className="text-[10px] font-mono text-zinc-400">{sessionLogs.length} Events</span>
+            </div>
+
             <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
               {sessionLogs.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-4 text-zinc-500 text-xs">
@@ -839,26 +859,40 @@ export default function BatCoachDashboard() {
                 sessionLogs.map((log) => (
                   <div
                     key={log.id}
-                    className="p-2 rounded-lg bg-zinc-900/40 border border-zinc-800/60 flex items-center justify-between text-xs"
+                    className={cn(
+                      "p-2.5 rounded-xl border flex items-center justify-between text-xs transition-all",
+                      log.status === "success" 
+                        ? "bg-zinc-900/60 border-zinc-800" 
+                        : log.status === "wrong_shot"
+                        ? "bg-red-950/20 border-red-500/30"
+                        : "bg-amber-950/20 border-amber-500/30"
+                    )}
                   >
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "h-2 w-2 rounded-full",
-                        log.status === "success" ? "bg-emerald-500" : "bg-amber-500"
+                        log.status === "success" ? "bg-emerald-500" : log.status === "wrong_shot" ? "bg-red-500" : "bg-amber-500"
                       )} />
                       <div>
-                        <div className="font-semibold text-zinc-200">{log.shot}</div>
+                        <div className="font-bold text-white leading-tight">{log.shot}</div>
                         <div className="text-[10px] text-zinc-500 mono">{log.time}</div>
                       </div>
                     </div>
-                    <Badge variant={log.status === "success" ? "success" : "secondary"} className="mono text-[10px]">
-                      {log.grade} ({(log.confidence * 100).toFixed(0)}%)
-                    </Badge>
+                    <span className={cn(
+                      "font-mono text-[10px] font-bold px-2 py-0.5 rounded",
+                      log.status === "success" 
+                        ? "bg-emerald-500/20 text-emerald-400" 
+                        : log.status === "wrong_shot"
+                        ? "bg-red-500/20 text-red-400"
+                        : "bg-amber-500/20 text-amber-400"
+                    )}>
+                      {log.status === "success" ? `${log.grade} (${(log.confidence * 100).toFixed(0)}%)` : log.status === "wrong_shot" ? "Wrong Shot" : "Form Alert"}
+                    </span>
                   </div>
                 ))
               )}
             </div>
-          </Card>
+          </div>
 
         </div>
 

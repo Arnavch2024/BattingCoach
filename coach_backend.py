@@ -393,20 +393,40 @@ def get_coaching_feedback(detected_shot: str, target_shot: str, confidence: floa
     shuffled_tips = random.sample(eligible_tips, min(len(eligible_tips), 3))
     event_id = str(uuid.uuid4())
 
-    if bio_data and bio_data.get("error_detected") and bio_data.get("priority_tip"):
+    has_bio_error = bool(bio_data and bio_data.get("error_detected"))
+    bio_tip = bio_data.get("priority_tip") if bio_data else None
+
+    # Case 1: Wrong stroke detected (e.g. pulled when drill was cover drive)
+    if detected_shot != target_shot:
+        det_name = detected_shot.replace('_', ' ').title()
+        tgt_name = target_shot.replace('_', ' ').title()
         return {
             "id": event_id,
-            "status": "improving",
-            "tier": "Biometric Adjustment",
-            "message": "Form Check: Biometric Alert",
-            "tips": [bio_data["priority_tip"]] + shuffled_tips[:2]
+            "status": "wrong_shot",
+            "is_correct": False,
+            "tier": "Stroke Mismatch",
+            "message": f"Wrong Shot: Detected {det_name} instead of {tgt_name}.",
+            "tips": [f"Adjust swing trajectory to match {tgt_name} plane."] + shuffled_tips[:1]
         }
 
-    if detected_shot == target_shot:
-        msg = "Excellent Shot! High technical precision." if confidence > 0.70 else "Good Shot! Keep solidifying posture."
+    # Case 2: Target stroke detected, but biomechanical error present (e.g., dropped elbow)
+    if has_bio_error and bio_tip:
+        return {
+            "id": event_id,
+            "status": "form_error",
+            "is_correct": False,
+            "tier": "Biometric Adjustment",
+            "message": "Form Alert: Check joint alignment.",
+            "tips": [bio_tip] + shuffled_tips[:1]
+        }
+
+    # Case 3: Target stroke detected with sufficient confidence and clean biomechanics
+    if confidence >= 0.35:
+        msg = "Excellent Execution! Textbook technique." if confidence > 0.65 else "Clean Shot! Form criteria verified."
         return {
             "id": event_id,
             "status": "success",
+            "is_correct": True,
             "tier": tier,
             "message": msg,
             "tips": shuffled_tips[:2]
@@ -415,9 +435,10 @@ def get_coaching_feedback(detected_shot: str, target_shot: str, confidence: floa
         return {
             "id": event_id,
             "status": "improving",
-            "tier": tier,
-            "message": f"Form Adjustment: Focus on {target_shot.replace('_', ' ').title()}.",
-            "tips": shuffled_tips
+            "is_correct": False,
+            "tier": "Commit to Shot",
+            "message": f"Low Power: Commit fully to the {target_shot.replace('_', ' ').title()}.",
+            "tips": shuffled_tips[:2]
         }
 
 # ──────────────────────────────────────────────────────────────────────────────

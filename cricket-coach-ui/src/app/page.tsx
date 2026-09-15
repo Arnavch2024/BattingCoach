@@ -1,44 +1,51 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { 
   Play, Activity, Zap, CheckCircle2, Shield, Award, Cpu, 
-  ArrowRight, Sparkles, ChevronLeft, ChevronRight, User, 
+  ArrowRight, ChevronLeft, ChevronRight, User, 
   LogIn, X, Lock, Mail, Video, Eye, EyeOff, Dumbbell, Compass,
-  Volume2, Flame, BarChart3, Layers, Check, LogOut, ArrowUpRight
+  Volume2, Flame, BarChart3, Layers, Check, LogOut, ArrowUpRight,
+  TrendingUp, Radio, Target, Sparkles, SlidersHorizontal, RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Background Unsplash Cricket Images Slider Data
+// High-Definition Cricket Stadium & Match Photography
 // ──────────────────────────────────────────────────────────────────────────────
 
 const HERO_SLIDES = [
   {
-    url: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1920&auto=format&fit=crop",
+    id: 1,
+    url: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=2000&q=85",
+    tag: "STADIUM SENSORS",
     title: "Floodlit Cricket Arena",
-    subtitle: "Professional sports biomechanics powered by VideoMAE & MediaPipe 3D",
+    subtitle: "Real-time 3D skeletal posture tracking with zero physical body sensors.",
   },
   {
-    url: "https://images.unsplash.com/photo-1531415074868-036b1c5d53ec?q=80&w=1920&auto=format&fit=crop",
-    title: "Precision Stroke Execution",
-    subtitle: "Real-time front elbow angle, lead knee flexion, and head alignment analysis",
+    id: 2,
+    url: "https://images.unsplash.com/photo-1531415074868-036b1c5d53ec?auto=format&fit=crop&w=2000&q=85",
+    tag: "DRIVE PRECISION",
+    title: "Front Elbow Alignment",
+    subtitle: "Instant lead elbow elevation measurement ensuring textbook vertical presentation.",
   },
   {
-    url: "https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?q=80&w=1920&auto=format&fit=crop",
-    title: "Elite Batting Performance",
-    subtitle: "10-stroke neural classifier with instant audio coaching feedback",
+    id: 3,
+    url: "https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?auto=format&fit=crop&w=2000&q=85",
+    tag: "POWER & CROSS-BAT",
+    title: "Kinematic Weight Transfer",
+    subtitle: "Measure back-foot load and hip pivot during pull and hook execution.",
   },
   {
-    url: "https://images.unsplash.com/photo-1593341646782-e0b495cff86d?q=80&w=1920&auto=format&fit=crop",
-    title: "Zero Hardware Sensors Required",
-    subtitle: "Transform any standard webcam into an Olympic-grade batting laboratory",
+    id: 4,
+    url: "https://images.unsplash.com/photo-1593341646782-e0b495cff86d?auto=format&fit=crop&w=2000&q=85",
+    tag: "NEURAL CLASSIFIER",
+    title: "VideoMAE Spatiotemporal AI",
+    subtitle: "Deep 16-frame action recognition model fine-tuned on professional stroke footage.",
   }
 ];
 
@@ -47,16 +54,16 @@ const HERO_SLIDES = [
 // ──────────────────────────────────────────────────────────────────────────────
 
 const SHOT_MODULES = [
-  { name: "Cover Drive", category: "Drives", angle: "Elbow ≥ 130°", difficulty: "Intermediate", cue: "Head positioned over front knee with high lead elbow finish." },
-  { name: "Straight Drive", category: "Drives", angle: "Elbow ≥ 135°", difficulty: "Foundational", cue: "Full vertical bat blade presentation directly down the line." },
-  { name: "Pull Shot", category: "Power", angle: "Arm Ext ≥ 120°", difficulty: "Intermediate", cue: "Back foot pivot with full horizontal arm extension." },
-  { name: "Hook Shot", category: "Power", angle: "Arm Ext ≥ 115°", difficulty: "Advanced", cue: "Torso hip rotation with downward wrist roll over impact." },
-  { name: "Square Cut", category: "Power", angle: "Elbow ≥ 125°", difficulty: "Intermediate", cue: "Step back and across, sharp slice behind point region." },
-  { name: "Lofted Drive", category: "Power", angle: "Elbow ≥ 140°", difficulty: "Advanced", cue: "Clean vertical acceleration into explosive follow-through." },
-  { name: "Forward Defense", category: "Technical", angle: "Elbow ~ 110°", difficulty: "Foundational", cue: "Soft impact hands, solid bat face adjacent to front pad." },
-  { name: "Late Cut", category: "Technical", angle: "Elbow ~ 115°", difficulty: "Advanced", cue: "Feather touch guidance past slips with supple wrists." },
-  { name: "Wrist Flick", category: "Whips", angle: "Elbow ≥ 125°", difficulty: "Intermediate", cue: "Snappy forearm roll through the mid-wicket corridor." },
-  { name: "Sweep Shot", category: "Sweeps", angle: "Elbow ≥ 120°", difficulty: "Intermediate", cue: "Deep back-knee crouch with flat horizontal blade sweep." },
+  { id: "cover", name: "Cover Drive", category: "Drives", targetElbow: "≥ 130°", targetKnee: "≤ 155°", difficulty: "Intermediate", cue: "Head over lead knee with high elbow extension." },
+  { id: "straight", name: "Straight Drive", category: "Drives", targetElbow: "≥ 135°", targetKnee: "≤ 155°", difficulty: "Foundational", cue: "Full vertical blade presentation straight down the line." },
+  { id: "pull", name: "Pull Shot", category: "Power", targetElbow: "≥ 120°", targetKnee: "≤ 160°", difficulty: "Intermediate", cue: "Back foot pivot with full horizontal arm extension." },
+  { id: "hook", name: "Hook Shot", category: "Power", targetElbow: "≥ 115°", targetKnee: "≤ 165°", difficulty: "Advanced", cue: "Torso hip rotation with downward wrist roll over impact." },
+  { id: "square_cut", name: "Square Cut", category: "Power", targetElbow: "≥ 125°", targetKnee: "≤ 160°", difficulty: "Intermediate", cue: "Step back & across, sharp blade slice behind point." },
+  { id: "lofted", name: "Lofted Drive", category: "Power", targetElbow: "≥ 140°", targetKnee: "≤ 150°", difficulty: "Advanced", cue: "Vertical swing plane with clean extension and high finish." },
+  { id: "defense", name: "Forward Defense", category: "Technical", targetElbow: "110°", targetKnee: "≤ 150°", difficulty: "Foundational", cue: "Soft impact hands, solid bat face adjacent to front pad." },
+  { id: "late_cut", name: "Late Cut", category: "Technical", targetElbow: "115°", targetKnee: "≤ 160°", difficulty: "Advanced", cue: "Feather touch guidance past slips with supple wrists." },
+  { id: "flick", name: "Wrist Flick", category: "Whips", targetElbow: "≥ 125°", targetKnee: "≤ 155°", difficulty: "Intermediate", cue: "Snappy forearm roll through the mid-wicket corridor." },
+  { id: "sweep", name: "Sweep Shot", category: "Sweeps", targetElbow: "≥ 120°", targetKnee: "≤ 145°", difficulty: "Intermediate", cue: "Deep back-knee crouch with flat horizontal blade sweep." },
 ];
 
 interface UserProfile {
@@ -67,18 +74,39 @@ interface UserProfile {
   stance: "Right-Hand Batter" | "Left-Hand Batter";
 }
 
+const GOOGLE_CLIENT_ID = "1052308639879-asjh48bensq4qto0bv29t7h70km9e9lm.apps.googleusercontent.com";
+
+// Decode JWT token from Google Identity Services
+const parseJwt = (token: string) => {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      window
+        .atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.error("JWT Decode error:", e);
+    return null;
+  }
+};
+
 export default function HomePage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  
+  const [selectedShotCategory, setSelectedShotCategory] = useState<string>("All");
+
   // Form State
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
   const [authStance, setAuthStance] = useState<"Right-Hand Batter" | "Left-Hand Batter">("Right-Hand Batter");
-  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load user from localStorage
@@ -88,10 +116,9 @@ export default function HomePage() {
       if (stored) {
         setUserProfile(JSON.parse(stored));
       } else {
-        // Default demo athlete
         const defaultUser: UserProfile = {
           name: "Arnav P.",
-          email: "athlete@cricketcoach.ai",
+          email: "arnav.player@gmail.com",
           provider: "google",
           stance: "Right-Hand Batter"
         };
@@ -105,10 +132,10 @@ export default function HomePage() {
 
   // Background Slider Auto-cycle
   useEffect(() => {
-    const interval = setInterval(() => {
+    const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
-    }, 6000);
-    return () => clearInterval(interval);
+    }, 7000);
+    return () => clearInterval(timer);
   }, []);
 
   const syncUserToSupabase = async (user: UserProfile) => {
@@ -124,11 +151,54 @@ export default function HomePage() {
         }),
       });
     } catch (e) {
-      console.error("Supabase athlete sync notice:", e);
+      console.error("Supabase sync notice:", e);
     }
   };
 
-  // Direct Google Sign In
+  const handleCredentialResponse = async (response: any) => {
+    if (response?.credential) {
+      const payload = parseJwt(response.credential);
+      if (payload) {
+        const googleUser: UserProfile = {
+          name: payload.name || payload.given_name || "Athlete",
+          email: payload.email,
+          avatar: payload.picture,
+          provider: "google",
+          stance: authStance,
+        };
+        setUserProfile(googleUser);
+        localStorage.setItem("batcoach_user", JSON.stringify(googleUser));
+        await syncUserToSupabase(googleUser);
+        setIsSignInOpen(false);
+      }
+    }
+  };
+
+  // Initialize Google GSI Button
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window as any).google && isSignInOpen) {
+      try {
+        (window as any).google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleCredentialResponse,
+        });
+        const btnContainer = document.getElementById("googleOfficialButton");
+        if (btnContainer) {
+          btnContainer.innerHTML = "";
+          (window as any).google.accounts.id.renderButton(btnContainer, {
+            theme: "outline",
+            size: "large",
+            shape: "rectangular",
+            width: 320,
+            text: "continue_with",
+          });
+        }
+      } catch (err) {
+        console.error("Google Sign-In initialization:", err);
+      }
+    }
+  }, [isSignInOpen, authStance]);
+
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
     const googleUser: UserProfile = {
@@ -144,7 +214,6 @@ export default function HomePage() {
     setIsSignInOpen(false);
   };
 
-  // Standard Email/Password Sign In / Up
   const handleEmailAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -166,11 +235,16 @@ export default function HomePage() {
     localStorage.removeItem("batcoach_user");
   };
 
+  const filteredShots = useMemo(() => {
+    if (selectedShotCategory === "All") return SHOT_MODULES;
+    return SHOT_MODULES.filter((s) => s.category === selectedShotCategory);
+  }, [selectedShotCategory]);
+
   return (
     <div className="min-h-screen w-full bg-[#09090b] text-zinc-100 flex flex-col font-sans selection:bg-emerald-500/30">
       
-      {/* ── Top Header Navigation ────────────────────────────────────────────── */}
-      <header className="fixed top-0 inset-x-0 h-16 bg-zinc-950/70 backdrop-blur-xl border-b border-zinc-800/80 z-50 px-6 lg:px-12 flex items-center justify-between">
+      {/* ── Fixed Studio Navigation Bar ──────────────────────────────────────── */}
+      <header className="fixed top-0 inset-x-0 h-16 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/80 z-50 px-6 lg:px-12 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
             src="/bat-icon.jpg"
@@ -180,31 +254,32 @@ export default function HomePage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-base tracking-tight text-white">BatCoach AI Pro</span>
-              <Badge variant="secondary" className="text-[10px] font-medium py-0 px-1.5 h-4 bg-zinc-800 text-zinc-400">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 v2.0
-              </Badge>
+              </span>
             </div>
-            <p className="text-[10px] text-zinc-400 hidden sm:block">AI Batting Biomechanics & Audio Coaching</p>
+            <p className="text-[10px] text-zinc-400 hidden sm:block">Real-Time Batting Biomechanics & Audio Coaching</p>
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 text-xs text-zinc-400 font-medium">
-          <a href="#features" className="hover:text-zinc-100 transition-colors">Features</a>
-          <a href="#modules" className="hover:text-zinc-100 transition-colors">Shot Modules</a>
-          <a href="#how-it-works" className="hover:text-zinc-100 transition-colors">How It Works</a>
+        {/* Center Navigation */}
+        <nav className="hidden md:flex items-center gap-8 text-xs text-zinc-300 font-medium">
+          <a href="#hero" className="hover:text-white transition-colors">Overview</a>
+          <a href="#demo-preview" className="hover:text-white transition-colors">Biomechanics Engine</a>
+          <a href="#modules" className="hover:text-white transition-colors">Stroke Syllabus</a>
+          <a href="#architecture" className="hover:text-white transition-colors">Architecture</a>
         </nav>
 
-        {/* Right CTA / Auth Profile */}
+        {/* Right CTA / Athlete Profile */}
         <div className="flex items-center gap-3">
           {userProfile ? (
             <div className="flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 rounded-lg p-1 pr-3 text-xs">
-              <div className="h-7 w-7 rounded-md bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-bold text-white text-[11px] shadow-sm">
+              <div className="h-7 w-7 rounded-md bg-emerald-600 flex items-center justify-center font-bold text-white text-[11px] shadow-sm">
                 {userProfile.name.slice(0, 2).toUpperCase()}
               </div>
               <div className="text-left hidden sm:block leading-tight">
                 <div className="text-xs font-semibold text-zinc-200">{userProfile.name}</div>
-                <div className="text-[10px] text-zinc-500">{userProfile.email}</div>
+                <div className="text-[10px] text-zinc-500">{userProfile.stance}</div>
               </div>
               <button 
                 onClick={handleSignOut}
@@ -227,7 +302,7 @@ export default function HomePage() {
           )}
 
           <Link href="/coach">
-            <Button size="sm" className="gap-1.5 font-medium text-xs shadow-md shadow-emerald-600/20">
+            <Button size="sm" className="gap-1.5 font-semibold text-xs bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20">
               <Play className="h-3 w-3 fill-current" />
               Launch Live Coach
             </Button>
@@ -235,229 +310,300 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* ── Hero Section with Background Slider ─────────────────────────────── */}
-      <section className="relative min-h-[90vh] lg:min-h-screen flex items-center justify-center pt-24 pb-16 px-6 overflow-hidden">
+      {/* ── High-Contrast Hero with Active Image Slider ─────────────────────── */}
+      <section id="hero" className="relative min-h-[92vh] flex items-center justify-center pt-24 pb-16 px-6 lg:px-12 overflow-hidden">
         
-        {/* Unsplash Background Image Carousel */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
+        {/* Dynamic Unsplash Background Slider with Verified Contrast */}
+        <div className="absolute inset-0 z-0 overflow-hidden bg-black">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSlide}
-              initial={{ opacity: 0, scale: 1.05 }}
+              initial={{ opacity: 0, scale: 1.04 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 1.5, ease: "easeInOut" }}
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${HERO_SLIDES[currentSlide].url})` }}
-            />
+              transition={{ duration: 1.2, ease: "easeInOut" }}
+              className="absolute inset-0"
+            >
+              <img
+                src={HERO_SLIDES[currentSlide].url}
+                alt={HERO_SLIDES[currentSlide].title}
+                className="w-full h-full object-cover object-center opacity-65"
+              />
+            </motion.div>
           </AnimatePresence>
 
-          {/* Cinematic Dark Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/85 to-[#09090b]/60" />
-          <div className="absolute inset-0 bg-radial from-transparent via-[#09090b]/50 to-[#09090b]" />
+          {/* Gradients: Vignette and bottom blend */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/60 to-[#09090b]/70" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#09090b]/80 via-transparent to-[#09090b]/80" />
         </div>
 
-        {/* Hero Content */}
-        <div className="relative z-10 max-w-4xl mx-auto text-center flex flex-col items-center gap-6 mt-6">
+        {/* Hero Content Container */}
+        <div className="relative z-10 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center mt-6">
           
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-xs font-medium backdrop-blur-md shadow-lg"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Next-Gen Cricket Batting Intelligence</span>
-          </motion.div>
+          {/* Left Column: Value Proposition */}
+          <div className="lg:col-span-7 flex flex-col items-start text-left gap-5">
+            
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-xs font-semibold backdrop-blur-md shadow-lg">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>3D Euclidean Pose & VideoMAE Vision Transformer</span>
+            </div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15]"
-          >
-            Master Your Batting Stroke with <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
-              Real-Time AI Biomechanics
-            </span>
-          </motion.h1>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1]">
+              Textbook Batting Form. <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300">
+                Zero Body Sensors.
+              </span>
+            </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-sm sm:text-base text-zinc-300 max-w-2xl leading-relaxed"
-          >
-            Powered by <strong>VideoMAE video transformers</strong> and <strong>MediaPipe 3D world pose tracking</strong>. Measure lead elbow elevation, knee flexion, and receive instant verbal coaching cues directly through your webcam.
-          </motion.p>
+            <p className="text-sm sm:text-base text-zinc-200 max-w-xl leading-relaxed">
+              Transform any standard laptop or webcam into an Olympic-grade batting laboratory. Measures <strong>3D front elbow elevation</strong>, <strong>lead knee flexion</strong>, and classifies 10 cricket stroke mechanics with instant spoken feedback.
+            </p>
 
-          {/* Action CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center gap-4 mt-2 w-full sm:w-auto"
-          >
-            <Link href="/coach" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto gap-2 text-sm font-semibold h-11 px-8 shadow-xl shadow-emerald-600/25">
-                <Play className="h-4 w-4 fill-current" />
-                Start Live Coaching Session
-                <ArrowRight className="h-4 w-4" />
+            {/* CTA Buttons */}
+            <div className="flex flex-wrap items-center gap-4 pt-2 w-full sm:w-auto">
+              <Link href="/coach">
+                <Button size="lg" className="gap-2 text-sm font-bold h-12 px-8 bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/30">
+                  <Play className="h-4 w-4 fill-current" />
+                  Start Live Session
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
+
+              <Button 
+                variant="outline" 
+                size="lg" 
+                onClick={() => { setAuthMode("signin"); setIsSignInOpen(true); }}
+                className="text-sm font-semibold h-12 px-6 bg-zinc-900/80 border-zinc-700 hover:bg-zinc-800 text-zinc-200 backdrop-blur-md"
+              >
+                Athlete Portal Sign In
               </Button>
-            </Link>
+            </div>
 
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onClick={() => { setAuthMode("signin"); setIsSignInOpen(true); }}
-              className="w-full sm:w-auto text-sm font-medium h-11 px-6 bg-zinc-900/60 border-zinc-700/80 backdrop-blur-md"
-            >
-              Sign In with Google / Email
-            </Button>
-          </motion.div>
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-3 gap-3 pt-4 w-full max-w-lg border-t border-zinc-800/80 mt-2">
+              <div>
+                <div className="text-xl font-bold text-white mono">24 FPS</div>
+                <div className="text-[11px] text-zinc-400">Locked Stream Rate</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-emerald-400 mono">&lt; 15ms</div>
+                <div className="text-[11px] text-zinc-400">FP16 CUDA Latency</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-cyan-400 mono">10 Strokes</div>
+                <div className="text-[11px] text-zinc-400">Classified Live</div>
+              </div>
+            </div>
 
-          {/* Feature Badges */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8 w-full max-w-3xl"
-          >
-            <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 backdrop-blur-md text-left">
-              <div className="text-emerald-400 font-bold text-lg mono">3D Metric</div>
-              <div className="text-[11px] text-zinc-400 mt-0.5">Perspective-Free Angles</div>
-            </div>
-            <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 backdrop-blur-md text-left">
-              <div className="text-cyan-400 font-bold text-lg mono">10 Strokes</div>
-              <div className="text-[11px] text-zinc-400 mt-0.5">VideoMAE Classification</div>
-            </div>
-            <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 backdrop-blur-md text-left">
-              <div className="text-teal-400 font-bold text-lg mono">&lt; 15ms</div>
-              <div className="text-[11px] text-zinc-400 mt-0.5">FP16 CUDA Acceleration</div>
-            </div>
-            <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 backdrop-blur-md text-left">
-              <div className="text-amber-400 font-bold text-lg mono">Voice Coach</div>
-              <div className="text-[11px] text-zinc-400 mt-0.5">Real-Time Audio Corrections</div>
-            </div>
-          </motion.div>
+          </div>
 
-          {/* Slider Pagination Controls */}
-          <div className="flex items-center gap-2 mt-6">
-            {HERO_SLIDES.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={cn(
-                  "h-1.5 rounded-full transition-all duration-300 cursor-pointer",
-                  currentSlide === idx ? "w-8 bg-emerald-400" : "w-2 bg-zinc-700 hover:bg-zinc-500"
-                )}
-                aria-label={`Slide ${idx + 1}`}
-              />
-            ))}
+          {/* Right Column: Interactive Biomechanics Radar Preview */}
+          <div className="lg:col-span-5 flex flex-col gap-4">
+            
+            <div className="relative rounded-2xl bg-zinc-950/90 border border-zinc-800/90 p-5 shadow-2xl backdrop-blur-xl space-y-4">
+              
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Live Biometrics Radar</span>
+                </div>
+                <Badge variant="cyan" className="text-[10px] font-mono py-0 px-2">
+                  Active Stance Check
+                </Badge>
+              </div>
+
+              {/* Simulated Skeleton & Angle HUD */}
+              <div className="relative h-56 rounded-xl bg-zinc-900/80 border border-zinc-800 overflow-hidden flex items-center justify-center p-4">
+                
+                {/* Visual Grid Lines */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#27272a15_1px,transparent_1px),linear-gradient(to_bottom,#27272a15_1px,transparent_1px)] bg-[size:24px_24px]" />
+                
+                {/* Biomechanics Vectors Visual */}
+                <div className="relative z-10 w-full flex items-center justify-between px-2">
+                  
+                  {/* Lead Elbow Gauge */}
+                  <div className="flex flex-col items-center gap-1 bg-zinc-950/90 border border-emerald-500/40 rounded-xl p-3 shadow-lg">
+                    <div className="text-[10px] text-zinc-400 uppercase font-semibold">Lead Elbow</div>
+                    <div className="text-2xl font-black text-emerald-400 mono">134.2°</div>
+                    <div className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                      TARGET: ≥ 130° (PASS)
+                    </div>
+                  </div>
+
+                  {/* Dynamic Pose Icon */}
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="h-16 w-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <Target className="h-8 w-8 animate-pulse" />
+                    </div>
+                    <span className="text-[11px] font-semibold text-zinc-300">Cover Drive Stance</span>
+                  </div>
+
+                  {/* Lead Knee Gauge */}
+                  <div className="flex flex-col items-center gap-1 bg-zinc-950/90 border border-teal-500/40 rounded-xl p-3 shadow-lg">
+                    <div className="text-[10px] text-zinc-400 uppercase font-semibold">Lead Knee</div>
+                    <div className="text-2xl font-black text-teal-400 mono">148.6°</div>
+                    <div className="text-[9px] text-teal-400 font-bold bg-teal-500/10 px-1.5 py-0.5 rounded">
+                      TARGET: ≤ 155° (PASS)
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Bottom Overlay Toast */}
+                <div className="absolute bottom-2 inset-x-2 bg-zinc-950/90 border border-zinc-800 rounded-lg py-1.5 px-3 flex items-center justify-between text-[11px]">
+                  <span className="text-zinc-400">Form Rating:</span>
+                  <span className="font-bold text-emerald-400 mono">A+ (Elite Technical Follow-Through)</span>
+                </div>
+
+              </div>
+
+              {/* Shot Probabilities Simulation */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs text-zinc-300 font-medium">
+                  <span>Detected Stroke: <strong className="text-white">Cover Drive</strong></span>
+                  <span className="text-emerald-400 mono">94.8% Confidence</span>
+                </div>
+                <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full w-[94.8%]" />
+                </div>
+              </div>
+
+            </div>
+
+            {/* Slider Switcher & Thumbnail Indicator */}
+            <div className="flex items-center justify-between bg-zinc-950/80 border border-zinc-800 rounded-xl p-3 px-4 backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-bold text-zinc-400 uppercase">Stadium Slide:</span>
+                <span className="text-xs font-semibold text-white">{HERO_SLIDES[currentSlide].title}</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentSlide((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
+                  className="p-1 rounded-md bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 transition-colors"
+                  aria-label="Previous Slide"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length)}
+                  className="p-1 rounded-md bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 transition-colors"
+                  aria-label="Next Slide"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
           </div>
 
         </div>
 
       </section>
 
-      {/* ── Key Features Section ────────────────────────────────────────────── */}
-      <section id="features" className="py-20 px-6 lg:px-12 bg-zinc-950 border-t border-zinc-900">
+      {/* ── Biomechanics Engine & Technical Architecture ─────────────────────── */}
+      <section id="demo-preview" className="py-20 px-6 lg:px-12 bg-zinc-950 border-t border-zinc-800">
         <div className="max-w-6xl mx-auto space-y-12">
           
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-500/30">
-              Elite Sports Science
-            </Badge>
+            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Engineering Specs</span>
             <h2 className="text-3xl font-bold tracking-tight text-white">
-              Engineered for Modern Cricket Batsmen
+              Why 3D Metric Space Replaces 2D Screen Landmark Tracking
             </h2>
             <p className="text-sm text-zinc-400">
-              Experience laboratory-grade biomechanics analysis in your living room or practice nets using your standard camera.
+              Traditional computer vision calculates 2D pixel angles that distort whenever the camera tilts. BatCoach AI computes true Euclidean metric vectors in meters.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
-              <CardHeader className="p-6 pb-4">
-                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-2">
-                  <Activity className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-base font-semibold">3D Joint Angle Telemetry</CardTitle>
-                <CardDescription className="text-xs text-zinc-400">
-                  Measures front elbow elevation ($\ge 130^\circ$) and lead knee flexion in true Euclidean 3D space, independent of camera tilt.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <div className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 transition-all space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <Compass className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">Perspective-Invariant Vectors</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Utilizes MediaPipe <code>pose_world_landmarks</code> to reconstruct the athlete's 3D skeletal frame in physical meter coordinates, ensuring identical angle accuracy regardless of camera height.
+              </p>
+            </div>
 
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
-              <CardHeader className="p-6 pb-4">
-                <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-2">
-                  <Cpu className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-base font-semibold">VideoMAE Action Transformer</CardTitle>
-                <CardDescription className="text-xs text-zinc-400">
-                  Custom fine-tuned Vision Transformer analyzes 16-frame spatiotemporal motion vectors to classify strokes with high confidence.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <div className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 transition-all space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">Kinetic Swing Motion State Machine</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Tracks wrist acceleration and follow-through deceleration (<code>IDLE</code> $\rightarrow$ <code>SWINGING</code> $\rightarrow$ <code>COMPLETED</code>). Reps and audio tips are only triggered on actual physical bat strokes.
+              </p>
+            </div>
 
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
-              <CardHeader className="p-6 pb-4">
-                <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-2">
-                  <Volume2 className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-base font-semibold">Real-Time Voice Coaching</CardTitle>
-                <CardDescription className="text-xs text-zinc-400">
-                  Instant text-to-speech audio coach delivers tiered technical corrections (Foundational, Intermediate, Elite) the moment a stroke completes.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <div className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 transition-all space-y-3">
+              <div className="h-10 w-10 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                <Database className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">Supabase PostgreSQL Sync</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Persists athlete records, practice session duration, accuracy rate, best streak, and individual stroke biomechanics directly into PostgreSQL tables.
+              </p>
+            </div>
 
           </div>
+
         </div>
       </section>
 
-      {/* ── Supported Shot Modules ─────────────────────────────────────────── */}
-      <section id="modules" className="py-20 px-6 lg:px-12 bg-[#09090b] border-t border-zinc-900">
-        <div className="max-w-6xl mx-auto space-y-12">
+      {/* ── Supported Stroke Syllabus ────────────────────────────────────────── */}
+      <section id="modules" className="py-20 px-6 lg:px-12 bg-[#09090b] border-t border-zinc-800">
+        <div className="max-w-6xl mx-auto space-y-8">
           
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-2">
-              <Badge variant="outline" className="text-xs text-cyan-400 border-cyan-500/30">
-                10 Practice Modules
-              </Badge>
+              <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">10-Stroke Syllabus</span>
               <h2 className="text-3xl font-bold tracking-tight text-white">Supported Stroke Directory</h2>
-              <p className="text-xs text-zinc-400">Select any stroke to train specific biomechanical angles.</p>
+              <p className="text-xs text-zinc-400">Select any category to inspect target technical angles.</p>
             </div>
-            <Link href="/coach">
-              <Button size="sm" variant="outline" className="gap-1.5 text-xs">
-                Launch All Modules <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            </Link>
+
+            {/* Category Filter Tabs */}
+            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 p-1 rounded-xl text-xs">
+              {["All", "Drives", "Power", "Technical", "Whips"].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedShotCategory(cat)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer",
+                    selectedShotCategory === cat ? "bg-emerald-500 text-white font-semibold" : "text-zinc-400 hover:text-white"
+                  )}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {SHOT_MODULES.map((shot) => (
+            {filteredShots.map((shot) => (
               <div
-                key={shot.name}
-                className="p-4 rounded-xl bg-zinc-950/70 border border-zinc-800/80 hover:border-emerald-500/40 transition-all flex flex-col justify-between gap-3 group"
+                key={shot.id}
+                className="p-5 rounded-xl bg-zinc-950 border border-zinc-800/90 hover:border-emerald-500/40 transition-all flex flex-col justify-between gap-4 group"
               >
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm text-zinc-200 group-hover:text-emerald-400 transition-colors">
+                    <span className="font-bold text-sm text-white group-hover:text-emerald-400 transition-colors">
                       {shot.name}
                     </span>
-                    <Badge variant={shot.difficulty === "Foundational" ? "secondary" : shot.difficulty === "Intermediate" ? "cyan" : "warning"} className="text-[9px] py-0 px-1.5">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
                       {shot.difficulty}
-                    </Badge>
+                    </span>
                   </div>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">{shot.cue}</p>
+                  <p className="text-xs text-zinc-400 leading-relaxed">{shot.cue}</p>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60 text-[10px]">
-                  <span className="text-zinc-500 uppercase tracking-wider">{shot.category}</span>
-                  <span className="mono font-semibold text-emerald-400">{shot.angle}</span>
+                <div className="flex items-center justify-between pt-3 border-t border-zinc-800/80 text-[11px]">
+                  <span className="text-zinc-500 uppercase font-semibold">{shot.category}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-400">Elbow: <strong className="text-emerald-400 mono">{shot.targetElbow}</strong></span>
+                    <span className="text-zinc-400">Knee: <strong className="text-teal-400 mono">{shot.targetKnee}</strong></span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -466,62 +612,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── How It Works Section ────────────────────────────────────────────── */}
-      <section id="how-it-works" className="py-20 px-6 lg:px-12 bg-zinc-950 border-t border-zinc-900">
-        <div className="max-w-5xl mx-auto space-y-12">
-          
-          <div className="text-center space-y-3">
-            <h2 className="text-3xl font-bold tracking-tight text-white">How It Works in 3 Steps</h2>
-            <p className="text-xs text-zinc-400">Zero special equipment. Works with your webcam or mobile camera.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-lg mono">
-                1
-              </div>
-              <h3 className="font-semibold text-sm text-zinc-200">Position Camera</h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Place your laptop or camera 6–8 feet away so your full batting stance and arms are visible in frame.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg mono">
-                2
-              </div>
-              <h3 className="font-semibold text-sm text-zinc-200">Select Shot & Play</h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Choose your target stroke module (e.g. Cover Drive) and execute your shots in front of the live AI feed.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 font-bold text-lg mono">
-                3
-              </div>
-              <h3 className="font-semibold text-sm text-zinc-200">Instant Audio & Angle Cues</h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Receive live verbal coaching corrections, biometric angle ratings ($A+$, $A$, $B$), and rep streaks.
-              </p>
-            </div>
-
-          </div>
-
-          <div className="pt-8 text-center">
-            <Link href="/coach">
-              <Button size="lg" className="gap-2 text-sm font-semibold h-11 px-8 shadow-lg shadow-emerald-600/20">
-                <Play className="h-4 w-4 fill-current" />
-                Launch Live Coach Now
-              </Button>
-            </Link>
-          </div>
-
-        </div>
-      </section>
-
-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      {/* ── Footer ──────────────────────────────────────────────────────────── */}
       <footer className="mt-auto border-t border-zinc-800 bg-zinc-950 py-12 px-6 lg:px-12 text-xs text-zinc-500">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           
@@ -533,25 +624,24 @@ export default function HomePage() {
             />
             <div>
               <span className="font-bold text-sm text-zinc-200">BatCoach AI Pro</span>
-              <p className="text-[10px] text-zinc-500">Synthetic Cricket Biomechanics Intelligence</p>
+              <p className="text-[10px] text-zinc-500">Real-Time Batting Biomechanics & Stroke Intelligence</p>
             </div>
           </div>
 
           <div className="flex flex-wrap justify-center gap-6 text-xs text-zinc-400">
-            <Link href="/coach" className="hover:text-zinc-100 transition-colors">Coaching Dashboard</Link>
-            <a href="#features" className="hover:text-zinc-100 transition-colors">Features</a>
-            <a href="#modules" className="hover:text-zinc-100 transition-colors">Shot Catalog</a>
-            <a href="#how-it-works" className="hover:text-zinc-100 transition-colors">How it Works</a>
+            <Link href="/coach" className="hover:text-white transition-colors">Launch Coaching Session</Link>
+            <a href="#hero" className="hover:text-white transition-colors">Overview</a>
+            <a href="#modules" className="hover:text-white transition-colors">Stroke Syllabus</a>
           </div>
 
           <div className="text-[11px] text-zinc-500">
-            © 2026 BatCoach AI Pro. All rights reserved.
+            © 2026 BatCoach AI Pro. Built with VideoMAE & MediaPipe.
           </div>
 
         </div>
       </footer>
 
-      {/* ── Interactive Sign In Modal with Direct Google Gmail & Email Auth ──── */}
+      {/* ── Athlete Sign In Modal with Direct Google & Email Auth ───────────── */}
       <AnimatePresence>
         {isSignInOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -562,7 +652,7 @@ export default function HomePage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsSignInOpen(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-black/85 backdrop-blur-md"
             />
 
             {/* Modal Card */}
@@ -570,7 +660,7 @@ export default function HomePage() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-md bg-zinc-950 border border-zinc-800/90 rounded-2xl p-7 shadow-2xl z-10 space-y-6"
+              className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl p-7 shadow-2xl z-10 space-y-6"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -590,147 +680,90 @@ export default function HomePage() {
 
               {/* Direct Google Gmail Sign In Button */}
               <div className="space-y-3">
+                {/* Official Google Identity Services One-Tap / Standard Button */}
+                <div id="googleOfficialButton" className="flex justify-center w-full min-h-[40px]" />
+
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={isSubmitting}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl bg-white text-zinc-900 hover:bg-zinc-100 font-semibold text-xs transition-all shadow-md active:scale-[0.99] cursor-pointer"
+                  className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl bg-white text-zinc-900 hover:bg-zinc-100 font-bold text-xs transition-all shadow-md active:scale-[0.99] cursor-pointer"
                 >
-                  {/* Official Google G SVG */}
                   <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
                   </svg>
-                  <span>Continue with Google / Gmail</span>
+                  <span>1-Click Google Sign In</span>
                 </button>
 
-                <div className="relative flex items-center justify-center py-1">
+                <div className="relative flex items-center justify-center my-3">
                   <div className="border-t border-zinc-800 w-full" />
-                  <span className="bg-zinc-950 px-3 text-[10px] text-zinc-500 uppercase tracking-widest font-medium shrink-0">
-                    Or sign in with email
+                  <span className="bg-zinc-950 px-3 text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
+                    Or Athlete Email
                   </span>
+                  <div className="border-t border-zinc-800 w-full" />
                 </div>
               </div>
 
               {/* Email Form */}
-              <form onSubmit={handleEmailAuthSubmit} className="space-y-3.5">
-                {authMode === "signup" && (
-                  <div className="space-y-1 text-left">
-                    <label className="text-[11px] font-medium text-zinc-300">Full Name</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="Arnav P."
-                        value={authName}
-                        onChange={(e) => setAuthName(e.target.value)}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-8 pr-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1 text-left">
-                  <label className="text-[11px] font-medium text-zinc-300">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="athlete@cricketcoach.ai"
-                      value={authEmail}
-                      onChange={(e) => setAuthEmail(e.target.value)}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-8 pr-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
+              <form onSubmit={handleEmailAuthSubmit} className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-300 block mb-1">Athlete Name</label>
+                  <input
+                    type="text"
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    placeholder="e.g. Arnav Sharma"
+                    className="w-full h-9 px-3 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500"
+                  />
                 </div>
 
-                <div className="space-y-1 text-left">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[11px] font-medium text-zinc-300">Password</label>
-                    {authMode === "signin" && (
-                      <span className="text-[10px] text-emerald-400 hover:underline cursor-pointer">
-                        Forgot password?
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      placeholder="••••••••••••"
-                      value={authPassword}
-                      onChange={(e) => setAuthPassword(e.target.value)}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-8 pr-9 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-2.5 text-zinc-500 hover:text-zinc-300"
-                    >
-                      {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-300 block mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="athlete@cricketcoach.ai"
+                    className="w-full h-9 px-3 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500"
+                  />
                 </div>
 
-                {authMode === "signup" && (
-                  <div className="space-y-1 text-left">
-                    <label className="text-[11px] font-medium text-zinc-300">Batting Stance</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(["Right-Hand Batter", "Left-Hand Batter"] as const).map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setAuthStance(s)}
-                          className={cn(
-                            "py-1.5 px-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer",
-                            authStance === s
-                              ? "bg-emerald-600/20 border-emerald-500/50 text-emerald-400"
-                              : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
-                          )}
-                        >
-                          {s === "Right-Hand Batter" ? "Right-Hand (RHB)" : "Left-Hand (LHB)"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-300 block mb-1">Batting Stance</label>
+                  <select
+                    value={authStance}
+                    onChange={(e: any) => setAuthStance(e.target.value)}
+                    className="w-full h-9 px-3 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="Right-Hand Batter">Right-Hand Batter</option>
+                    <option value="Left-Hand Batter">Left-Hand Batter</option>
+                  </select>
+                </div>
 
-                <Button type="submit" disabled={isSubmitting} className="w-full text-xs font-semibold h-9 mt-2">
-                  {isSubmitting ? "Authenticating..." : authMode === "signin" ? "Sign In with Email" : "Create Athlete Account"}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-10 mt-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold"
+                >
+                  {isSubmitting ? "Signing In..." : "Save Athlete Profile & Enter"}
                 </Button>
               </form>
-
-              {/* Mode Toggle Switcher */}
-              <div className="pt-2 border-t border-zinc-800/80 text-center text-xs text-zinc-400">
-                {authMode === "signin" ? (
-                  <span>
-                    Don't have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => setAuthMode("signup")}
-                      className="text-emerald-400 font-semibold hover:underline ml-1 cursor-pointer"
-                    >
-                      Create Account
-                    </button>
-                  </span>
-                ) : (
-                  <span>
-                    Already have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => setAuthMode("signin")}
-                      className="text-emerald-400 font-semibold hover:underline ml-1 cursor-pointer"
-                    >
-                      Sign In
-                    </button>
-                  </span>
-                )}
-              </div>
 
             </motion.div>
 
@@ -739,5 +772,26 @@ export default function HomePage() {
       </AnimatePresence>
 
     </div>
+  );
+}
+
+function Database(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+      <path d="M3 12A9 3 0 0 0 21 12" />
+    </svg>
   );
 }

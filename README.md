@@ -1,4 +1,4 @@
-# 🏏 BatCoach AI Pro v2.0
+# BatCoach AI Pro v2.0
 ### Real-Time Cricket Batting Biomechanics, 3D Pose AI & Neural Stroke Analytics
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat&logo=python&logoColor=white)
@@ -11,48 +11,48 @@
 
 ---
 
-## 📖 Overview
+## Overview
 
-**BatCoach AI Pro** is an Olympic-grade, full-stack batting laboratory and virtual cricket coach that runs directly in your web browser. Utilizing standard webcam video, the system performs real-time 3D biomechanical posture estimation, kinematic swing motion tracking, and neural stroke classification across 10 foundational cricket shots.
+BatCoach AI Pro is an enterprise-grade, full-stack batting laboratory and virtual cricket coach designed for real-time biomechanical analysis directly in the browser. Using standard webcam video, the system performs 3D biomechanical posture estimation, kinematic swing motion tracking, and neural stroke classification across 10 foundational cricket shots.
 
-Every practice session and individual stroke is tracked, graded, and synced to **Supabase PostgreSQL**, empowering athletes and coaches to analyze technical improvements over time.
+Practice sessions and individual stroke metrics are tracked, graded, and persisted to a Supabase PostgreSQL database for performance tracking and historical analytics.
 
 ---
 
-## ⚡ Key Highlights & Innovations
+## Core Capabilities & Architecture
 
-### 1. 🌐 3D Euclidean World Biomechanics
-- Calculates **perspective-invariant joint angles** using MediaPipe `pose_world_landmarks` (true 3D coordinates in meters) rather than 2D screen projections.
+### 1. 3D Euclidean World Biomechanics
+- Computes perspective-invariant joint angles using MediaPipe `pose_world_landmarks` (3D Euclidean coordinates in metric space) rather than 2D screen projections.
 - Evaluates **Front Elbow Elevation** ($\ge 130^\circ$ for drives), **Lead Knee Flexion** ($\le 155^\circ$), and **Head Alignment** relative to the lead knee.
-- Strict batter stance validation prevents false angle calculations when the batter is not in position.
+- Implements strict batter stance validation to ensure metrics are only processed when the athlete is in a valid batting stance.
 
-### 2. ⏱️ Kinetic Swing Motion State Machine
-- Implements a real-time 3-stage kinematic motion tracker (`IDLE` $\rightarrow$ `SWINGING` $\rightarrow$ `COMPLETED`).
-- Measures wrist acceleration and follow-through deceleration so **reps and audio coaching feedback are strictly triggered on physical bat swings**, eliminating false counts from minor head or shoulder movements.
+### 2. Kinetic Swing Motion State Machine
+- Implements a 3-stage kinematic motion tracker (`IDLE` $\rightarrow$ `SWINGING` $\rightarrow$ `COMPLETED`).
+- Measures wrist acceleration and follow-through deceleration so rep counts and coaching feedback are triggered exclusively on genuine physical bat swings, eliminating false counts from head or torso movement.
 
-### 3. 🚀 Ultra-Low Latency & Non-Blocking AI Pipeline
-- **Decoupled 24 FPS Hardware Pacing**: Custom multi-threaded camera grabber (`ThreadedCamera`) eliminates frame drops and camera stutter.
-- **CUDA FP16 Mixed Precision**: PyTorch inference accelerated with `torch.autocast('cuda', dtype=torch.float16)` and `torch.inference_mode()`.
-- **Non-Blocking Asynchronous VideoMAE**: Model forward passes run in background worker threads (`asyncio.to_thread`) so the live video feed never stutters.
-- **Controlled Thread Budget**: Hard-capped PyTorch and OpenCV threads (`torch.set_num_threads(2)`, `cv2.setNumThreads(2)`) to keep CPU usage low.
+### 3. Low-Latency AI Pipeline
+- **Decoupled 24 FPS Hardware Pacing**: Multi-threaded camera grabber (`ThreadedCamera`) eliminates frame drops and camera stutter.
+- **CUDA FP16 Mixed Precision**: PyTorch inference accelerated via `torch.autocast('cuda', dtype=torch.float16)` and `torch.inference_mode()`.
+- **Non-Blocking Asynchronous VideoMAE**: Neural network evaluations run in background worker threads (`asyncio.to_thread`) to maintain continuous 24 FPS video throughput.
+- **Thread Management**: Hard-capped PyTorch and OpenCV CPU threads (`torch.set_num_threads(2)`, `cv2.setNumThreads(2)`) to minimize CPU utilization.
 
-### 4. 🗄️ Supabase PostgreSQL Cloud Persistence
+### 4. Supabase PostgreSQL Persistence
 - Connects directly to Supabase PostgreSQL with pooled connection management.
 - Persists athlete profiles, training durations, stroke counts, success rates, best streaks, and individual shot logs with full biomechanical telemetry.
 
-### 5. 🎨 Modern Multi-Page Experience
+### 5. Multi-Page Web Platform
 - **Landing / Home Page (`/`)**:
-  - Auto-cycling Unsplash cricket stadium & stroke photography slider.
-  - Interactive Athlete Portal with **1-Click Google Sign In** and **Email/Password authentication**.
-  - Bento Grid feature directory, 10-shot syllabus, and interactive technique cue cards.
+  - Unsplash cricket background slider with dark gradient overlays.
+  - Athlete authentication portal supporting both 1-Click Google Sign In and Email/Password authentication.
+  - Feature matrix, 10-shot syllabus directory, and technique cue cards.
 - **Dedicated Coach Dashboard (`/coach`)**:
   - Live AI video monitor with AR skeletal overlays and real-time biometrics HUD.
   - Interactive drill selector, live rep/streak counter, and audible coaching feedback.
-  - One-click & auto-sync of practice telemetry straight to Supabase PostgreSQL.
+  - Automated and manual telemetry synchronization with Supabase PostgreSQL.
 
 ---
 
-## 🏏 Supported Stroke Syllabus
+## Supported Stroke Syllabus
 
 | Shot | Category | Target Elbow | Target Knee | Primary Biomechanical Cue |
 |---|---|---|---|---|
@@ -69,7 +69,7 @@ Every practice session and individual stroke is tracked, graded, and synced to *
 
 ---
 
-## 🛠️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TD
@@ -89,12 +89,12 @@ graph TD
 
 ---
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### Prerequisites
-- **Python 3.9+** (with PyTorch and CUDA support recommended)
-- **Node.js 18+** & `npm`
-- Standard USB Webcam or integrated laptop camera
+- Python 3.9+ (CUDA-enabled GPU recommended for optimal performance)
+- Node.js 18+ and npm
+- Standard USB webcam or integrated camera
 
 ### 1. Installation
 
@@ -130,36 +130,36 @@ NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8888/ws
 
 ---
 
-### 3. Launching the Platform
+### 3. Launching the Application
 
-Launch both the FastAPI backend and Next.js frontend with a single command:
+Start both the FastAPI backend and Next.js frontend with the universal runner script:
 
 ```bash
 python run_coach.py
 ```
 
-- **🌐 Landing / Home Page**: [http://localhost:3000](http://localhost:3000)
-- **🏏 Live AI Coaching Dashboard**: [http://localhost:3000/coach](http://localhost:3000/coach)
-- **📡 FastAPI API Documentation**: [http://127.0.0.1:8888/docs](http://127.0.0.1:8888/docs)
+- **Landing / Home Page**: [http://localhost:3000](http://localhost:3000)
+- **Live AI Coaching Dashboard**: [http://localhost:3000/coach](http://localhost:3000/coach)
+- **FastAPI API Documentation**: [http://127.0.0.1:8888/docs](http://127.0.0.1:8888/docs)
 
-*To stop both services cleanly, press `Ctrl+C` in the terminal.*
+*To terminate both services cleanly, press Ctrl+C in the terminal.*
 
 ---
 
-## 📡 REST & WebSocket API Reference
+## REST & WebSocket API Reference
 
 | Endpoint | Protocol | Description |
 |---|---|---|
-| `/ws` | `WebSocket` | Real-time 24 FPS video feed, 3D biometrics, top shot probabilities, and swing events. |
-| `GET /health` | `HTTP GET` | Server status, CUDA availability, FP16 flag, and Supabase DB connection check. |
-| `POST /api/athlete/sync` | `HTTP POST` | Upserts athlete profile (name, email, stance, level) in Supabase `athletes` table. |
-| `POST /api/sessions/save` | `HTTP POST` | Saves complete practice session metrics and per-stroke telemetry to Supabase. |
-| `GET /api/sessions/history` | `HTTP GET` | Retrieves past practice sessions for a given athlete email. |
-| `GET /api/stats` | `HTTP GET` | Computes aggregate career stats (total reps, accuracy, streaks, practice time). |
+| `/ws` | WebSocket | Real-time 24 FPS video stream, 3D biometrics, top shot probabilities, and swing events. |
+| `GET /health` | HTTP GET | Service health status, CUDA availability, FP16 execution state, and Supabase DB connection check. |
+| `POST /api/athlete/sync` | HTTP POST | Upserts athlete profile (name, email, stance, experience level) in Supabase `athletes` table. |
+| `POST /api/sessions/save` | HTTP POST | Persists completed practice session summary and per-stroke telemetry to Supabase. |
+| `GET /api/sessions/history` | HTTP GET | Retrieves historical practice sessions for a given athlete email. |
+| `GET /api/stats` | HTTP GET | Computes aggregate career metrics (total reps, accuracy, best streak, practice time). |
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 .
@@ -176,7 +176,7 @@ python run_coach.py
 │   │   │   ├── layout.tsx        # Root layout, fonts, and dark theme wrapper
 │   │   │   └── coach/
 │   │   │       └── page.tsx      # Dedicated live AI coaching dashboard & Supabase sync
-│   │   └── components/ui/        # Reusable UI component library (cards, buttons, badges)
+│   │   └── components/ui/        # UI component library (cards, buttons, badges)
 │   ├── public/
 │   │   └── bat-icon.jpg          # 3D Bat icon asset
 │   └── package.json              # Frontend dependencies
@@ -186,7 +186,7 @@ python run_coach.py
 
 ---
 
-## 🛡️ License & Acknowledgements
+## License & Acknowledgements
 - **VideoMAE**: HuggingFace Transformers & `rokmr/cricketshot` dataset.
 - **MediaPipe**: Google MediaPipe Pose & 3D World Landmarks.
 - **Database**: Supabase PostgreSQL.
