@@ -249,6 +249,11 @@ export default function BatCoachDashboard() {
     }
   }, [persistentFeedback, isMuted]);
 
+  const targetShotRef = useRef<string>(targetShot);
+  useEffect(() => {
+    targetShotRef.current = targetShot;
+  }, [targetShot]);
+
   // WebSocket Connection & Dual-Mode Camera Streaming
   useEffect(() => {
     if (!isLive) {
@@ -272,7 +277,7 @@ export default function BatCoachDashboard() {
 
       ws.onopen = () => {
         setIsConnected(true);
-        ws.send(JSON.stringify({ target: targetShot }));
+        ws.send(JSON.stringify({ target: targetShotRef.current }));
 
         // Start Browser Camera capture if supported
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -304,7 +309,7 @@ export default function BatCoachDashboard() {
                   if (ctx) {
                     ctx.drawImage(videoRef.current, 0, 0, 640, 480);
                     const base64Img = canvas.toDataURL("image/jpeg", 0.65);
-                    ws.send(JSON.stringify({ image: base64Img, target: targetShot }));
+                    ws.send(JSON.stringify({ image: base64Img, target: targetShotRef.current }));
                   }
                 }
               }, 42); // ~24 FPS
@@ -339,7 +344,7 @@ export default function BatCoachDashboard() {
 
             const now = new Date();
             const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-            const p = data.probs?.[targetShot] || 0;
+            const p = data.probs?.[targetShotRef.current] || 0;
             const newLog: SessionLogItem = {
               id: data.feedback.id,
               time: timeStr,
@@ -360,6 +365,10 @@ export default function BatCoachDashboard() {
         }
       };
 
+      ws.onerror = (err) => {
+        console.error("WebSocket connection error:", err);
+      };
+
       ws.onclose = () => {
         setIsConnected(false);
         if (isLive) setTimeout(connect, 2000);
@@ -377,10 +386,11 @@ export default function BatCoachDashboard() {
         localStream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [isLive, targetShot, currentMetadata.name]);
+  }, [isLive]);
 
   const handleShotChange = (shotId: string) => {
     setTargetShot(shotId);
+    targetShotRef.current = shotId;
     setPersistentFeedback(null);
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ target: shotId }));
