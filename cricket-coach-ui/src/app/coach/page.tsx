@@ -141,6 +141,7 @@ export default function BatCoachDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isLive, setIsLive] = useState<boolean>(false);
+  const [hasLocalCamera, setHasLocalCamera] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [showAngles, setShowAngles] = useState<boolean>(true);
@@ -288,34 +289,37 @@ export default function BatCoachDashboard() {
             })
             .then((stream) => {
               localStream = stream;
+              setHasLocalCamera(true);
               if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 videoRef.current.play().catch(console.error);
               }
 
-              // Send browser frames to backend at 24 FPS
+              // Send lightweight downscaled frames (320x240) only when network buffer is clear
               if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
               streamIntervalRef.current = setInterval(() => {
                 if (
                   ws.readyState === WebSocket.OPEN &&
+                  ws.bufferedAmount === 0 &&
                   videoRef.current &&
                   canvasRef.current &&
                   videoRef.current.videoWidth > 0
                 ) {
                   const canvas = canvasRef.current;
-                  canvas.width = 640;
-                  canvas.height = 480;
+                  canvas.width = 320;
+                  canvas.height = 240;
                   const ctx = canvas.getContext("2d");
                   if (ctx) {
-                    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
-                    const base64Img = canvas.toDataURL("image/jpeg", 0.65);
+                    ctx.drawImage(videoRef.current, 0, 0, 320, 240);
+                    const base64Img = canvas.toDataURL("image/jpeg", 0.55);
                     ws.send(JSON.stringify({ image: base64Img, target: targetShotRef.current }));
                   }
                 }
-              }, 42); // ~24 FPS
+              }, 40); // ~25 FPS
             })
             .catch((err) => {
               console.log("[Browser Camera Notice]: Using backend camera grabber:", err);
+              setHasLocalCamera(false);
             });
         }
       };
@@ -697,17 +701,29 @@ export default function BatCoachDashboard() {
             {/* Viewport Frame */}
             <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
               
-              {/* Hidden browser camera capture elements */}
-              <video ref={videoRef} className="hidden" playsInline muted autoPlay />
+              {/* Live Browser Camera feed with 0ms visual latency (mirrored for natural coaching feedback) */}
+              <video
+                ref={videoRef}
+                className={cn(
+                  "w-full h-full object-contain -scale-x-100",
+                  (!isLive || !hasLocalCamera) && "hidden"
+                )}
+                playsInline
+                muted
+                autoPlay
+              />
               <canvas ref={canvasRef} className="hidden" />
 
-              {streamData?.frame ? (
+              {/* Fallback image stream for backend hardware camera grabber */}
+              {isLive && !hasLocalCamera && streamData?.frame && (
                 <img
                   src={`data:image/jpeg;base64,${streamData.frame}`}
                   alt="Batting Coach Live Stream"
                   className="w-full h-full object-contain"
                 />
-              ) : (
+              )}
+
+              {(!isLive || (!hasLocalCamera && !streamData?.frame)) && (
                 <div className="flex flex-col items-center justify-center gap-4 text-center p-8">
                   <div className="h-16 w-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-600">
                     <Activity className="h-8 w-8 animate-pulse text-emerald-500" />
@@ -715,7 +731,7 @@ export default function BatCoachDashboard() {
                   <div>
                     <h4 className="text-sm font-bold text-white">Camera Standby</h4>
                     <p className="text-xs text-zinc-500 mt-1 max-w-xs">
-                      {isLive ? "Initializing camera grabber and VideoMAE neural engine..." : "Click 'Start Live Feed' above to begin real-time stroke analysis."}
+                      {isLive ? "Connecting to AI backend & starting VideoMAE engine..." : "Click 'Start Practice' above to begin real-time stroke analysis."}
                     </p>
                   </div>
                   {!isLive && (
