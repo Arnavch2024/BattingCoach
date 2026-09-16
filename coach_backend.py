@@ -5,9 +5,15 @@ import json
 import random
 import threading
 import time
-import uuid
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 import cv2
 import mediapipe as mp
