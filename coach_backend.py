@@ -217,14 +217,28 @@ else:
 model.to(device).eval()
 
 # MediaPipe Pose Engine
-mp_pose = mp.solutions.pose
-pose_engine = mp_pose.Pose(
-    static_image_mode=False,
-    model_complexity=0,
-    min_detection_confidence=0.6,
-    min_tracking_confidence=0.6,
-)
-mp_draw = mp.solutions.drawing_utils
+try:
+    import mediapipe.python.solutions.pose as mp_pose
+    import mediapipe.python.solutions.drawing_utils as mp_draw
+except (ImportError, AttributeError):
+    try:
+        import mediapipe as mp
+        mp_pose = mp.solutions.pose
+        mp_draw = mp.solutions.drawing_utils
+    except Exception as e:
+        print(f"[MediaPipe] Warning: Unable to load solutions directly ({e})")
+        mp_pose = None
+        mp_draw = None
+
+if mp_pose:
+    pose_engine = mp_pose.Pose(
+        static_image_mode=False,
+        model_complexity=0,
+        min_detection_confidence=0.6,
+        min_tracking_confidence=0.6,
+    )
+else:
+    pose_engine = None
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Threaded Camera Grabber
@@ -862,16 +876,16 @@ async def websocket_endpoint(websocket: WebSocket):
             # 3. MediaPipe Pose on downsampled frame
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             small_pose_frame = cv2.resize(rgb_frame, (320, 240))
-            pose_results = pose_engine.process(small_pose_frame)
+            pose_results = pose_engine.process(small_pose_frame) if pose_engine is not None else None
             
             bio_data = None
             wrist_speed = 0.0
 
-            if pose_results.pose_landmarks:
+            if pose_results and pose_results.pose_landmarks:
                 world_lms = pose_results.pose_world_landmarks.landmark if pose_results.pose_world_landmarks else None
                 bio_data = extract_biometrics(pose_results.pose_landmarks.landmark, target_shot, world_landmarks=world_lms)
                 
-                if bio_data and bio_data.get("body_detected"):
+                if bio_data and bio_data.get("body_detected") and mp_draw and mp_pose:
                     # Draw skeleton only when batter is genuinely standing in view
                     mp_draw.draw_landmarks(
                         frame,
