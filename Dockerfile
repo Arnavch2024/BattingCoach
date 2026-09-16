@@ -20,9 +20,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code, models, and datasets
+# Copy backend code
 COPY coach_backend.py .
-COPY cricket_shot_classifier-20260420T175634Z-3-001/ ./cricket_shot_classifier-20260420T175634Z-3-001/
 
 EXPOSE 8888
 
