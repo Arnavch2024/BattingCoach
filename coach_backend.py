@@ -188,31 +188,21 @@ print(f"[AI Pipeline] Device: {device} | Mixed Precision FP16: {use_fp16}")
 label2id = {name: i for i, name in enumerate(CLASS_NAMES)}
 id2label = {i: name for i, name in enumerate(CLASS_NAMES)}
 
+HF_MODEL_ID = "Arnav2005/cricket-videomae-classifier"
+
 if MODEL_DIR.exists() and any(MODEL_DIR.iterdir()):
     print(f"[AI Pipeline] Loading fine-tuned VideoMAE model from local path: {MODEL_DIR}")
     try:
         processor = VideoMAEImageProcessor.from_pretrained(str(MODEL_DIR))
         model = VideoMAEForVideoClassification.from_pretrained(str(MODEL_DIR))
     except Exception as load_err:
-        print(f"[AI Pipeline] Local model loading notice: {load_err}, falling back to Hub...")
-        processor = VideoMAEImageProcessor.from_pretrained("MCG-NJU/videomae-base")
-        model = VideoMAEForVideoClassification.from_pretrained(
-            "MCG-NJU/videomae-base",
-            num_labels=len(CLASS_NAMES),
-            id2label=id2label,
-            label2id=label2id,
-            ignore_mismatched_sizes=True
-        )
+        print(f"[AI Pipeline] Local model loading notice: {load_err}, loading from HuggingFace Hub: {HF_MODEL_ID}...")
+        processor = VideoMAEImageProcessor.from_pretrained(HF_MODEL_ID)
+        model = VideoMAEForVideoClassification.from_pretrained(HF_MODEL_ID)
 else:
-    print("[AI Pipeline] Cloud container mode: Loading VideoMAE architecture from HuggingFace Hub...")
-    processor = VideoMAEImageProcessor.from_pretrained("MCG-NJU/videomae-base")
-    model = VideoMAEForVideoClassification.from_pretrained(
-        "MCG-NJU/videomae-base",
-        num_labels=len(CLASS_NAMES),
-        id2label=id2label,
-        label2id=label2id,
-        ignore_mismatched_sizes=True
-    )
+    print(f"[AI Pipeline] Cloud container mode: Loading fine-tuned VideoMAE model from HuggingFace Hub ({HF_MODEL_ID})...")
+    processor = VideoMAEImageProcessor.from_pretrained(HF_MODEL_ID)
+    model = VideoMAEForVideoClassification.from_pretrained(HF_MODEL_ID)
 
 model.to(device).eval()
 
