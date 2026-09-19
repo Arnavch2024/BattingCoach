@@ -7,7 +7,7 @@ import {
   Settings, Zap, CheckCircle2, AlertTriangle, Flame, 
   RotateCcw, Shield, Award, Cpu, Search, Sparkles, SlidersHorizontal,
   ChevronRight, BarChart2, Radio, Info, UserCheck, HelpCircle, ArrowLeft, Home,
-  Crosshair, Layers, Compass
+  Crosshair, Layers, Compass, Lock, Unlock, AlertOctagon, XCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -156,6 +156,14 @@ export default function BatCoachDashboard() {
   const [totalSwings, setTotalSwings] = useState<number>(0); // All physical attempts
   const [streakCount, setStreakCount] = useState<number>(0);
   const [sessionSeconds, setSessionSeconds] = useState<number>(0);
+
+  // Repeated Error & Rep Locking State
+  const [repeatErrorCount, setRepeatErrorCount] = useState<number>(0);
+  const [isDrillLocked, setIsDrillLocked] = useState<boolean>(false);
+  const [lockedErrorTitle, setLockedErrorTitle] = useState<string | null>(null);
+  const [lockedCorrectionCue, setLockedCorrectionCue] = useState<string | null>(null);
+  const lastErrorCodeRef = useRef<string>("");
+
   const [userProfile, setUserProfile] = useState<{ name: string; email: string; stance: string }>({
     name: "Arnav P.",
     email: "athlete@cricketcoach.ai",
@@ -177,6 +185,12 @@ export default function BatCoachDashboard() {
   const targetShotRef = useRef<string>(targetShot);
   useEffect(() => {
     targetShotRef.current = targetShot;
+    // Reset repeated error state when changing target shot
+    setRepeatErrorCount(0);
+    setIsDrillLocked(false);
+    setLockedErrorTitle(null);
+    setLockedCorrectionCue(null);
+    lastErrorCodeRef.current = "";
   }, [targetShot]);
 
   const practiceModeRef = useRef<"no_bat" | "with_bat">(practiceMode);
@@ -246,12 +260,18 @@ export default function BatCoachDashboard() {
     return { label: "Form Adjustment", rating: "D", gradeColor: "bg-red-500/20 text-red-400 border border-red-500/30" };
   }, [streamData, targetShot]);
 
-  // Text to Speech Voice Coach
+  // Text to Speech Voice Coach with Intervention Cue Priority
   useEffect(() => {
     if (persistentFeedback && !isMuted && typeof window !== "undefined" && "speechSynthesis" in window) {
-      const tipText = persistentFeedback.tips?.[0] || "";
-      const textToSpeak = `${persistentFeedback.message}. ${tipText}`;
-      if (textToSpeak !== lastSpokenRef.current) {
+      let textToSpeak = "";
+      if (isDrillLocked && lockedCorrectionCue) {
+        textToSpeak = `Drill paused. Repeated error detected: ${lockedErrorTitle}. Action: ${lockedCorrectionCue}`;
+      } else {
+        const tipText = persistentFeedback.correction_cue || persistentFeedback.tips?.[0] || "";
+        textToSpeak = `${persistentFeedback.message}. ${tipText}`;
+      }
+
+      if (textToSpeak && textToSpeak !== lastSpokenRef.current) {
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
         utterance.rate = 1.05;
         utterance.pitch = 1.0;
@@ -260,7 +280,7 @@ export default function BatCoachDashboard() {
         lastSpokenRef.current = textToSpeak;
       }
     }
-  }, [persistentFeedback, isMuted]);
+  }, [persistentFeedback, isMuted, isDrillLocked, lockedCorrectionCue, lockedErrorTitle]);
 
   // WebSocket Connection & Dual-Mode Camera Streaming
   useEffect(() => {
@@ -351,13 +371,37 @@ export default function BatCoachDashboard() {
             // Increment total physical swing attempts
             setTotalSwings((s) => s + 1);
 
-            // ONLY increment valid reps and streak when the shot is a genuine SUCCESS
+            // STROKE EVALUATION & REPEATED MISTAKE DETECTION
             if (data.feedback.status === "success") {
+              // SUCCESS: Clean stroke execution!
+              if (isDrillLocked) {
+                // Break out of the error lock
+                setIsDrillLocked(false);
+                setRepeatErrorCount(0);
+                setLockedErrorTitle(null);
+                setLockedCorrectionCue(null);
+                lastErrorCodeRef.current = "";
+              }
               setStreakCount((c) => c + 1);
               setRepCount((r) => r + 1);
             } else {
-              // Wrong shot or form error resets streak and DOES NOT count towards clean reps!
+              // ERROR OCCURRED: Streak resets to 0
               setStreakCount(0);
+
+              const currentErrCode = data.feedback.error_code || data.feedback.message || "FORM_ERROR";
+              let nextRepeat = 1;
+              if (currentErrCode === lastErrorCodeRef.current && currentErrCode !== "NONE") {
+                nextRepeat = repeatErrorCount + 1;
+              }
+              lastErrorCodeRef.current = currentErrCode;
+              setRepeatErrorCount(nextRepeat);
+
+              // If repeating the same mistake 2 or more times, FREEZE REPS and display coaching lock!
+              if (nextRepeat >= 2) {
+                setIsDrillLocked(true);
+                setLockedErrorTitle(`Repeated Mistake (${nextRepeat}x): ${data.feedback.message}`);
+                setLockedCorrectionCue(data.feedback.correction_cue || data.feedback.tips?.[0] || "Correct your technique before attempting another rep.");
+              }
             }
 
             const now = new Date();
@@ -376,7 +420,7 @@ export default function BatCoachDashboard() {
             setSessionLogs((prev) => [newLog, ...prev.slice(0, 19)]);
 
             if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-            feedbackTimerRef.current = setTimeout(() => setPersistentFeedback(null), 6000);
+            feedbackTimerRef.current = setTimeout(() => setPersistentFeedback(null), 7000);
           }
         } catch (e) {
           console.error("WS Parse error", e);
@@ -404,18 +448,31 @@ export default function BatCoachDashboard() {
         localStream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [isLive]);
+  }, [isLive, isDrillLocked, repeatErrorCount]);
 
   const handleShotChange = (shotId: string) => {
     setTargetShot(shotId);
     targetShotRef.current = shotId;
     setPersistentFeedback(null);
+    setRepeatErrorCount(0);
+    setIsDrillLocked(false);
+    setLockedErrorTitle(null);
+    setLockedCorrectionCue(null);
+    lastErrorCodeRef.current = "";
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ 
         target: shotId,
         practice_mode: practiceModeRef.current
       }));
     }
+  };
+
+  const handleManualUnlockDrill = () => {
+    setIsDrillLocked(false);
+    setRepeatErrorCount(0);
+    setLockedErrorTitle(null);
+    setLockedCorrectionCue(null);
+    lastErrorCodeRef.current = "";
   };
 
   const handleModeChange = (mode: "no_bat" | "with_bat") => {
@@ -492,6 +549,13 @@ export default function BatCoachDashboard() {
   const kneeAngle = bioData?.knee_angle || 0;
   const isElbowGood = elbowAngle >= currentMetadata.targetElbowAngle;
   const isKneeGood = kneeAngle <= currentMetadata.targetKneeAngle;
+  const liveChecklist = bioData?.live_checklist || {
+    elbow_ok: isElbowGood,
+    knee_ok: isKneeGood,
+    head_ok: bioData?.head_over_knee ?? true,
+    spine_ok: (bioData?.spine_angle ?? 0) >= 6,
+    blade_ok: batData?.alignment_match ?? true,
+  };
 
   return (
     <div className="flex flex-col h-screen w-full bg-[#09090b] text-zinc-100 antialiased select-none overflow-hidden relative font-sans">
@@ -839,6 +903,7 @@ export default function BatCoachDashboard() {
               {/* AR HUD Overlay Badges */}
               {isLive && streamData && (
                 <>
+                  {/* Top Left: Drill & Practice Mode */}
                   <div className="absolute top-3 left-3 flex flex-col gap-2 pointer-events-none z-20">
                     <div className="flex items-center gap-2 bg-zinc-950/90 backdrop-blur-md border border-zinc-800 rounded-lg px-3 py-1.5 text-xs shadow-lg">
                       <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Drill:</span>
@@ -872,13 +937,114 @@ export default function BatCoachDashboard() {
                     </div>
                   </div>
 
-                  <div className="absolute top-3 right-3 flex flex-col items-end gap-2 pointer-events-none z-20">
+                  {/* Top Center: Target Drill Key Technical Cue */}
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none z-20 max-w-sm w-full px-2 hidden sm:block">
+                    <div className="bg-zinc-950/90 backdrop-blur-md border border-emerald-500/40 rounded-lg px-3 py-1.5 shadow-xl text-center">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 mr-1.5">🎯 Key Cue:</span>
+                      <span className="text-xs text-zinc-200 font-medium">{currentMetadata.keyCue}</span>
+                    </div>
+                  </div>
+
+                  {/* Top Right: Form Rating & Live 30 FPS Kinematic Checklist */}
+                  <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5 pointer-events-none z-20">
                     <div className={cn("px-3 py-1.5 rounded-lg text-xs font-bold backdrop-blur-md shadow-lg", formRating.gradeColor)}>
                       Form Rating: {formRating.rating}
                     </div>
+
+                    {/* Real-time 30 FPS Kinematic Checklist */}
+                    {isBodyDetected && showAngles && (
+                      <div className="bg-zinc-950/90 backdrop-blur-md border border-zinc-800/90 rounded-lg p-2 shadow-xl flex flex-col gap-1 text-[10px] w-48">
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-800/80 pb-0.5 mb-0.5 flex justify-between">
+                          <span>Kinematic Checklist</span>
+                          <span className="text-emerald-400 font-mono">Live</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-zinc-300">Lead Elbow</span>
+                          <span className={cn("font-bold font-mono px-1 rounded", liveChecklist.elbow_ok ? "text-emerald-400 bg-emerald-950/80" : "text-amber-400 bg-amber-950/80")}>
+                            {liveChecklist.elbow_ok ? `${elbowAngle.toFixed(0)}° ✓` : `${elbowAngle.toFixed(0)}° (Low)`}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-zinc-300">Front Knee</span>
+                          <span className={cn("font-bold font-mono px-1 rounded", liveChecklist.knee_ok ? "text-teal-400 bg-teal-950/80" : "text-amber-400 bg-amber-950/80")}>
+                            {liveChecklist.knee_ok ? `${kneeAngle.toFixed(0)}° ✓` : `${kneeAngle.toFixed(0)}° (Stiff)`}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-zinc-300">Head over Knee</span>
+                          <span className={cn("font-bold font-mono px-1 rounded", liveChecklist.head_ok ? "text-emerald-400 bg-emerald-950/80" : "text-amber-400 bg-amber-950/80")}>
+                            {liveChecklist.head_ok ? "Aligned ✓" : "Off-Center ⚠️"}
+                          </span>
+                        </div>
+                        {practiceMode === "with_bat" && batData?.detected && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-300">Blade Face</span>
+                            <span className={cn("font-bold font-mono px-1 rounded", liveChecklist.blade_ok ? "text-emerald-400 bg-emerald-950/80" : "text-amber-400 bg-amber-950/80")}>
+                              {liveChecklist.blade_ok ? `${batData.blade_angle}° ✓` : `${batData.blade_angle}° (Turn)`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </>
               )}
+
+              {/* Repeated Form Error Drill Intervention Modal */}
+              <AnimatePresence>
+                {isDrillLocked && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="absolute inset-x-4 top-16 z-40 flex justify-center pointer-events-auto"
+                  >
+                    <div className="w-full max-w-lg bg-red-950/95 border-2 border-red-500 rounded-2xl p-4 shadow-2xl backdrop-blur-2xl text-left space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-7 w-7 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center animate-pulse">
+                            <Lock className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-red-300 uppercase tracking-wide">
+                              Rep Counter Frozen
+                            </span>
+                            <span className="text-[10px] ml-2 px-1.5 py-0.5 rounded bg-red-900/80 text-red-200 font-mono font-bold">
+                              {repeatErrorCount}x Repeated Mistake
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsDrillLocked(false);
+                            setRepeatErrorCount(0);
+                            lastErrorCodeRef.current = "";
+                          }}
+                          className="text-[11px] text-zinc-400 hover:text-white px-2.5 py-1 rounded bg-zinc-900/90 border border-zinc-700 cursor-pointer font-semibold transition-all hover:bg-zinc-850"
+                          title="Dismiss lock and resume counting manually"
+                        >
+                          Override & Resume
+                        </button>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-black/60 border border-red-500/40 space-y-1.5">
+                        <div className="text-xs font-bold text-red-200">
+                          {lockedErrorTitle}
+                        </div>
+                        <div className="text-xs font-semibold text-emerald-300 flex items-start gap-1.5">
+                          <span className="text-emerald-400 shrink-0 font-bold">👉 ACTION:</span>
+                          <span>{lockedCorrectionCue}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-zinc-300">
+                        <span className="text-zinc-400">Perform 1 textbook rep to automatically unlock.</span>
+                        <span className="text-amber-400 font-mono font-bold">🔒 Reps on Hold</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Stance prompt when body not in frame */}
               {isLive && streamData && !isBodyDetected && (
@@ -919,9 +1085,16 @@ export default function BatCoachDashboard() {
                             {persistentFeedback.tier || "Coaching Cue"}
                           </span>
                         </div>
-                        <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
-                          {persistentFeedback.tips?.[0]}
-                        </p>
+                        {persistentFeedback.correction_cue && (
+                          <p className="text-xs text-emerald-300 font-semibold mt-1 leading-relaxed">
+                            👉 {persistentFeedback.correction_cue}
+                          </p>
+                        )}
+                        {persistentFeedback.tips?.[0] && persistentFeedback.tips[0] !== persistentFeedback.correction_cue && (
+                          <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                            {persistentFeedback.tips[0]}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </motion.div>
@@ -1116,7 +1289,34 @@ export default function BatCoachDashboard() {
           {/* Session Performance Card */}
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-3">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-              <span className="text-xs font-bold text-white uppercase tracking-wider">Session Performance</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">Session Performance</span>
+                <span className={cn(
+                  "text-[9px] font-bold px-2 py-0.5 rounded border font-mono flex items-center gap-1",
+                  isDrillLocked 
+                    ? "bg-red-500/20 border-red-500/50 text-red-400 animate-pulse" 
+                    : streakCount >= 3 
+                    ? "bg-amber-500/20 border-amber-500/40 text-amber-300" 
+                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                )}>
+                  {isDrillLocked ? (
+                    <>
+                      <Lock className="h-3 w-3" />
+                      <span>REPS FROZEN</span>
+                    </>
+                  ) : streakCount >= 3 ? (
+                    <>
+                      <Flame className="h-3 w-3 text-amber-400 fill-amber-400" />
+                      <span>ON STREAK</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>ACTIVE DRILL</span>
+                    </>
+                  )}
+                </span>
+              </div>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] text-zinc-400 font-mono">
                   {totalSwings > 0 ? `${((repCount / totalSwings) * 100).toFixed(0)}% Accuracy` : "0% Accuracy"}
@@ -1126,9 +1326,17 @@ export default function BatCoachDashboard() {
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center">
-                <div className="text-[9px] text-zinc-500 uppercase font-semibold">Clean Reps</div>
-                <div className="text-xl font-black mono text-emerald-400 mt-0.5">{repCount}</div>
+              <div className={cn(
+                "p-2.5 rounded-xl border text-center transition-all",
+                isDrillLocked ? "bg-red-950/30 border-red-500/30" : "bg-zinc-900/80 border-zinc-800"
+              )}>
+                <div className="text-[9px] text-zinc-500 uppercase font-semibold flex items-center justify-center gap-1">
+                  <span>Clean Reps</span>
+                  {isDrillLocked && <Lock className="h-2.5 w-2.5 text-red-400" />}
+                </div>
+                <div className={cn("text-xl font-black mono mt-0.5", isDrillLocked ? "text-red-400" : "text-emerald-400")}>
+                  {repCount}
+                </div>
               </div>
 
               <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center">
