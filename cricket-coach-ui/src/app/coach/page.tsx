@@ -7,7 +7,7 @@ import {
   Settings, Zap, CheckCircle2, AlertTriangle, Flame, 
   RotateCcw, Shield, Award, Cpu, Search, Sparkles, SlidersHorizontal,
   ChevronRight, BarChart2, Radio, Info, UserCheck, HelpCircle, ArrowLeft, Home,
-  Crosshair, Layers, Compass, Lock, Unlock, AlertOctagon, XCircle
+  Crosshair, Layers, Compass, Lock, Unlock, AlertOctagon, XCircle, Video, Eye, Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -22,14 +22,23 @@ import { cn } from "../../lib/utils";
 // Shot Catalog & Metadata
 // ──────────────────────────────────────────────────────────────────────────────
 
+interface ShotPhase {
+  title: string;
+  cue: string;
+  focusAngle: string;
+}
+
 interface ShotMetadata {
   id: string;
   name: string;
   category: "Drives" | "Power & Cross-Bat" | "Defensive & Technical" | "Whips & Sweeps";
   difficulty: "Foundational" | "Intermediate" | "Advanced";
   keyCue: string;
+  proExample: string;
   targetElbowAngle: number;
   targetKneeAngle: number;
+  videoUrl?: string;
+  phases: ShotPhase[];
 }
 
 const SHOT_CATALOG: ShotMetadata[] = [
@@ -39,8 +48,16 @@ const SHOT_CATALOG: ShotMetadata[] = [
     category: "Drives",
     difficulty: "Intermediate",
     keyCue: "Lead with high elbow, head over front knee",
+    proExample: "Virat Kohli & Babar Azam Mastery",
     targetElbowAngle: 130,
     targetKneeAngle: 155,
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    phases: [
+      { title: "Phase 1: Initial Trigger", cue: "Slide backfoot slightly, eyes level on off-stump line", focusAngle: "Spine 10°" },
+      { title: "Phase 2: Stride & Knee Flexion", cue: "Lunge forward onto front knee to pitch of delivery", focusAngle: "Knee ≤ 155°" },
+      { title: "Phase 3: High Elbow Impact", cue: "Lead downswing with high front elbow directly through cover", focusAngle: "Elbow ≥ 130°" },
+      { title: "Phase 4: Vertical Finish", cue: "Hold shape with vertical bat blade high over lead shoulder", focusAngle: "Blade Vertical" },
+    ],
   },
   {
     id: "straight",
@@ -48,8 +65,16 @@ const SHOT_CATALOG: ShotMetadata[] = [
     category: "Drives",
     difficulty: "Foundational",
     keyCue: "Full bat face presentation down the ground",
+    proExample: "Sachin Tendulkar Textbook",
     targetElbowAngle: 135,
     targetKneeAngle: 155,
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    phases: [
+      { title: "Phase 1: Balanced Base", cue: "Still head over middle stump line, relaxed grip", focusAngle: "Spine 8°" },
+      { title: "Phase 2: Straight Stride", cue: "Step directly down the bowler's pitch line", focusAngle: "Knee ≤ 155°" },
+      { title: "Phase 3: Full Blade Presentation", cue: "Present full face of the bat straight back past bowler", focusAngle: "Elbow ≥ 135°" },
+      { title: "Phase 4: High Follow-Through", cue: "Finish check-drive with hands pointing toward bowler's head", focusAngle: "Blade Vertical" },
+    ],
   },
   {
     id: "pull",
@@ -57,8 +82,16 @@ const SHOT_CATALOG: ShotMetadata[] = [
     category: "Power & Cross-Bat",
     difficulty: "Intermediate",
     keyCue: "Weight on back foot, full arm extension",
+    proExample: "Rohit Sharma Power Arc",
     targetElbowAngle: 120,
     targetKneeAngle: 160,
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+    phases: [
+      { title: "Phase 1: Back & Across Step", cue: "Transfer center of mass onto back foot early", focusAngle: "Weight Back Foot" },
+      { title: "Phase 2: Hip Clearance", cue: "Pivot front foot to open hips toward mid-wicket", focusAngle: "Knee 160°" },
+      { title: "Phase 3: Arm Extension Reach", cue: "Extend arms fully into wide swing arc in front of body", focusAngle: "Arm Extension ≥80%" },
+      { title: "Phase 4: Wrist Roll", cue: "Roll wrists over ball at impact to keep stroke along ground", focusAngle: "Cross-Bat 180°" },
+    ],
   },
   {
     id: "hook",
@@ -66,8 +99,16 @@ const SHOT_CATALOG: ShotMetadata[] = [
     category: "Power & Cross-Bat",
     difficulty: "Advanced",
     keyCue: "Pivot front hip, roll wrists over top",
+    proExample: "Ricky Ponting Mastery",
     targetElbowAngle: 115,
     targetKneeAngle: 165,
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4",
+    phases: [
+      { title: "Phase 1: Sight Bouncer Early", cue: "Keep head still, eyes locked on delivery at head height", focusAngle: "Head Level" },
+      { title: "Phase 2: Dynamic Pivot", cue: "Swivel 90° on the ball of front foot", focusAngle: "Knee 165°" },
+      { title: "Phase 3: High-to-Low Swing Arc", cue: "Swing bat from above eye line rolling downward", focusAngle: "Elbow 115°" },
+      { title: "Phase 4: Control & Balance", cue: "Finish facing square leg with soft top-hand control", focusAngle: "Controlled Blade" },
+    ],
   },
   {
     id: "square_cut",
@@ -75,8 +116,16 @@ const SHOT_CATALOG: ShotMetadata[] = [
     category: "Power & Cross-Bat",
     difficulty: "Intermediate",
     keyCue: "Back & across, slice through point",
+    proExample: "Brian Lara Precision",
     targetElbowAngle: 125,
     targetKneeAngle: 160,
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+    phases: [
+      { title: "Phase 1: Back Foot Movement", cue: "Step deep into crease across off stump to create room", focusAngle: "Weight Back Foot" },
+      { title: "Phase 2: Create Width", cue: "Free arms away from torso with high backlift", focusAngle: "Arm Extension" },
+      { title: "Phase 3: Downward Chop", cue: "Slice blade sharply from high to low through point region", focusAngle: "Elbow 125°" },
+      { title: "Phase 4: Wrist Pronation", cue: "Roll top wrist over impact to suppress bounce", focusAngle: "Cross-Bat Blade" },
+    ],
   },
   {
     id: "lofted",
@@ -84,8 +133,16 @@ const SHOT_CATALOG: ShotMetadata[] = [
     category: "Power & Cross-Bat",
     difficulty: "Advanced",
     keyCue: "Vertical swing plane with clean extension",
+    proExample: "MS Dhoni Power Arc",
     targetElbowAngle: 140,
     targetKneeAngle: 150,
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+    phases: [
+      { title: "Phase 1: Clear Front Leg", cue: "Step slightly outside the line to open swing channel", focusAngle: "Spine 15°" },
+      { title: "Phase 2: Deep Flexion Base", cue: "Drop hips low to generate explosive upward launch", focusAngle: "Knee ≤ 150°" },
+      { title: "Phase 3: Upward Swing Arc", cue: "Drive bat vertically upward through line of delivery", focusAngle: "Elbow ≥ 140°" },
+      { title: "Phase 4: Full Extension Finish", cue: "Hold high finish pointing high above opposite shoulder", focusAngle: "Blade Vertical" },
+    ],
   },
   {
     id: "defense",
@@ -93,8 +150,16 @@ const SHOT_CATALOG: ShotMetadata[] = [
     category: "Defensive & Technical",
     difficulty: "Foundational",
     keyCue: "Soft hands, bat beside front pad",
+    proExample: "Rahul Dravid 'The Wall'",
     targetElbowAngle: 110,
     targetKneeAngle: 150,
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
+    phases: [
+      { title: "Phase 1: Decisive Stride", cue: "Long stride forward onto front knee to smother spin/bounce", focusAngle: "Knee ≤ 150°" },
+      { title: "Phase 2: Bat-Pad Gap Zero", cue: "Keep bat blade tucked directly flush with front pad", focusAngle: "Gap ≤ 0.15 L" },
+      { title: "Phase 3: Soft Hands Grip", cue: "Relax bottom hand; let ball deaden directly onto pitch", focusAngle: "Elbow 110°" },
+      { title: "Phase 4: Head Over Impact", cue: "Nose and eyes directly over point of ball impact", focusAngle: "Head Aligned" },
+    ],
   },
   {
     id: "late_cut",
@@ -102,8 +167,16 @@ const SHOT_CATALOG: ShotMetadata[] = [
     category: "Defensive & Technical",
     difficulty: "Advanced",
     keyCue: "Guide ball late with relaxed wrists",
+    proExample: "Kane Williamson Soft Touch",
     targetElbowAngle: 115,
     targetKneeAngle: 160,
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4",
+    phases: [
+      { title: "Phase 1: Extreme Patience", cue: "Wait for delivery to pass chest line before initiating", focusAngle: "Weight Back Foot" },
+      { title: "Phase 2: Minimal Backlift", cue: "Compact, tidy movement with weight on back foot", focusAngle: "Knee 160°" },
+      { title: "Phase 3: Soft Wrist Slice", cue: "Guide ball at the last microsecond toward third man", focusAngle: "Elbow 115°" },
+      { title: "Phase 4: De-escalate Pace", cue: "Use bowler's pace with downward blade angle", focusAngle: "Angled Blade" },
+    ],
   },
   {
     id: "flick",
@@ -111,8 +184,16 @@ const SHOT_CATALOG: ShotMetadata[] = [
     category: "Whips & Sweeps",
     difficulty: "Intermediate",
     keyCue: "Snap wrists through mid-wicket line",
+    proExample: "VVS Laxman & KL Rahul",
     targetElbowAngle: 125,
     targetKneeAngle: 155,
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    phases: [
+      { title: "Phase 1: Line Alignment", cue: "Step across to middle-and-leg stump line", focusAngle: "Spine 10°" },
+      { title: "Phase 2: Balanced Stance", cue: "Upright torso with level shoulders", focusAngle: "Knee 155°" },
+      { title: "Phase 3: Wrist Whipping Arc", cue: "Roll wrists from right to left through mid-wicket arc", focusAngle: "Elbow 125°" },
+      { title: "Phase 4: Controlled Follow-Through", cue: "Guide smoothly along ground in front of square", focusAngle: "Whipped Blade" },
+    ],
   },
   {
     id: "sweep",
@@ -120,8 +201,16 @@ const SHOT_CATALOG: ShotMetadata[] = [
     category: "Whips & Sweeps",
     difficulty: "Intermediate",
     keyCue: "Drop back knee, horizontal blade sweep",
+    proExample: "Joe Root Spin Counter",
     targetElbowAngle: 120,
     targetKneeAngle: 140,
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+    phases: [
+      { title: "Phase 1: Drop Back Knee", cue: "Sink back knee onto the turf to lower eye line", focusAngle: "Back Knee Low" },
+      { title: "Phase 2: Long Reach Stride", cue: "Extend front leg well forward toward pitch of delivery", focusAngle: "Front Knee 140°" },
+      { title: "Phase 3: Horizontal Blade Sweep", cue: "Sweep bat in broad horizontal arc across line of ball", focusAngle: "Elbow 120°" },
+      { title: "Phase 4: Head Locked Down", cue: "Keep head still and eyes focused on point of strike", focusAngle: "Cross-Bat Flat" },
+    ],
   },
 ];
 
@@ -137,6 +226,285 @@ interface SessionLogItem {
   message?: string;
 }
 
+interface ShotTutorialModalProps {
+  shot: ShotMetadata;
+  isOpen: boolean;
+  onClose: () => void;
+  onStartPractice: () => void;
+  isFirstTime: boolean;
+  playbackSpeed: number;
+  onSpeedChange: (speed: number) => void;
+  highlightedMistake?: string | null;
+  correctionCue?: string | null;
+}
+
+function ShotTutorialModal({
+  shot,
+  isOpen,
+  onClose,
+  onStartPractice,
+  isFirstTime,
+  playbackSpeed,
+  onSpeedChange,
+  highlightedMistake,
+  correctionCue,
+}: ShotTutorialModalProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(5.5);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed]);
+
+  useEffect(() => {
+    if (isOpen && videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.playbackRate = playbackSpeed;
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  }, [isOpen, shot.id]);
+
+  if (!isOpen) return null;
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play();
+        setIsPlaying(true);
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  const restartVideo = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 10 }}
+        className="relative w-full max-w-4xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+      >
+        {/* Modal Header */}
+        <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/60">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <Video className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white">{shot.name} Masterclass</h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-emerald-400 border border-zinc-700">
+                  {shot.difficulty}
+                </span>
+                {isFirstTime && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+                    ⭐ Pre-Drill Masterclass
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                {shot.proExample} • 5-Second Slow-Mo Form Blueprint
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-800 transition-all cursor-pointer"
+            title="Close modal"
+          >
+            <XCircle className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Modal Body: Split 2 Columns */}
+        <div className="flex-1 grid grid-cols-12 gap-6 p-6 overflow-y-auto custom-scrollbar">
+          
+          {/* Left Column: Video Player & Speed Controller (7 Cols) */}
+          <div className="col-span-12 md:col-span-7 flex flex-col gap-3">
+            <div className="relative aspect-video rounded-xl bg-black border border-zinc-800 overflow-hidden shadow-inner group">
+              <video
+                ref={videoRef}
+                src={shot.videoUrl}
+                loop
+                muted
+                playsInline
+                autoPlay
+                onTimeUpdate={() => {
+                  if (videoRef.current) {
+                    setCurrentTime(videoRef.current.currentTime);
+                    if (videoRef.current.duration) setDuration(videoRef.current.duration);
+                  }
+                }}
+                className="w-full h-full object-cover"
+              />
+
+              {/* Slow-Mo AR Dial Watermark */}
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/75 backdrop-blur-md border border-zinc-700 text-xs font-mono text-zinc-200">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Speed: <strong>{playbackSpeed}x</strong></span>
+              </div>
+
+              {/* Video Overlay Control Bar */}
+              <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={togglePlay}
+                    className="p-1.5 rounded-lg bg-zinc-900/90 text-white hover:bg-emerald-500 hover:text-black transition-all cursor-pointer"
+                    title={isPlaying ? "Pause" : "Play"}
+                  >
+                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
+                  </button>
+                  <button
+                    onClick={restartVideo}
+                    className="p-1.5 rounded-lg bg-zinc-900/90 text-zinc-300 hover:text-white transition-all cursor-pointer"
+                    title="Replay from start"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="text-[11px] font-mono text-zinc-300 bg-black/60 px-2 py-0.5 rounded border border-zinc-800">
+                  {currentTime.toFixed(1)}s / {duration.toFixed(1)}s
+                </div>
+              </div>
+            </div>
+
+            {/* Playback Speed Switcher */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/70 border border-zinc-800">
+              <div className="flex items-center gap-1.5 text-xs text-zinc-300 font-semibold">
+                <SlidersHorizontal className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Slow-Mo Speed:</span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {[
+                  { speed: 0.25, label: "0.25x Super Slow" },
+                  { speed: 0.5, label: "0.5x Slow-Mo" },
+                  { speed: 0.75, label: "0.75x" },
+                  { speed: 1.0, label: "1.0x Realtime" },
+                ].map(({ speed, label }) => (
+                  <button
+                    key={speed}
+                    onClick={() => onSpeedChange(speed)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer font-mono",
+                      playbackSpeed === speed
+                        ? "bg-emerald-500 text-black shadow-md"
+                        : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Target Biometric Specs */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-center justify-between text-xs">
+                <span className="text-zinc-400">Target Lead Elbow:</span>
+                <span className="font-bold font-mono text-emerald-400">≥{shot.targetElbowAngle}°</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-center justify-between text-xs">
+                <span className="text-zinc-400">Target Front Knee:</span>
+                <span className="font-bold font-mono text-teal-400">≤{shot.targetKneeAngle}°</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Key Checkpoints & Form Correction (5 Cols) */}
+          <div className="col-span-12 md:col-span-5 flex flex-col gap-3">
+            
+            {/* If Opened from Repeated Mistake: Correction Callout */}
+            {highlightedMistake && (
+              <div className="p-3.5 rounded-xl bg-red-950/70 border-2 border-red-500/80 text-left space-y-1.5 shadow-lg">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-red-300 uppercase tracking-wide">
+                  <AlertTriangle className="h-4 w-4 text-red-400" />
+                  <span>Flaw to Eliminate</span>
+                </div>
+                <p className="text-xs text-red-200 font-semibold">{highlightedMistake}</p>
+                {correctionCue && (
+                  <div className="text-xs text-emerald-300 font-bold bg-black/40 p-2 rounded-lg border border-emerald-500/40">
+                    👉 FIX: {correctionCue}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 4-Phase Biomechanical Breakdown */}
+            <div className="flex-1 flex flex-col gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Key Execution Phases
+              </span>
+
+              <div className="space-y-2">
+                {shot.phases.map((phase, idx) => (
+                  <div key={idx} className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 text-left space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-400">{phase.title}</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                        {phase.focusAngle}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-300 leading-snug">
+                      {phase.cue}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Modal Footer */}
+        <div className="px-6 py-3.5 border-t border-zinc-800 bg-zinc-900/70 flex items-center justify-between">
+          <div className="text-xs text-zinc-400">
+            {isFirstTime ? "Preview required once before first drill session." : "Inspect technique anytime to calibrate muscle memory."}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="text-xs border-zinc-700 text-zinc-300 hover:text-white"
+            >
+              {isFirstTime ? "Skip Preview" : "Close"}
+            </Button>
+
+            <Button
+              size="sm"
+              onClick={onStartPractice}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs gap-1.5 shadow-lg"
+            >
+              <Check className="h-4 w-4" />
+              <span>{isFirstTime ? "Understood, Start Practicing" : "Resume Practice"}</span>
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function BatCoachDashboard() {
   const [targetShot, setTargetShot] = useState<string>("cover");
   const [practiceMode, setPracticeMode] = useState<"no_bat" | "with_bat">("no_bat");
@@ -147,6 +515,15 @@ export default function BatCoachDashboard() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [showAngles, setShowAngles] = useState<boolean>(true);
+
+  // Video Tutorial Masterclass State
+  const [seenTutorials, setSeenTutorials] = useState<Record<string, boolean>>({});
+  const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(false);
+  const [tutorialShotId, setTutorialShotId] = useState<string>("cover");
+  const [tutorialPlaybackSpeed, setTutorialPlaybackSpeed] = useState<number>(0.5); // Default slow-mo
+  const [isFirstTimeTutorial, setIsFirstTimeTutorial] = useState<boolean>(false);
+  const [tutorialHighlightedMistake, setTutorialHighlightedMistake] = useState<string | null>(null);
+  const [tutorialCorrectionCue, setTutorialCorrectionCue] = useState<string | null>(null);
 
   // Live Stream & Telemetry State
   const [streamData, setStreamData] = useState<any>(null);
@@ -204,10 +581,47 @@ export default function BatCoachDashboard() {
       if (stored) {
         setUserProfile(JSON.parse(stored));
       }
+      const storedSeen = localStorage.getItem("batcoach_seen_tutorials");
+      if (storedSeen) {
+        setSeenTutorials(JSON.parse(storedSeen));
+      }
     } catch (e) {
       console.error(e);
     }
   }, []);
+
+  const openTutorialModal = (
+    shotId: string, 
+    isFirstTime: boolean = false, 
+    mistakeTitle: string | null = null, 
+    correctionCue: string | null = null
+  ) => {
+    setTutorialShotId(shotId);
+    setIsFirstTimeTutorial(isFirstTime);
+    setTutorialHighlightedMistake(mistakeTitle);
+    setTutorialCorrectionCue(correctionCue);
+    setTutorialPlaybackSpeed(mistakeTitle ? 0.25 : 0.5);
+    setIsTutorialOpen(true);
+  };
+
+  const handleStartFromTutorial = () => {
+    const updated = { ...seenTutorials, [tutorialShotId]: true };
+    setSeenTutorials(updated);
+    try {
+      localStorage.setItem("batcoach_seen_tutorials", JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    setIsTutorialOpen(false);
+    if (isDrillLocked) {
+      setIsDrillLocked(false);
+      setRepeatErrorCount(0);
+      lastErrorCodeRef.current = "";
+    }
+    if (!isLive) {
+      setIsLive(true);
+    }
+  };
 
   // Session elapsed timer
   useEffect(() => {
@@ -465,6 +879,11 @@ export default function BatCoachDashboard() {
         practice_mode: practiceModeRef.current
       }));
     }
+
+    // Auto-display 5-second slow-mo tutorial before first-time practice
+    if (!seenTutorials[shotId]) {
+      openTutorialModal(shotId, true);
+    }
   };
 
   const handleManualUnlockDrill = () => {
@@ -538,7 +957,11 @@ export default function BatCoachDashboard() {
       saveSessionToDatabase();
       setIsLive(false);
     } else {
-      setIsLive(true);
+      if (!seenTutorials[targetShot]) {
+        openTutorialModal(targetShot, true);
+      } else {
+        setIsLive(true);
+      }
     }
   };
 
@@ -663,6 +1086,17 @@ export default function BatCoachDashboard() {
             <span className="text-zinc-500">Session:</span>
             <span className="mono font-bold text-white">{formatTime(sessionSeconds)}</span>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openTutorialModal(targetShot, false)}
+            className="h-8 gap-1.5 text-xs text-zinc-300 hover:text-white border-zinc-800 bg-zinc-900/80"
+            title="Watch 5-Second Slow-Mo Masterclass"
+          >
+            <Video className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="hidden sm:inline font-semibold">Form Guide</span>
+          </Button>
 
           <Button 
             variant="outline" 
@@ -791,6 +1225,17 @@ export default function BatCoachDashboard() {
                         {shot.name}
                       </span>
                       <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openTutorialModal(shot.id, false);
+                          }}
+                          className="p-1 rounded-md bg-zinc-800 hover:bg-emerald-500 hover:text-black text-zinc-400 transition-all cursor-pointer"
+                          title="Watch 5-Second Slow-Mo Blueprint"
+                        >
+                          <Video className="h-3 w-3" />
+                        </button>
                         <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
                           {shot.difficulty}
                         </span>
@@ -1014,17 +1459,24 @@ export default function BatCoachDashboard() {
                             </span>
                           </div>
                         </div>
-                        <button
-                          onClick={() => {
-                            setIsDrillLocked(false);
-                            setRepeatErrorCount(0);
-                            lastErrorCodeRef.current = "";
-                          }}
-                          className="text-[11px] text-zinc-400 hover:text-white px-2.5 py-1 rounded bg-zinc-900/90 border border-zinc-700 cursor-pointer font-semibold transition-all hover:bg-zinc-850"
-                          title="Dismiss lock and resume counting manually"
-                        >
-                          Override & Resume
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => openTutorialModal(targetShot, false, lockedErrorTitle, lockedCorrectionCue)}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs gap-1.5 shadow-lg cursor-pointer h-7 px-2.5"
+                          >
+                            <Video className="h-3.5 w-3.5" />
+                            <span>Watch 5s Slow-Mo Fix</span>
+                          </Button>
+
+                          <button
+                            onClick={handleManualUnlockDrill}
+                            className="text-[11px] text-zinc-400 hover:text-white px-2.5 py-1 rounded bg-zinc-900/90 border border-zinc-700 cursor-pointer font-semibold transition-all hover:bg-zinc-850"
+                            title="Dismiss lock and resume counting manually"
+                          >
+                            Override & Resume
+                          </button>
+                        </div>
                       </div>
 
                       <div className="p-3 rounded-xl bg-black/60 border border-red-500/40 space-y-1.5">
@@ -1409,6 +1861,23 @@ export default function BatCoachDashboard() {
         </div>
 
       </div>
+
+      {/* ── 5-Second Video Tutorial Masterclass Modal ──────────────────────── */}
+      <AnimatePresence>
+        {isTutorialOpen && (
+          <ShotTutorialModal
+            shot={SHOT_CATALOG.find((s) => s.id === tutorialShotId) || SHOT_CATALOG[0]}
+            isOpen={isTutorialOpen}
+            onClose={() => setIsTutorialOpen(false)}
+            onStartPractice={handleStartFromTutorial}
+            isFirstTime={isFirstTimeTutorial}
+            playbackSpeed={tutorialPlaybackSpeed}
+            onSpeedChange={setTutorialPlaybackSpeed}
+            highlightedMistake={tutorialHighlightedMistake}
+            correctionCue={tutorialCorrectionCue}
+          />
+        )}
+      </AnimatePresence>
 
     </div>
   );
