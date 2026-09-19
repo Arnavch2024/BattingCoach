@@ -6,6 +6,7 @@ import random
 import threading
 import time
 import os
+import uuid
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -23,6 +24,8 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from transformers import VideoMAEForVideoClassification, VideoMAEImageProcessor
+from ultralytics import YOLO
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # System & Thread Limits
@@ -230,6 +233,78 @@ if mp_pose:
 else:
     pose_engine = None
 
+# YOLOv8-OBB Bat Orientation & Blade Angle Detector
+BAT_MODEL_DIR = BASE_DIR / "runs" / "obb" / "runs" / "bat_detection" / "train" / "weights" / "best.pt"
+HF_BAT_MODEL_REPO = "Arnav2005/cricket-yolov8-bat-detection"
+
+bat_model = None
+try:
+    if BAT_MODEL_DIR.exists():
+        print(f"[Bat Detector] Loading local YOLOv8-OBB model from: {BAT_MODEL_DIR}")
+        bat_model = YOLO(str(BAT_MODEL_DIR))
+    else:
+        try:
+            from huggingface_hub import hf_hub_download
+            print(f"[Bat Detector] Cloud mode: Downloading YOLOv8-OBB model from HF Hub ({HF_BAT_MODEL_REPO})...")
+            bat_model_path = hf_hub_download(repo_id=HF_BAT_MODEL_REPO, filename="best.pt")
+            bat_model = YOLO(bat_model_path)
+        except Exception as hf_err:
+            print(f"[Bat Detector] Warning: HuggingFace Hub download notice: {hf_err}")
+    if bat_model:
+        bat_model.to(device)
+        print(f"[Bat Detector] YOLOv8-OBB bat model successfully loaded on {device}.")
+except Exception as e:
+    print(f"[Bat Detector] Warning: Could not initialize YOLOv8-OBB model ({e})")
+    bat_model = None
+
+def extract_bat_telemetry(frame: np.ndarray, target_shot: str) -> Dict:
+    """
+    Extracts bat bounding polygon, blade angle, confidence, and stroke alignment using YOLOv8-OBB.
+    """
+    if bat_model is None:
+        return {"detected": False}
+    try:
+        h, w = frame.shape[:2]
+        results = bat_model.predict(frame, imgsz=320, conf=0.25, verbose=False)
+        if not results or len(results) == 0 or results[0].obb is None or len(results[0].obb) == 0:
+            return {"detected": False}
+        
+        obb = results[0].obb
+        confs = obb.conf.cpu().numpy()
+        best_idx = int(np.argmax(confs))
+        conf = float(confs[best_idx])
+        
+        # xywhr: [x_center, y_center, width, height, rotation_radians]
+        xywhr = obb.xywhr[best_idx].cpu().numpy()
+        x_c, y_c, bw, bh, rot_rad = xywhr
+        rot_deg = float(np.degrees(rot_rad)) % 180.0
+        
+        # xyxyxyxy: 4 polygon corner points (4, 2)
+        corners = obb.xyxyxyxy[best_idx].cpu().numpy()
+        norm_corners = [[round(float(pt[0] / w), 4), round(float(pt[1] / h), 4)] for pt in corners]
+        
+        # Vertical shots vs Horizontal cross-bat shots
+        is_vertical = (40.0 <= rot_deg <= 140.0)
+        vertical_shots = ["cover", "straight", "defense", "lofted"]
+        target_is_vertical = target_shot in vertical_shots
+        alignment_match = (is_vertical == target_is_vertical)
+        
+        return {
+            "detected": True,
+            "confidence": round(conf, 3),
+            "blade_angle": round(rot_deg, 1),
+            "is_vertical": bool(is_vertical),
+            "alignment_match": bool(alignment_match),
+            "polygon": norm_corners,
+            "center": [round(float(x_c / w), 4), round(float(y_c / h), 4)],
+            "width": round(float(bw / w), 4),
+            "height": round(float(bh / h), 4),
+        }
+    except Exception as e:
+        print(f"[Bat Telemetry Error]: {e}")
+        return {"detected": False}
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Threaded Camera Grabber
 # ──────────────────────────────────────────────────────────────────────────────
@@ -414,7 +489,14 @@ def execute_model_inference(frames_rgb_list: List[np.ndarray]) -> Tuple[np.ndarr
     inference_time_ms = (time.perf_counter() - t0) * 1000.0
     return probs, inference_time_ms
 
-def get_coaching_feedback(detected_shot: str, target_shot: str, confidence: float, bio_data: Optional[Dict]) -> Dict:
+def get_coaching_feedback(
+    detected_shot: str,
+    target_shot: str,
+    confidence: float,
+    bio_data: Optional[Dict],
+    bat_data: Optional[Dict] = None,
+    practice_mode: str = "no_bat"
+) -> Dict:
     all_tips = COACHING_TIPS.get(target_shot, [])
     if confidence < 0.40:
         eligible_tips = all_tips[0:2]
@@ -445,7 +527,22 @@ def get_coaching_feedback(detected_shot: str, target_shot: str, confidence: floa
             "tips": [f"Adjust swing trajectory to match {tgt_name} plane."] + shuffled_tips[:1]
         }
 
-    # Case 2: Target stroke detected, but biomechanical error present (e.g., dropped elbow)
+    # Case 2: In with_bat mode, check if bat alignment mismatch occurred
+    if practice_mode == "with_bat" and bat_data and bat_data.get("detected"):
+        if not bat_data.get("alignment_match"):
+            target_name = target_shot.replace('_', ' ').title()
+            vertical_shots = ["cover", "straight", "defense", "lofted"]
+            expected_plane = "vertical down the ground" if target_shot in vertical_shots else "horizontal across the line"
+            return {
+                "id": event_id,
+                "status": "form_error",
+                "is_correct": False,
+                "tier": "Bat Blade Alignment",
+                "message": f"Blade Angle Alert: Present bat face {expected_plane}.",
+                "tips": [f"Adjust blade orientation ({bat_data.get('blade_angle', 0)}°) to match the {target_name} plane."] + shuffled_tips[:1]
+            }
+
+    # Case 3: Target stroke detected, but biomechanical error present (e.g., dropped elbow)
     if has_bio_error and bio_tip:
         return {
             "id": event_id,
@@ -456,7 +553,7 @@ def get_coaching_feedback(detected_shot: str, target_shot: str, confidence: floa
             "tips": [bio_tip] + shuffled_tips[:1]
         }
 
-    # Case 3: Target stroke detected with sufficient confidence and clean biomechanics
+    # Case 4: Target stroke detected with sufficient confidence and clean biomechanics
     if confidence >= 0.35:
         msg = "Excellent Execution! Textbook technique." if confidence > 0.65 else "Clean Shot! Form criteria verified."
         return {
@@ -794,6 +891,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     camera = None
     target_shot = "cover"
+    practice_mode = "no_bat"  # "no_bat" (shadow practice) or "with_bat" (live willow)
     frame_buffer = collections.deque(maxlen=NUM_FRAMES)
     smooth_probs = np.ones(len(CLASS_NAMES)) / len(CLASS_NAMES)
     
@@ -824,6 +922,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 data = json.loads(msg)
                 if "target" in data:
                     target_shot = data["target"]
+                if "practice_mode" in data:
+                    practice_mode = data["practice_mode"]
                 
                 # Cloud mode: Decode client stream from browser / phone
                 if "image" in data and data["image"]:
@@ -894,11 +994,16 @@ async def websocket_endpoint(websocket: WebSocket):
                     prev_wrist_pos = curr_pos
                     motion_history.append(wrist_speed)
 
-            # 4. Buffer frame for VideoMAE
+            # 4. Bat Orientation & Blade Angle (Live Willow Mode Only - 0% overhead in No Bat Mode)
+            bat_data = None
+            if practice_mode == "with_bat":
+                bat_data = extract_bat_telemetry(small_pose_frame, target_shot)
+
+            # 5. Buffer frame for VideoMAE
             small_frame = cv2.resize(rgb_frame, (IMAGE_SIZE, IMAGE_SIZE))
             frame_buffer.append(small_frame)
 
-            # 5. Non-blocking Asynchronous Inference
+            # 6. Non-blocking Asynchronous Inference
             if len(frame_buffer) == NUM_FRAMES and frame_idx % INFER_EVERY == 0:
                 if inference_task is None or inference_task.done():
                     frames_snapshot = list(frame_buffer)
@@ -919,8 +1024,7 @@ async def websocket_endpoint(websocket: WebSocket):
             top_shot = CLASS_NAMES[top_idx]
             target_conf = float(smooth_probs[CLASS_NAMES.index(target_shot)])
 
-            # 6. Physical Swing Detection State Machine
-            # Only trigger a REP event when a genuine stroke swing occurs (motion acceleration -> impact follow-through)
+            # 7. Physical Swing Detection State Machine
             new_stroke_event = None
             avg_speed = np.mean(motion_history) if motion_history else 0.0
 
@@ -934,15 +1038,18 @@ async def websocket_endpoint(websocket: WebSocket):
                     swing_state = "COMPLETED"
                     
                     # Generate coaching event for this completed stroke
-                    new_stroke_event = get_coaching_feedback(top_shot, target_shot, target_conf, bio_data)
+                    new_stroke_event = get_coaching_feedback(
+                        top_shot, target_shot, target_conf, bio_data,
+                        bat_data=bat_data, practice_mode=practice_mode
+                    )
                     swing_cooldown_until = now + 2.0  # 2-second cooldown between strokes
                     swing_state = "IDLE"
 
-            # 7. JPEG Compression
+            # 8. JPEG Compression (for fallback stream)
             _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
             frame_base64 = base64.b64encode(buffer).decode('utf-8')
 
-            # 8. Dispatch Payload
+            # 9. Dispatch Payload
             payload = {
                 "frame": frame_base64,
                 "probs": {CLASS_NAMES[i]: float(smooth_probs[i]) for i in range(len(CLASS_NAMES))},
@@ -950,13 +1057,16 @@ async def websocket_endpoint(websocket: WebSocket):
                 "confidence": float(np.max(smooth_probs)),
                 "targetShot": target_shot,
                 "targetConfidence": target_conf,
-                "feedback": new_stroke_event,  # Dispatched strictly when a physical swing completes!
+                "feedback": new_stroke_event,
                 "biometrics": bio_data,
+                "bat": bat_data,
+                "practiceMode": practice_mode,
                 "telemetry": {
                     "fps": current_fps,
                     "inference_ms": last_infer_time_ms,
                     "device": str(device),
-                    "fp16": use_fp16
+                    "fp16": use_fp16,
+                    "bat_detector": practice_mode == "with_bat" and bat_model is not None
                 }
             }
 

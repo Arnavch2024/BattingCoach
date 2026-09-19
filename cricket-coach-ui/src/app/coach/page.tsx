@@ -6,7 +6,8 @@ import {
   Play, Pause, Target, Volume2, VolumeX, Activity, User, 
   Settings, Zap, CheckCircle2, AlertTriangle, Flame, 
   RotateCcw, Shield, Award, Cpu, Search, Sparkles, SlidersHorizontal,
-  ChevronRight, BarChart2, Radio, Info, UserCheck, HelpCircle, ArrowLeft, Home
+  ChevronRight, BarChart2, Radio, Info, UserCheck, HelpCircle, ArrowLeft, Home,
+  Crosshair, Layers, Compass
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -138,6 +139,7 @@ interface SessionLogItem {
 
 export default function BatCoachDashboard() {
   const [targetShot, setTargetShot] = useState<string>("cover");
+  const [practiceMode, setPracticeMode] = useState<"no_bat" | "with_bat">("no_bat");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isLive, setIsLive] = useState<boolean>(false);
@@ -171,6 +173,16 @@ export default function BatCoachDashboard() {
   const streamIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastProcessedEventIdRef = useRef<string>("");
   const lastSpokenRef = useRef<string>("");
+
+  const targetShotRef = useRef<string>(targetShot);
+  useEffect(() => {
+    targetShotRef.current = targetShot;
+  }, [targetShot]);
+
+  const practiceModeRef = useRef<"no_bat" | "with_bat">(practiceMode);
+  useEffect(() => {
+    practiceModeRef.current = practiceMode;
+  }, [practiceMode]);
 
   useEffect(() => {
     try {
@@ -250,11 +262,6 @@ export default function BatCoachDashboard() {
     }
   }, [persistentFeedback, isMuted]);
 
-  const targetShotRef = useRef<string>(targetShot);
-  useEffect(() => {
-    targetShotRef.current = targetShot;
-  }, [targetShot]);
-
   // WebSocket Connection & Dual-Mode Camera Streaming
   useEffect(() => {
     if (!isLive) {
@@ -278,7 +285,10 @@ export default function BatCoachDashboard() {
 
       ws.onopen = () => {
         setIsConnected(true);
-        ws.send(JSON.stringify({ target: targetShotRef.current }));
+        ws.send(JSON.stringify({ 
+          target: targetShotRef.current,
+          practice_mode: practiceModeRef.current
+        }));
 
         // Start Browser Camera capture if supported
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -312,7 +322,11 @@ export default function BatCoachDashboard() {
                   if (ctx) {
                     ctx.drawImage(videoRef.current, 0, 0, 320, 240);
                     const base64Img = canvas.toDataURL("image/jpeg", 0.55);
-                    ws.send(JSON.stringify({ image: base64Img, target: targetShotRef.current }));
+                    ws.send(JSON.stringify({ 
+                      image: base64Img, 
+                      target: targetShotRef.current,
+                      practice_mode: practiceModeRef.current
+                    }));
                   }
                 }
               }, 40); // ~25 FPS
@@ -397,7 +411,21 @@ export default function BatCoachDashboard() {
     targetShotRef.current = shotId;
     setPersistentFeedback(null);
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ target: shotId }));
+      wsRef.current.send(JSON.stringify({ 
+        target: shotId,
+        practice_mode: practiceModeRef.current
+      }));
+    }
+  };
+
+  const handleModeChange = (mode: "no_bat" | "with_bat") => {
+    setPracticeMode(mode);
+    practiceModeRef.current = mode;
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ 
+        target: targetShotRef.current,
+        practice_mode: mode
+      }));
     }
   };
 
@@ -419,12 +447,14 @@ export default function BatCoachDashboard() {
         successful_reps: successfulReps,
         best_streak: streakCount,
         avg_confidence: avgConf,
+        practice_mode: practiceMode,
         strokes: sessionLogs.map((l) => ({
           shot_name: l.shot,
           status: l.status,
           confidence: l.confidence,
           elbow_angle: streamData?.biometrics?.elbow_angle || 0,
           knee_angle: streamData?.biometrics?.knee_angle || 0,
+          blade_angle: streamData?.bat?.blade_angle || null,
           coach_feedback: `${l.grade} Grade performance`,
         })),
       };
@@ -456,6 +486,7 @@ export default function BatCoachDashboard() {
   };
 
   const bioData = streamData?.biometrics;
+  const batData = streamData?.bat;
   const isBodyDetected = bioData?.body_detected === true;
   const elbowAngle = bioData?.elbow_angle || 0;
   const kneeAngle = bioData?.knee_angle || 0;
@@ -504,12 +535,47 @@ export default function BatCoachDashboard() {
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-white">BatCoach AI Pro</span>
                 <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-900 text-emerald-400 border border-zinc-800">
-                  v2.0 FP16
+                  v2.0 Dual-Mode
                 </span>
               </div>
-              <p className="text-[10px] text-zinc-500 leading-tight">Live 3D Biomechanics & VideoMAE Neural Hub</p>
+              <p className="text-[10px] text-zinc-500 leading-tight">VideoMAE + MediaPipe 3D + YOLOv8-OBB Bat Tracking</p>
             </div>
           </div>
+        </div>
+
+        {/* Practice Mode Selector Segmented Pill */}
+        <div className="flex items-center bg-zinc-900/90 border border-zinc-800 rounded-xl p-0.5 shadow-inner">
+          <button
+            onClick={() => handleModeChange("no_bat")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.2 rounded-lg text-xs font-bold transition-all cursor-pointer",
+              practiceMode === "no_bat"
+                ? "bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                : "text-zinc-400 hover:text-zinc-200"
+            )}
+            title="Shadow Practice: 0% YOLO overhead, pure 3D biomechanics & VideoMAE"
+          >
+            <span>🥋 Shadow Practice</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-400 border border-cyan-500/30 font-mono font-normal">
+              No Bat (Light)
+            </span>
+          </button>
+
+          <button
+            onClick={() => handleModeChange("with_bat")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.2 rounded-lg text-xs font-bold transition-all cursor-pointer",
+              practiceMode === "with_bat"
+                ? "bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 shadow-sm"
+                : "text-zinc-400 hover:text-zinc-200"
+            )}
+            title="Live Willow Practice: Real-time YOLOv8-OBB bat orientation & blade angle analysis"
+          >
+            <span>🏏 Live Willow</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30 font-mono font-normal">
+              With Bat (YOLO-OBB)
+            </span>
+          </button>
         </div>
 
         {/* Telemetry Bar */}
@@ -521,10 +587,10 @@ export default function BatCoachDashboard() {
             <span className="text-zinc-400 mono">FPS: <strong className="text-white">{streamData?.telemetry?.fps || 0}</strong></span>
             <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-800" />
             <span className="text-zinc-400 mono">Latency: <strong className="text-white">{streamData?.telemetry?.inference_ms || 12}ms</strong></span>
-            {streamData?.telemetry?.fp16 && (
+            {practiceMode === "with_bat" && (
               <>
                 <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-800" />
-                <span className="text-[10px] font-mono text-cyan-400 font-bold">CUDA FP16</span>
+                <span className="text-[10px] font-mono text-emerald-400 font-bold">OBB Active</span>
               </>
             )}
           </div>
@@ -701,7 +767,7 @@ export default function BatCoachDashboard() {
             {/* Viewport Frame */}
             <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
               
-              {/* Live Browser Camera feed with 0ms visual latency (mirrored for natural coaching feedback) */}
+              {/* Live Browser Camera feed with 0ms visual latency */}
               <video
                 ref={videoRef}
                 className={cn(
@@ -723,6 +789,31 @@ export default function BatCoachDashboard() {
                 />
               )}
 
+              {/* YOLOv8-OBB Bat Tracking AR Overlay */}
+              {isLive && practiceMode === "with_bat" && batData?.detected && showAngles && batData?.polygon && (
+                <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <polygon
+                    points={batData.polygon.map((pt: [number, number]) => {
+                      const x = hasLocalCamera ? (1.0 - pt[0]) * 100 : pt[0] * 100;
+                      const y = pt[1] * 100;
+                      return `${x},${y}`;
+                    }).join(" ")}
+                    fill={batData.alignment_match ? "rgba(16, 185, 129, 0.18)" : "rgba(245, 158, 11, 0.18)"}
+                    stroke={batData.alignment_match ? "#10b981" : "#f59e0b"}
+                    strokeWidth="0.8"
+                    strokeDasharray="2,1"
+                  />
+                  {batData.center && (
+                    <circle
+                      cx={hasLocalCamera ? (1.0 - batData.center[0]) * 100 : batData.center[0] * 100}
+                      cy={batData.center[1] * 100}
+                      r="1.2"
+                      fill={batData.alignment_match ? "#10b981" : "#f59e0b"}
+                    />
+                  )}
+                </svg>
+              )}
+
               {(!isLive || (!hasLocalCamera && !streamData?.frame)) && (
                 <div className="flex flex-col items-center justify-center gap-4 text-center p-8">
                   <div className="h-16 w-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-600">
@@ -731,7 +822,9 @@ export default function BatCoachDashboard() {
                   <div>
                     <h4 className="text-sm font-bold text-white">Camera Standby</h4>
                     <p className="text-xs text-zinc-500 mt-1 max-w-xs">
-                      {isLive ? "Connecting to AI backend & starting VideoMAE engine..." : "Click 'Start Practice' above to begin real-time stroke analysis."}
+                      {isLive 
+                        ? `Connecting to AI backend (${practiceMode === "with_bat" ? "YOLO-OBB + VideoMAE" : "Shadow Biomechanics + VideoMAE"})...` 
+                        : "Click 'Start Live Feed' to begin real-time stroke analysis."}
                     </p>
                   </div>
                   {!isLive && (
@@ -746,14 +839,40 @@ export default function BatCoachDashboard() {
               {/* AR HUD Overlay Badges */}
               {isLive && streamData && (
                 <>
-                  <div className="absolute top-3 left-3 flex flex-col gap-2 pointer-events-none">
-                    <div className="flex items-center gap-2 bg-zinc-950/85 backdrop-blur-md border border-zinc-800 rounded-lg px-3 py-1.5 text-xs shadow-lg">
-                      <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Target Drill:</span>
+                  <div className="absolute top-3 left-3 flex flex-col gap-2 pointer-events-none z-20">
+                    <div className="flex items-center gap-2 bg-zinc-950/90 backdrop-blur-md border border-zinc-800 rounded-lg px-3 py-1.5 text-xs shadow-lg">
+                      <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Drill:</span>
                       <span className="font-bold text-emerald-400">{currentMetadata.name}</span>
+                    </div>
+
+                    {/* Active Mode HUD Pill */}
+                    <div className={cn(
+                      "flex items-center gap-2 backdrop-blur-md border rounded-lg px-3 py-1 text-xs shadow-md font-semibold",
+                      practiceMode === "with_bat"
+                        ? batData?.detected
+                          ? "bg-emerald-950/85 border-emerald-500/50 text-emerald-300"
+                          : "bg-zinc-950/85 border-amber-500/40 text-amber-300"
+                        : "bg-cyan-950/85 border-cyan-500/40 text-cyan-300"
+                    )}>
+                      {practiceMode === "with_bat" ? (
+                        <>
+                          <span>🏏</span>
+                          <span>
+                            {batData?.detected 
+                              ? `Blade: ${batData.blade_angle}° (${batData.is_vertical ? "Vertical Face" : "Cross-Bat"})` 
+                              : "Willow Tracking: Hold bat in frame"}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🥋</span>
+                          <span>Shadow Form (Lightweight Biomechanics)</span>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  <div className="absolute top-3 right-3 flex flex-col items-end gap-2 pointer-events-none">
+                  <div className="absolute top-3 right-3 flex flex-col items-end gap-2 pointer-events-none z-20">
                     <div className={cn("px-3 py-1.5 rounded-lg text-xs font-bold backdrop-blur-md shadow-lg", formRating.gradeColor)}>
                       Form Rating: {formRating.rating}
                     </div>
@@ -763,7 +882,7 @@ export default function BatCoachDashboard() {
 
               {/* Stance prompt when body not in frame */}
               {isLive && streamData && !isBodyDetected && (
-                <div className="absolute top-12 left-1/2 -translate-x-1/2 pointer-events-none">
+                <div className="absolute top-12 left-1/2 -translate-x-1/2 pointer-events-none z-20">
                   <div className="px-3.5 py-1.5 rounded-full bg-zinc-950/90 border border-emerald-500/50 text-zinc-200 text-xs flex items-center gap-2 shadow-2xl backdrop-blur-md">
                     <UserCheck className="h-4 w-4 text-emerald-400" />
                     <span>Step back ~6–8 ft to frame full stance</span>
@@ -778,7 +897,7 @@ export default function BatCoachDashboard() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 20 }}
-                    className="absolute bottom-4 inset-x-4 pointer-events-none"
+                    className="absolute bottom-4 inset-x-4 pointer-events-none z-30"
                   >
                     <div className={cn(
                       "p-4 rounded-xl backdrop-blur-xl border shadow-2xl flex items-start gap-3.5 text-left",
@@ -825,7 +944,7 @@ export default function BatCoachDashboard() {
               </div>
 
               <div className="flex items-center gap-2 text-xs text-zinc-400">
-                <span className="text-[11px] font-medium">Telemetry Overlay</span>
+                <span className="text-[11px] font-medium">AR Telemetry Overlay</span>
                 <Switch checked={showAngles} onCheckedChange={setShowAngles} />
               </div>
             </div>
@@ -836,7 +955,7 @@ export default function BatCoachDashboard() {
         {/* ── Right Column: Biometrics & Telemetry (3 Cols) ──────────────────── */}
         <div className="col-span-3 flex flex-col gap-3 min-h-0">
           
-          {/* Circular Precision Biometrics Card */}
+          {/* Biometrics & Angles Card */}
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-4">
             
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
@@ -860,40 +979,101 @@ export default function BatCoachDashboard() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className={cn("grid gap-3", practiceMode === "with_bat" ? "grid-cols-3" : "grid-cols-2")}>
                 
                 {/* Lead Elbow Metric Gauge */}
                 <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1.5">
                   <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Lead Elbow</span>
-                  <div className={cn("text-2xl font-black mono", isElbowGood ? "text-emerald-400" : "text-amber-400")}>
+                  <div className={cn("text-xl font-black mono", isElbowGood ? "text-emerald-400" : "text-amber-400")}>
                     {elbowAngle.toFixed(0)}°
                   </div>
                   <span className={cn(
-                    "text-[9px] font-bold px-1.5 py-0.5 rounded",
+                    "text-[8px] font-bold px-1.5 py-0.5 rounded",
                     isElbowGood ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
                   )}>
-                    REQ: ≥{currentMetadata.targetElbowAngle}°
+                    ≥{currentMetadata.targetElbowAngle}°
                   </span>
                 </div>
 
                 {/* Lead Knee Metric Gauge */}
                 <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1.5">
                   <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Lead Knee</span>
-                  <div className={cn("text-2xl font-black mono", isKneeGood ? "text-teal-400" : "text-amber-400")}>
+                  <div className={cn("text-xl font-black mono", isKneeGood ? "text-teal-400" : "text-amber-400")}>
                     {kneeAngle.toFixed(0)}°
                   </div>
                   <span className={cn(
-                    "text-[9px] font-bold px-1.5 py-0.5 rounded",
+                    "text-[8px] font-bold px-1.5 py-0.5 rounded",
                     isKneeGood ? "bg-teal-500/20 text-teal-400" : "bg-amber-500/20 text-amber-400"
                   )}>
-                    REQ: ≤{currentMetadata.targetKneeAngle}°
+                    ≤{currentMetadata.targetKneeAngle}°
                   </span>
                 </div>
+
+                {/* Bat Blade Angle Gauge (In With Bat mode) */}
+                {practiceMode === "with_bat" && (
+                  <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Blade Angle</span>
+                    <div className={cn(
+                      "text-xl font-black mono", 
+                      batData?.detected 
+                        ? batData.alignment_match ? "text-emerald-400" : "text-amber-400" 
+                        : "text-zinc-500"
+                    )}>
+                      {batData?.detected ? `${batData.blade_angle}°` : "--"}
+                    </div>
+                    <span className={cn(
+                      "text-[8px] font-bold px-1.5 py-0.5 rounded",
+                      batData?.detected 
+                        ? batData.alignment_match ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400" 
+                        : "bg-zinc-800 text-zinc-500"
+                    )}>
+                      {batData?.detected ? (batData.is_vertical ? "Vertical" : "Cross-Bat") : "No Bat"}
+                    </span>
+                  </div>
+                )}
 
               </div>
             )}
 
           </div>
+
+          {/* YOLOv8-OBB Bat Tracking Telemetry Card (Only in With-Bat Mode) */}
+          {practiceMode === "with_bat" && (
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-3">
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-emerald-400" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">YOLO-OBB Bat Telemetry</h3>
+                </div>
+                <span className={cn(
+                  "text-[9px] font-semibold px-2 py-0.5 rounded border font-mono",
+                  batData?.detected
+                    ? batData.alignment_match
+                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                      : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                    : "bg-zinc-900 border-zinc-800 text-zinc-500"
+                )}>
+                  {batData?.detected ? (batData.alignment_match ? "Optimal Plane ✓" : "Angle Alert ⚠️") : "Standby"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center">
+                  <span className="text-[9px] text-zinc-500 uppercase font-semibold">Face Alignment</span>
+                  <div className="text-sm font-bold text-zinc-200 mt-1">
+                    {batData?.detected ? (batData.is_vertical ? "Vertical Face" : "Horizontal Blade") : "No Bat"}
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center">
+                  <span className="text-[9px] text-zinc-500 uppercase font-semibold">OBB Confidence</span>
+                  <div className="text-sm font-bold text-cyan-400 mt-1 mono">
+                    {batData?.detected ? `${(batData.confidence * 100).toFixed(0)}%` : "--"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Session Performance Card */}
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-3">
@@ -987,3 +1167,4 @@ export default function BatCoachDashboard() {
     </div>
   );
 }
+
