@@ -253,6 +253,7 @@ function ShotTutorialModal({
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(5.5);
+  const [videoError, setVideoError] = useState<boolean>(false);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -261,6 +262,7 @@ function ShotTutorialModal({
   }, [playbackSpeed]);
 
   useEffect(() => {
+    setVideoError(false);
     if (isOpen && videoRef.current) {
       videoRef.current.currentTime = 0;
       videoRef.current.playbackRate = playbackSpeed;
@@ -272,7 +274,7 @@ function ShotTutorialModal({
   if (!isOpen) return null;
 
   const togglePlay = () => {
-    if (videoRef.current) {
+    if (videoRef.current && !videoError) {
       if (videoRef.current.paused) {
         videoRef.current.play();
         setIsPlaying(true);
@@ -280,13 +282,18 @@ function ShotTutorialModal({
         videoRef.current.pause();
         setIsPlaying(false);
       }
+    } else {
+      setIsPlaying(!isPlaying);
     }
   };
 
   const restartVideo = () => {
-    if (videoRef.current) {
+    if (videoRef.current && !videoError) {
       videoRef.current.currentTime = 0;
       videoRef.current.play();
+      setIsPlaying(true);
+    } else {
+      setCurrentTime(0);
       setIsPlaying(true);
     }
   };
@@ -337,22 +344,41 @@ function ShotTutorialModal({
           
           {/* Left Column: Video Player & Speed Controller (7 Cols) */}
           <div className="col-span-12 md:col-span-7 flex flex-col gap-3">
-            <div className="relative aspect-video rounded-xl bg-black border border-zinc-800 overflow-hidden shadow-inner group">
-              <video
-                ref={videoRef}
-                src={shot.videoUrl}
-                loop
-                muted
-                playsInline
-                autoPlay
-                onTimeUpdate={() => {
-                  if (videoRef.current) {
-                    setCurrentTime(videoRef.current.currentTime);
-                    if (videoRef.current.duration) setDuration(videoRef.current.duration);
-                  }
-                }}
-                className="w-full h-full object-cover"
-              />
+            <div className="relative aspect-video rounded-xl bg-black border border-zinc-800 overflow-hidden shadow-inner group flex items-center justify-center">
+              {!videoError ? (
+                <video
+                  ref={videoRef}
+                  src={shot.videoUrl || `/tutorials/${shot.id}.mp4`}
+                  loop
+                  muted
+                  playsInline
+                  autoPlay
+                  onError={() => setVideoError(true)}
+                  onTimeUpdate={() => {
+                    if (videoRef.current) {
+                      setCurrentTime(videoRef.current.currentTime);
+                      if (videoRef.current.duration) setDuration(videoRef.current.duration);
+                    }
+                  }}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                /* Biomechanical Simulator Fallback if video offline */
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 text-center space-y-3">
+                  <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <Activity className="h-7 w-7 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">{shot.name} Kinematic Simulator</h4>
+                    <p className="text-xs text-zinc-400 mt-1 max-w-xs">
+                      Lead Elbow: <strong className="text-emerald-400">≥{shot.targetElbowAngle}°</strong> • Front Knee: <strong className="text-teal-400">≤{shot.targetKneeAngle}°</strong>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-300 bg-emerald-950/80 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                    <span>Active Blueprint: {shot.keyCue}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Slow-Mo AR Dial Watermark */}
               <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/75 backdrop-blur-md border border-zinc-700 text-xs font-mono text-zinc-200">
