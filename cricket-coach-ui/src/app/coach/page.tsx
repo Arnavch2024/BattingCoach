@@ -956,7 +956,7 @@ export default function BatCoachDashboard() {
         <div className="col-span-3 flex flex-col gap-3 min-h-0">
           
           {/* Biometrics & Angles Card */}
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-3">
             
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <div className="flex items-center gap-2">
@@ -979,59 +979,97 @@ export default function BatCoachDashboard() {
                 </p>
               </div>
             ) : (
-              <div className={cn("grid gap-3", practiceMode === "with_bat" ? "grid-cols-3" : "grid-cols-2")}>
-                
-                {/* Lead Elbow Metric Gauge */}
-                <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Lead Elbow</span>
-                  <div className={cn("text-xl font-black mono", isElbowGood ? "text-emerald-400" : "text-amber-400")}>
-                    {elbowAngle.toFixed(0)}°
-                  </div>
-                  <span className={cn(
-                    "text-[8px] font-bold px-1.5 py-0.5 rounded",
-                    isElbowGood ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
-                  )}>
-                    ≥{currentMetadata.targetElbowAngle}°
-                  </span>
-                </div>
-
-                {/* Lead Knee Metric Gauge */}
-                <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Lead Knee</span>
-                  <div className={cn("text-xl font-black mono", isKneeGood ? "text-teal-400" : "text-amber-400")}>
-                    {kneeAngle.toFixed(0)}°
-                  </div>
-                  <span className={cn(
-                    "text-[8px] font-bold px-1.5 py-0.5 rounded",
-                    isKneeGood ? "bg-teal-500/20 text-teal-400" : "bg-amber-500/20 text-amber-400"
-                  )}>
-                    ≤{currentMetadata.targetKneeAngle}°
-                  </span>
-                </div>
-
-                {/* Bat Blade Angle Gauge (In With Bat mode) */}
-                {practiceMode === "with_bat" && (
-                  <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Blade Angle</span>
-                    <div className={cn(
-                      "text-xl font-black mono", 
-                      batData?.detected 
-                        ? batData.alignment_match ? "text-emerald-400" : "text-amber-400" 
-                        : "text-zinc-500"
-                    )}>
-                      {batData?.detected ? `${batData.blade_angle}°` : "--"}
+              <div className="space-y-2.5">
+                <div className={cn("grid gap-2", practiceMode === "with_bat" ? "grid-cols-4" : "grid-cols-3")}>
+                  
+                  {/* Lead Elbow Metric Gauge */}
+                  <div className="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Elbow</span>
+                    <div className={cn("text-lg font-black mono", isElbowGood ? "text-emerald-400" : "text-amber-400")}>
+                      {elbowAngle.toFixed(0)}°
                     </div>
                     <span className={cn(
-                      "text-[8px] font-bold px-1.5 py-0.5 rounded",
-                      batData?.detected 
-                        ? batData.alignment_match ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400" 
-                        : "bg-zinc-800 text-zinc-500"
+                      "text-[8px] font-bold px-1 py-0.2 rounded",
+                      isElbowGood ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
                     )}>
-                      {batData?.detected ? (batData.is_vertical ? "Vertical" : "Cross-Bat") : "No Bat"}
+                      ≥{currentMetadata.targetElbowAngle}°
                     </span>
                   </div>
-                )}
 
+                  {/* Lead Knee Metric Gauge */}
+                  <div className="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Knee</span>
+                    <div className={cn("text-lg font-black mono", isKneeGood ? "text-teal-400" : "text-amber-400")}>
+                      {kneeAngle.toFixed(0)}°
+                    </div>
+                    <span className={cn(
+                      "text-[8px] font-bold px-1 py-0.2 rounded",
+                      isKneeGood ? "bg-teal-500/20 text-teal-400" : "bg-amber-500/20 text-amber-400"
+                    )}>
+                      ≤{currentMetadata.targetKneeAngle}°
+                    </span>
+                  </div>
+
+                  {/* Torso Spine Lean Gauge */}
+                  <div className="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Spine Lean</span>
+                    <div className="text-lg font-black mono text-cyan-400">
+                      {bioData?.spine_angle ?? 0}°
+                    </div>
+                    <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300">
+                      Forward
+                    </span>
+                  </div>
+
+                  {/* Bat Blade Angle Gauge (In With Bat mode) */}
+                  {practiceMode === "with_bat" && (
+                    <div className="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1">
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Blade</span>
+                      <div className={cn(
+                        "text-lg font-black mono", 
+                        batData?.detected 
+                          ? batData.alignment_match ? "text-emerald-400" : "text-amber-400" 
+                          : "text-zinc-500"
+                      )}>
+                        {batData?.detected ? `${batData.blade_angle}°` : "--"}
+                      </div>
+                      <span className={cn(
+                        "text-[8px] font-bold px-1 py-0.2 rounded",
+                        batData?.detected 
+                          ? batData.alignment_match ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400" 
+                          : "bg-zinc-800 text-zinc-500"
+                      )}>
+                        {batData?.detected ? (batData.is_vertical ? "Vertical" : "Cross") : "None"}
+                      </span>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Relative Body & Torso Kinematics Summary */}
+                <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-400">Stance Weight:</span>
+                    <span className="font-semibold text-emerald-400 font-mono">
+                      {bioData?.weight_distribution ?? "Balanced Stance"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-400">Head-over-Knee:</span>
+                    <span className={cn(
+                      "font-semibold font-mono",
+                      bioData?.head_over_knee ? "text-emerald-400" : "text-amber-400"
+                    )}>
+                      {bioData?.head_over_knee ? "Over Front Knee ✓" : "Off Center ⚠️"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-400">Arm Arc Reach:</span>
+                    <span className="font-semibold text-zinc-200 font-mono">
+                      {bioData?.arm_extension ? `${(bioData.arm_extension * 100).toFixed(0)}% Extension` : "--"}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1060,15 +1098,15 @@ export default function BatCoachDashboard() {
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center">
                   <span className="text-[9px] text-zinc-500 uppercase font-semibold">Face Alignment</span>
-                  <div className="text-sm font-bold text-zinc-200 mt-1">
+                  <div className="text-xs font-bold text-zinc-200 mt-1">
                     {batData?.detected ? (batData.is_vertical ? "Vertical Face" : "Horizontal Blade") : "No Bat"}
                   </div>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center">
-                  <span className="text-[9px] text-zinc-500 uppercase font-semibold">OBB Confidence</span>
-                  <div className="text-sm font-bold text-cyan-400 mt-1 mono">
-                    {batData?.detected ? `${(batData.confidence * 100).toFixed(0)}%` : "--"}
+                  <span className="text-[9px] text-zinc-500 uppercase font-semibold">Bat-to-Pad Gap</span>
+                  <div className="text-xs font-bold text-cyan-400 mt-1 mono">
+                    {batData?.detected && batData?.bat_pad_gap !== null && batData?.bat_pad_gap !== undefined ? `${batData.bat_pad_gap} L (Compact)` : "--"}
                   </div>
                 </div>
               </div>

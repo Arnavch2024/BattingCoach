@@ -370,10 +370,19 @@ def calculate_3d_angle(a, b, c) -> float:
     angle = np.arccos(cos_angle) * (180.0 / np.pi)
     return float(angle)
 
-def extract_biometrics(landmarks_2d, target_shot: str, world_landmarks=None) -> Optional[Dict]:
+def extract_biometrics(
+    landmarks_2d, 
+    target_shot: str, 
+    world_landmarks=None, 
+    bat_data: Optional[Dict] = None
+) -> Optional[Dict]:
     """
-    Validates true batting posture and calculates perspective-invariant 3D angles.
-    Requires shoulders, hips, and arms to be in frame with vertical torso separation.
+    Computes body-relative, perspective-invariant biomechanics and bat-to-torso kinematics:
+    1. Torso & Spine coordinate frame (forward/backward lean in degrees).
+    2. Head-over-knee alignment relative to batter's torso scale.
+    3. Stride length and stance weight transfer (front-foot vs back-foot).
+    4. Lead arm 3D angle and extension reach ratio.
+    5. Bat-to-pad proximity and blade-to-spine relative orientation (in With-Bat mode).
     """
     nose = landmarks_2d[mp_pose.PoseLandmark.NOSE]
     l_shoulder = landmarks_2d[mp_pose.PoseLandmark.LEFT_SHOULDER]
@@ -385,90 +394,218 @@ def extract_biometrics(landmarks_2d, target_shot: str, world_landmarks=None) -> 
     l_hip = landmarks_2d[mp_pose.PoseLandmark.LEFT_HIP]
     r_hip = landmarks_2d[mp_pose.PoseLandmark.RIGHT_HIP]
     l_knee = landmarks_2d[mp_pose.PoseLandmark.LEFT_KNEE]
+    r_knee = landmarks_2d[mp_pose.PoseLandmark.RIGHT_KNEE]
     l_ankle = landmarks_2d[mp_pose.PoseLandmark.LEFT_ANKLE]
+    r_ankle = landmarks_2d[mp_pose.PoseLandmark.RIGHT_ANKLE]
 
-    # 1. Torso & Shoulder Geometry Check in 2D image plane
-    shoulder_y = (l_shoulder.y + r_shoulder.y) / 2.0
-    hip_y = (l_hip.y + r_hip.y) / 2.0
-    torso_length = hip_y - shoulder_y
-    shoulder_width = abs(l_shoulder.x - r_shoulder.x)
+    # 1. Torso Coordinate Frame & Anatomical Scaling (in 2D normalized space)
+    mid_shoulder_x = (l_shoulder.x + r_shoulder.x) / 2.0
+    mid_shoulder_y = (l_shoulder.y + r_shoulder.y) / 2.0
+    mid_hip_x = (l_hip.x + r_hip.x) / 2.0
+    mid_hip_y = (l_hip.y + r_hip.y) / 2.0
 
-    # Must have clear vertical torso separation in frame (rejects sitting closeups)
-    if torso_length < 0.12 or shoulder_width < 0.08:
+    torso_dx = mid_shoulder_x - mid_hip_x
+    torso_dy = mid_shoulder_y - mid_hip_y  # negative when shoulders are above hips
+    torso_length = float(np.hypot(torso_dx, torso_dy))
+    shoulder_width = float(abs(l_shoulder.x - r_shoulder.x))
+
+    # Reject non-standing or severe occlusion
+    if torso_length < 0.10 or shoulder_width < 0.06:
+        return None
+    if l_shoulder.visibility < 0.60 or r_shoulder.visibility < 0.60 or (l_hip.visibility < 0.40 and r_hip.visibility < 0.40):
         return None
 
-    # 2. Key Landmark Visibility & Viewport Boundaries
-    if l_shoulder.visibility < 0.70 or r_shoulder.visibility < 0.70 or l_hip.visibility < 0.50:
-        return None
+    # 2. Spine Lean Angle (Relative to anatomical vertical)
+    # Forward lean (towards front knee / bowler) is positive degrees
+    spine_angle_rad = np.arctan2(abs(torso_dx), max(abs(torso_dy), 1e-4))
+    spine_angle_deg = round(float(np.degrees(spine_angle_rad)), 1)
 
-    # Check if lead arm is inside camera viewport
-    arm_visible = (
-        (l_elbow.visibility > 0.55 and l_wrist.visibility > 0.45 and 0.02 < l_elbow.y < 0.98 and 0.02 < l_wrist.y < 0.98) or
-        (r_elbow.visibility > 0.55 and r_wrist.visibility > 0.45 and 0.02 < r_elbow.y < 0.98 and 0.02 < r_wrist.y < 0.98)
-    )
-    if not arm_visible:
-        return None
+    # 3. Lead Side vs Back Side Identification
+    # In cricket batting stances, lead arm has highest visibility/extension towards the bowler
+    is_left_lead = (l_elbow.visibility + l_wrist.visibility) >= (r_elbow.visibility + r_wrist.visibility)
+    
+    lead_sh_idx = mp_pose.PoseLandmark.LEFT_SHOULDER if is_left_lead else mp_pose.PoseLandmark.RIGHT_SHOULDER
+    lead_el_idx = mp_pose.PoseLandmark.LEFT_ELBOW if is_left_lead else mp_pose.PoseLandmark.RIGHT_ELBOW
+    lead_wr_idx = mp_pose.PoseLandmark.LEFT_WRIST if is_left_lead else mp_pose.PoseLandmark.RIGHT_WRIST
+    lead_knee_idx = mp_pose.PoseLandmark.LEFT_KNEE if is_left_lead else mp_pose.PoseLandmark.RIGHT_KNEE
+    trail_knee_idx = mp_pose.PoseLandmark.RIGHT_KNEE if is_left_lead else mp_pose.PoseLandmark.LEFT_KNEE
+    lead_ankle_idx = mp_pose.PoseLandmark.LEFT_ANKLE if is_left_lead else mp_pose.PoseLandmark.RIGHT_ANKLE
+    trail_ankle_idx = mp_pose.PoseLandmark.RIGHT_ANKLE if is_left_lead else mp_pose.PoseLandmark.LEFT_ANKLE
 
-    # Choose lead arm
-    is_left_lead = l_elbow.visibility >= r_elbow.visibility
-    lead_shoulder_idx = mp_pose.PoseLandmark.LEFT_SHOULDER if is_left_lead else mp_pose.PoseLandmark.RIGHT_SHOULDER
-    lead_elbow_idx = mp_pose.PoseLandmark.LEFT_ELBOW if is_left_lead else mp_pose.PoseLandmark.RIGHT_ELBOW
-    lead_wrist_idx = mp_pose.PoseLandmark.LEFT_WRIST if is_left_lead else mp_pose.PoseLandmark.RIGHT_WRIST
+    lead_shoulder = landmarks_2d[lead_sh_idx]
+    lead_elbow = landmarks_2d[lead_el_idx]
+    lead_wrist = landmarks_2d[lead_wr_idx]
+    lead_knee = landmarks_2d[lead_knee_idx]
+    trail_knee = landmarks_2d[trail_knee_idx]
+    lead_ankle = landmarks_2d[lead_ankle_idx]
+    trail_ankle = landmarks_2d[trail_ankle_idx]
 
-    # Use 3D World Landmarks (metric coordinates in meters) for angle if available
+    # 4. Lead Arm 3D Angle
     if world_landmarks:
-        s_pt = world_landmarks[lead_shoulder_idx]
-        e_pt = world_landmarks[lead_elbow_idx]
-        w_pt = world_landmarks[lead_wrist_idx]
+        s_pt = world_landmarks[lead_sh_idx]
+        e_pt = world_landmarks[lead_el_idx]
+        w_pt = world_landmarks[lead_wr_idx]
         elbow_angle = calculate_3d_angle(s_pt, e_pt, w_pt)
     else:
-        s_pt = landmarks_2d[lead_shoulder_idx]
-        e_pt = landmarks_2d[lead_elbow_idx]
-        w_pt = landmarks_2d[lead_wrist_idx]
+        s_pt = lead_shoulder
+        e_pt = lead_elbow
+        w_pt = lead_wrist
         elbow_angle = calculate_3d_angle(s_pt, e_pt, w_pt)
-    
-    # Knee angle if legs are in view
-    knee_angle = None
-    if l_knee.visibility > 0.50 and l_ankle.visibility > 0.40 and l_knee.y > hip_y:
+
+    # 5. Arm Extension Reach Ratio (Shoulder-to-wrist reach / total arm length)
+    upper_arm = np.hypot(lead_elbow.x - lead_shoulder.x, lead_elbow.y - lead_shoulder.y)
+    forearm = np.hypot(lead_wrist.x - lead_elbow.x, lead_wrist.y - lead_elbow.y)
+    total_arm = max(upper_arm + forearm, 1e-4)
+    direct_reach = np.hypot(lead_wrist.x - lead_shoulder.x, lead_wrist.y - lead_shoulder.y)
+    arm_extension = round(float(np.clip(direct_reach / total_arm, 0.0, 1.0)), 2)
+
+    # 6. Knee Angles (Lead Knee & Trail Knee)
+    lead_knee_angle = 150.0
+    trail_knee_angle = 155.0
+    has_knees = False
+
+    if lead_knee.visibility > 0.40 and lead_ankle.visibility > 0.35:
+        has_knees = True
         if world_landmarks:
-            h_pt = world_landmarks[mp_pose.PoseLandmark.LEFT_HIP]
-            k_pt = world_landmarks[mp_pose.PoseLandmark.LEFT_KNEE]
-            a_pt = world_landmarks[mp_pose.PoseLandmark.LEFT_ANKLE]
-            knee_angle = round(calculate_3d_angle(h_pt, k_pt, a_pt), 1)
+            h_pt = world_landmarks[mp_pose.PoseLandmark.LEFT_HIP if is_left_lead else mp_pose.PoseLandmark.RIGHT_HIP]
+            k_pt = world_landmarks[lead_knee_idx]
+            a_pt = world_landmarks[lead_ankle_idx]
+            lead_knee_angle = round(calculate_3d_angle(h_pt, k_pt, a_pt), 1)
         else:
-            h_pt = landmarks_2d[mp_pose.PoseLandmark.LEFT_HIP]
-            k_pt = landmarks_2d[mp_pose.PoseLandmark.LEFT_KNEE]
-            a_pt = landmarks_2d[mp_pose.PoseLandmark.LEFT_ANKLE]
-            knee_angle = round(calculate_3d_angle(h_pt, k_pt, a_pt), 1)
+            h_pt = landmarks_2d[mp_pose.PoseLandmark.LEFT_HIP if is_left_lead else mp_pose.PoseLandmark.RIGHT_HIP]
+            k_pt = lead_knee
+            a_pt = lead_ankle
+            lead_knee_angle = round(calculate_3d_angle(h_pt, k_pt, a_pt), 1)
 
-    lead_wrist_2d = landmarks_2d[lead_wrist_idx]
-    mid_shoulder_x = (l_shoulder.x + r_shoulder.x) / 2.0
-    head_tilt = abs(nose.x - mid_shoulder_x) / max(shoulder_width, 1e-4)
+    if trail_knee.visibility > 0.40 and trail_ankle.visibility > 0.35:
+        if world_landmarks:
+            h_pt = world_landmarks[mp_pose.PoseLandmark.RIGHT_HIP if is_left_lead else mp_pose.PoseLandmark.LEFT_HIP]
+            k_pt = world_landmarks[trail_knee_idx]
+            a_pt = world_landmarks[trail_ankle_idx]
+            trail_knee_angle = round(calculate_3d_angle(h_pt, k_pt, a_pt), 1)
+        else:
+            h_pt = landmarks_2d[mp_pose.PoseLandmark.RIGHT_HIP if is_left_lead else mp_pose.PoseLandmark.LEFT_HIP]
+            k_pt = trail_knee
+            a_pt = trail_ankle
+            trail_knee_angle = round(calculate_3d_angle(h_pt, k_pt, a_pt), 1)
 
+    # 7. Head Position Relative to Lead Knee (Normalized by torso height)
+    head_knee_gap = abs(nose.x - lead_knee.x) / max(torso_length, 1e-4) if has_knees else 0.0
+    head_over_knee = bool(head_knee_gap <= 0.28) if has_knees else True
+    head_tilt = round(abs(nose.x - mid_shoulder_x) / max(shoulder_width, 1e-4), 2)
+
+    # 8. Stride Ratio & Weight Distribution
+    stride_width = abs(lead_ankle.x - trail_ankle.x) if (lead_ankle.visibility > 0.35 and trail_ankle.visibility > 0.35) else 0.0
+    stride_ratio = round(float(stride_width / max(torso_length, 1e-4)), 2)
+
+    weight_distribution = "Balanced Stance"
+    if has_knees:
+        if lead_knee_angle < 155.0 and spine_angle_deg > 8.0:
+            weight_distribution = "Front Foot Weighted"
+        elif trail_knee_angle < 150.0 or spine_angle_deg < 6.0:
+            weight_distribution = "Back Foot Anchored"
+
+    # 9. Bat-to-Body Kinematics (When in With-Bat mode)
+    bat_pad_gap = None
+    bat_rel_spine_deg = None
+
+    if bat_data and bat_data.get("detected"):
+        bat_center = bat_data.get("center")
+        if bat_center:
+            # Distance from bat center to front knee / pad in torso units
+            dx = bat_center[0] - lead_knee.x
+            dy = bat_center[1] - lead_knee.y
+            bat_pad_gap = round(float(np.hypot(dx, dy) / max(torso_length, 1e-4)), 2)
+
+        # Angle of bat relative to batter's spine vector
+        blade_angle = bat_data.get("blade_angle", 90.0)
+        # Spine vector angle relative to horizontal
+        spine_dir_deg = np.degrees(np.arctan2(-torso_dy, torso_dx)) % 180.0
+        bat_rel_spine_deg = round(float(abs(blade_angle - spine_dir_deg)), 1)
+
+    # 10. Anatomical Shot Diagnosis Heuristics (Relative to User's Body)
     error_detected = False
     priority_tip = None
 
-    if head_tilt > 0.22:
+    # Front Foot Drives: Cover Drive, Straight Drive, Lofted Drive
+    if target_shot in ["cover", "straight", "lofted"]:
+        if elbow_angle < 128.0:
+            error_detected = True
+            priority_tip = "Keep your lead elbow high (≥130°) to present a full bat face and control trajectory."
+        elif has_knees and not head_over_knee and head_knee_gap > 0.32:
+            error_detected = True
+            priority_tip = "Lean your head over your lead knee to get over the line of the ball."
+        elif has_knees and lead_knee_angle > 165.0:
+            error_detected = True
+            priority_tip = "Bend your front knee forward into the shot to lower your center of gravity."
+        elif spine_angle_deg < 6.0:
+            error_detected = True
+            priority_tip = "Transfer weight forward into the drive; avoid standing too upright."
+        elif bat_data and bat_data.get("detected") and not bat_data.get("is_vertical"):
+            error_detected = True
+            priority_tip = "Keep bat blade vertical down the line — avoid cross-bat swinging on drives."
+
+    # Forward Defense
+    elif target_shot == "defense":
+        if bat_pad_gap is not None and bat_pad_gap > 0.42:
+            error_detected = True
+            priority_tip = "Bat-Pad Gap: Keep the bat blade close beside your front pad to avoid inside edges."
+        elif elbow_angle > 145.0:
+            error_detected = True
+            priority_tip = "Maintain soft hands with elbows tucked in close to your body for defensive control."
+        elif has_knees and lead_knee_angle > 165.0:
+            error_detected = True
+            priority_tip = "Lunge firmly onto the front knee to smother the bounce."
+
+    # Cross-Bat Power Shots: Pull Shot, Hook Shot
+    elif target_shot in ["pull", "hook"]:
+        if arm_extension < 0.76:
+            error_detected = True
+            priority_tip = "Extend your arms fully through the swing arc for maximum leverage and power."
+        elif weight_distribution == "Front Foot Weighted" and spine_angle_deg > 22.0:
+            error_detected = True
+            priority_tip = "Anchor your weight onto the back foot to clear your front hip."
+        elif bat_data and bat_data.get("detected") and bat_data.get("is_vertical"):
+            error_detected = True
+            priority_tip = "Swing horizontally across the line with wrists rolled over the ball."
+
+    # Square Cut & Late Cut
+    elif target_shot in ["square_cut", "late_cut"]:
+        if target_shot == "square_cut" and arm_extension < 0.74:
+            error_detected = True
+            priority_tip = "Extend your hands away from your body to slice through the point region."
+        elif target_shot == "late_cut" and elbow_angle > 140.0:
+            error_detected = True
+            priority_tip = "Keep hands close to body with relaxed wrists to guide the ball fine."
+
+    # Sweep Shot
+    elif target_shot == "sweep":
+        if has_knees and trail_knee_angle > 140.0:
+            error_detected = True
+            priority_tip = "Drop your back knee low to the ground to stabilize your sweeping base."
+
+    # General Head Stability Check
+    if not error_detected and head_tilt > 0.25:
         error_detected = True
-        priority_tip = "Keep your head still and positioned forward over the line."
-    elif ("drive" in target_shot or "cover" in target_shot or "straight" in target_shot) and elbow_angle < 125:
-        error_detected = True
-        priority_tip = "Keep your front elbow high (≥130°) throughout the swing for control."
-    elif ("pull" in target_shot or "hook" in target_shot) and elbow_angle < 110:
-        error_detected = True
-        priority_tip = "Extend your arms fully for a wider and more powerful swing arc."
-    elif knee_angle and ("drive" in target_shot or "cover" in target_shot) and knee_angle > 165:
-        error_detected = True
-        priority_tip = "Bend your front knee forward into the line to lower your center of gravity."
+        priority_tip = "Keep your eyes and head level with the point of impact throughout the stroke."
 
     return {
         "body_detected": True,
         "is_3d": world_landmarks is not None,
         "elbow_angle": round(elbow_angle, 1),
-        "knee_angle": knee_angle if knee_angle else 150.0,
-        "knee_visible": knee_angle is not None,
-        "head_tilt": round(head_tilt, 2),
-        "wrist_pos": (float(lead_wrist_2d.x), float(lead_wrist_2d.y)),
+        "knee_angle": round(lead_knee_angle, 1),
+        "trail_knee_angle": round(trail_knee_angle, 1),
+        "knee_visible": has_knees,
+        "spine_angle": spine_angle_deg,
+        "head_tilt": head_tilt,
+        "head_over_knee": head_over_knee,
+        "head_knee_gap": round(head_knee_gap, 2),
+        "stride_ratio": stride_ratio,
+        "arm_extension": arm_extension,
+        "weight_distribution": weight_distribution,
+        "bat_pad_gap": bat_pad_gap,
+        "bat_rel_spine_deg": bat_rel_spine_deg,
+        "wrist_pos": (float(lead_wrist.x), float(lead_wrist.y)),
         "error_detected": error_detected,
         "priority_tip": priority_tip
     }
@@ -527,7 +664,18 @@ def get_coaching_feedback(
             "tips": [f"Adjust swing trajectory to match {tgt_name} plane."] + shuffled_tips[:1]
         }
 
-    # Case 2: In with_bat mode, check if bat alignment mismatch occurred
+    # Case 2: Priority Biomechanical / Bat-to-Body Adjustment
+    if has_bio_error and bio_tip:
+        return {
+            "id": event_id,
+            "status": "form_error",
+            "is_correct": False,
+            "tier": "Biomechanical Correction",
+            "message": "Form Alert: Key technical adjustment required.",
+            "tips": [bio_tip] + shuffled_tips[:1]
+        }
+
+    # Case 3: Bat Blade Alignment Check (In with_bat mode)
     if practice_mode == "with_bat" and bat_data and bat_data.get("detected"):
         if not bat_data.get("alignment_match"):
             target_name = target_shot.replace('_', ' ').title()
@@ -542,20 +690,9 @@ def get_coaching_feedback(
                 "tips": [f"Adjust blade orientation ({bat_data.get('blade_angle', 0)}°) to match the {target_name} plane."] + shuffled_tips[:1]
             }
 
-    # Case 3: Target stroke detected, but biomechanical error present (e.g., dropped elbow)
-    if has_bio_error and bio_tip:
-        return {
-            "id": event_id,
-            "status": "form_error",
-            "is_correct": False,
-            "tier": "Biometric Adjustment",
-            "message": "Form Alert: Check joint alignment.",
-            "tips": [bio_tip] + shuffled_tips[:1]
-        }
-
     # Case 4: Target stroke detected with sufficient confidence and clean biomechanics
     if confidence >= 0.35:
-        msg = "Excellent Execution! Textbook technique." if confidence > 0.65 else "Clean Shot! Form criteria verified."
+        msg = "Textbook Execution! Perfect body & bat alignment." if confidence > 0.65 else "Clean Shot! Form criteria verified."
         return {
             "id": event_id,
             "status": "success",
@@ -573,6 +710,7 @@ def get_coaching_feedback(
             "message": f"Low Power: Commit fully to the {target_shot.replace('_', ' ').title()}.",
             "tips": shuffled_tips[:2]
         }
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Supabase PostgreSQL Database Integration
@@ -963,17 +1101,28 @@ async def websocket_endpoint(websocket: WebSocket):
                 fps_counter = 0
                 fps_start_time = now
 
-            # 3. MediaPipe Pose on downsampled frame
+            # 3. Downsampled RGB frame
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             small_pose_frame = cv2.resize(rgb_frame, (320, 240))
+
+            # 4. Bat Orientation & Blade Angle (Live Willow Mode Only - 0% overhead in No Bat Mode)
+            bat_data = None
+            if practice_mode == "with_bat":
+                bat_data = extract_bat_telemetry(small_pose_frame, target_shot)
+
+            # 5. MediaPipe Pose & Relative Biomechanics
             pose_results = pose_engine.process(small_pose_frame) if pose_engine is not None else None
-            
             bio_data = None
             wrist_speed = 0.0
 
             if pose_results and pose_results.pose_landmarks:
                 world_lms = pose_results.pose_world_landmarks.landmark if pose_results.pose_world_landmarks else None
-                bio_data = extract_biometrics(pose_results.pose_landmarks.landmark, target_shot, world_landmarks=world_lms)
+                bio_data = extract_biometrics(
+                    pose_results.pose_landmarks.landmark, 
+                    target_shot, 
+                    world_landmarks=world_lms,
+                    bat_data=bat_data
+                )
                 
                 if bio_data and bio_data.get("body_detected") and mp_draw and mp_pose:
                     # Draw skeleton only when batter is genuinely standing in view
@@ -994,10 +1143,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     prev_wrist_pos = curr_pos
                     motion_history.append(wrist_speed)
 
-            # 4. Bat Orientation & Blade Angle (Live Willow Mode Only - 0% overhead in No Bat Mode)
-            bat_data = None
-            if practice_mode == "with_bat":
-                bat_data = extract_bat_telemetry(small_pose_frame, target_shot)
 
             # 5. Buffer frame for VideoMAE
             small_frame = cv2.resize(rgb_frame, (IMAGE_SIZE, IMAGE_SIZE))
