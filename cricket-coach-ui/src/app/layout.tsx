@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { PwaRegister, PwaInstallPrompt } from "@/components/pwa-register";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const viewport: Viewport = {
-  themeColor: "#09090b",
+  themeColor: "#059669",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -37,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased dark">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
@@ -45,15 +46,38 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="BatCoach AI" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        {/* Anti-FOUC Theme Detection Script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem('batcoach_theme');
+                  if (stored === 'dark') {
+                    document.documentElement.classList.add('dark');
+                  } else if (stored === 'light') {
+                    document.documentElement.classList.remove('dark');
+                  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
         <Script
           src="https://accounts.google.com/gsi/client"
           strategy="afterInteractive"
         />
       </head>
-      <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100 font-sans">
-        <PwaRegister />
-        {children}
-        <PwaInstallPrompt />
+      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100 font-sans transition-colors duration-200 selection:bg-emerald-500/20 selection:text-emerald-700 dark:selection:text-emerald-300">
+        <ThemeProvider>
+          <PwaRegister />
+          {children}
+          <PwaInstallPrompt />
+        </ThemeProvider>
       </body>
     </html>
   );

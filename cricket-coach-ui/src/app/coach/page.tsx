@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "../../lib/utils";
 import { TrainingCalendarModal } from "@/components/TrainingCalendarModal";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Shot Catalog & Metadata
@@ -305,27 +306,27 @@ function ShotTutorialModal({
         initial={{ opacity: 0, scale: 0.94, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 10 }}
-        className="relative w-full max-w-4xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative w-full max-w-4xl bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/60">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between bg-slate-50 dark:bg-zinc-900/60">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <div className="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 flex items-center justify-center">
               <Video className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">{shot.name} Masterclass</h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-emerald-400 border border-zinc-700">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">{shot.name} Masterclass</h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-zinc-700">
                   {shot.difficulty}
                 </span>
                 {isFirstTime && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40">
                     ⭐ Pre-Drill Masterclass
                   </span>
                 )}
               </div>
-              <p className="text-xs text-zinc-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
                 {shot.proExample} • 5-Second Slow-Mo Form Blueprint
               </p>
             </div>
@@ -333,7 +334,7 @@ function ShotTutorialModal({
 
           <button
             onClick={onClose}
-            className="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-800 transition-all cursor-pointer"
+            className="text-slate-400 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
             title="Close modal"
           >
             <XCircle className="h-5 w-5" />
@@ -413,9 +414,9 @@ function ShotTutorialModal({
             </div>
 
             {/* Playback Speed Switcher */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/70 border border-zinc-800">
-              <div className="flex items-center gap-1.5 text-xs text-zinc-300 font-semibold">
-                <SlidersHorizontal className="h-3.5 w-3.5 text-emerald-400" />
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-100/80 dark:bg-zinc-900/70 border border-slate-200 dark:border-zinc-800">
+              <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-zinc-300 font-semibold">
+                <SlidersHorizontal className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
                 <span>Slow-Mo Speed:</span>
               </div>
 
@@ -432,8 +433,8 @@ function ShotTutorialModal({
                     className={cn(
                       "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer font-mono",
                       playbackSpeed === speed
-                        ? "bg-emerald-500 text-black shadow-md"
-                        : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                        ? "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-black shadow-md"
+                        : "bg-white dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     {label}
@@ -444,13 +445,13 @@ function ShotTutorialModal({
 
             {/* Quick Target Biometric Specs */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Target Lead Elbow:</span>
-                <span className="font-bold font-mono text-emerald-400">≥{shot.targetElbowAngle}°</span>
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 flex items-center justify-between text-xs">
+                <span className="text-slate-500 dark:text-zinc-400">Target Lead Elbow:</span>
+                <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">≥{shot.targetElbowAngle}°</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Target Front Knee:</span>
-                <span className="font-bold font-mono text-teal-400">≤{shot.targetKneeAngle}°</span>
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 flex items-center justify-between text-xs">
+                <span className="text-slate-500 dark:text-zinc-400">Target Front Knee:</span>
+                <span className="font-bold font-mono text-teal-600 dark:text-teal-400">≤{shot.targetKneeAngle}°</span>
               </div>
             </div>
           </div>
@@ -476,20 +477,20 @@ function ShotTutorialModal({
 
             {/* 4-Phase Biomechanical Breakdown */}
             <div className="flex-1 flex flex-col gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
                 Key Execution Phases
               </span>
 
               <div className="space-y-2">
                 {shot.phases.map((phase, idx) => (
-                  <div key={idx} className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 text-left space-y-1">
+                  <div key={idx} className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-left space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-emerald-400">{phase.title}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{phase.title}</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700">
                         {phase.focusAngle}
                       </span>
                     </div>
-                    <p className="text-[11px] text-zinc-300 leading-snug">
+                    <p className="text-[11px] text-slate-600 dark:text-zinc-300 leading-snug">
                       {phase.cue}
                     </p>
                   </div>
@@ -502,8 +503,8 @@ function ShotTutorialModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3.5 border-t border-zinc-800 bg-zinc-900/70 flex items-center justify-between">
-          <div className="text-xs text-zinc-400">
+        <div className="px-6 py-3.5 border-t border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/70 flex items-center justify-between">
+          <div className="text-xs text-slate-500 dark:text-zinc-400">
             {isFirstTime ? "Preview required once before first drill session." : "Inspect technique anytime to calibrate muscle memory."}
           </div>
 
@@ -512,7 +513,7 @@ function ShotTutorialModal({
               variant="outline"
               size="sm"
               onClick={onClose}
-              className="text-xs border-zinc-700 text-zinc-300 hover:text-white"
+              className="text-xs border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white"
             >
               {isFirstTime ? "Skip Preview" : "Close"}
             </Button>
@@ -1023,7 +1024,7 @@ export default function BatCoachDashboard() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#09090b] text-zinc-100 antialiased select-none overflow-hidden relative font-sans">
+    <div className="flex flex-col h-screen w-full bg-slate-50 dark:bg-[#09090b] text-slate-900 dark:text-zinc-100 antialiased select-none overflow-hidden relative font-sans transition-colors duration-200">
       
       {/* ── Top DB Sync Banner ──────────────────────────────────────────────── */}
       <AnimatePresence>
@@ -1041,18 +1042,18 @@ export default function BatCoachDashboard() {
       </AnimatePresence>
 
       {/* ── Studio Navigation Header ────────────────────────────────────────── */}
-      <header className="h-14 border-b border-zinc-800 bg-zinc-950 px-6 flex items-center justify-between z-20 shrink-0">
+      <header className="h-14 border-b border-slate-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md px-6 flex items-center justify-between z-20 shrink-0 transition-colors">
         <div className="flex items-center gap-4">
           <Link 
             href="/"
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-zinc-900 border border-zinc-800/80 transition-all font-medium"
+            className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-900 border border-slate-200 dark:border-zinc-800/80 transition-all font-medium"
             title="Back to Home"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Home</span>
           </Link>
 
-          <Separator orientation="vertical" className="h-5 bg-zinc-800" />
+          <Separator orientation="vertical" className="h-5 bg-slate-200 dark:border-zinc-800" />
 
           <div className="flex items-center gap-2.5">
             <img
@@ -1062,30 +1063,30 @@ export default function BatCoachDashboard() {
             />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-white">BatCoach AI Pro</span>
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-900 text-emerald-400 border border-zinc-800">
+                <span className="font-bold text-sm text-slate-900 dark:text-white">BatCoach AI Pro</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-zinc-800">
                   v2.0 Dual-Mode
                 </span>
               </div>
-              <p className="text-[10px] text-zinc-500 leading-tight">VideoMAE + MediaPipe 3D + YOLOv8-OBB Bat Tracking</p>
+              <p className="text-[10px] text-slate-500 dark:text-zinc-500 leading-tight">VideoMAE + MediaPipe 3D + YOLOv8-OBB Bat Tracking</p>
             </div>
           </div>
         </div>
 
         {/* Practice Mode Selector Segmented Pill */}
-        <div className="flex items-center bg-zinc-900/90 border border-zinc-800 rounded-xl p-0.5 shadow-inner">
+        <div className="flex items-center bg-slate-100 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 rounded-xl p-0.5 shadow-inner">
           <button
             onClick={() => handleModeChange("no_bat")}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.2 rounded-lg text-xs font-bold transition-all cursor-pointer",
               practiceMode === "no_bat"
-                ? "bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-white dark:bg-cyan-950/80 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-500/40 shadow-sm"
+                : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
             )}
             title="Shadow Practice: 0% YOLO overhead, pure 3D biomechanics & VideoMAE"
           >
             <span>🥋 Shadow Practice</span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-400 border border-cyan-500/30 font-mono font-normal">
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/30 font-mono font-normal">
               No Bat (Light)
             </span>
           </button>
@@ -1095,60 +1096,60 @@ export default function BatCoachDashboard() {
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.2 rounded-lg text-xs font-bold transition-all cursor-pointer",
               practiceMode === "with_bat"
-                ? "bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-white dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/50 shadow-sm"
+                : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
             )}
             title="Live Willow Practice: Real-time YOLOv8-OBB bat orientation & blade angle analysis"
           >
             <span>🏏 Live Willow</span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30 font-mono font-normal">
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 font-mono font-normal">
               With Bat (YOLO-OBB)
             </span>
           </button>
         </div>
 
-        {/* Telemetry Bar */}
-        <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-300">
-            <span className={cn("h-2 w-2 rounded-full", isConnected ? "bg-emerald-500 animate-pulse" : "bg-zinc-600")} />
+        {/* Telemetry Bar & Controls */}
+        <div className="flex items-center gap-2.5">
+          <div className="hidden md:flex items-center gap-2 bg-slate-100/90 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-slate-700 dark:text-zinc-300">
+            <span className={cn("h-2 w-2 rounded-full", isConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-400 dark:bg-zinc-600")} />
             <span className="font-medium">{isConnected ? "Connected" : "Standby"}</span>
-            <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-800" />
-            <span className="text-zinc-400 mono">FPS: <strong className="text-white">{streamData?.telemetry?.fps || 0}</strong></span>
-            <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-800" />
-            <span className="text-zinc-400 mono">Latency: <strong className="text-white">{streamData?.telemetry?.inference_ms || 12}ms</strong></span>
+            <Separator orientation="vertical" className="h-3 mx-1 bg-slate-300 dark:bg-zinc-800" />
+            <span className="text-slate-500 dark:text-zinc-400 mono">FPS: <strong className="text-slate-900 dark:text-white">{streamData?.telemetry?.fps || 0}</strong></span>
+            <Separator orientation="vertical" className="h-3 mx-1 bg-slate-300 dark:bg-zinc-800" />
+            <span className="text-slate-500 dark:text-zinc-400 mono">Latency: <strong className="text-slate-900 dark:text-white">{streamData?.telemetry?.inference_ms || 12}ms</strong></span>
             {practiceMode === "with_bat" && (
               <>
-                <Separator orientation="vertical" className="h-3 mx-1 bg-zinc-800" />
-                <span className="text-[10px] font-mono text-emerald-400 font-bold">OBB Active</span>
+                <Separator orientation="vertical" className="h-3 mx-1 bg-slate-300 dark:bg-zinc-800" />
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">OBB Active</span>
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs">
-            <span className="text-zinc-500">Session:</span>
-            <span className="mono font-bold text-white">{formatTime(sessionSeconds)}</span>
+          <div className="flex items-center gap-2 bg-slate-100/90 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-xs">
+            <span className="text-slate-500 dark:text-zinc-500">Session:</span>
+            <span className="mono font-bold text-slate-900 dark:text-white">{formatTime(sessionSeconds)}</span>
           </div>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsCalendarOpen(true)}
-            className="h-8 gap-1.5 text-xs text-emerald-300 hover:text-white border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-900/60"
+            className="h-8 gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-white border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 shadow-sm"
             title="Open Athlete Training Calendar & Google Calendar Sync"
           >
-            <Calendar className="h-3.5 w-3.5 text-emerald-400" />
+            <Calendar className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             <span className="hidden sm:inline font-semibold">Training Schedule</span>
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => openTutorialModal(targetShot, false)}
-            className="h-8 gap-1.5 text-xs text-zinc-300 hover:text-white border-zinc-800 bg-zinc-900/80"
+            className="h-8 gap-1.5 text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 shadow-sm"
             title="Watch 5-Second Slow-Mo Masterclass"
           >
-            <Video className="h-3.5 w-3.5 text-emerald-400" />
+            <Video className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
             <span className="hidden sm:inline font-semibold">Form Guide</span>
           </Button>
 
@@ -1156,19 +1157,22 @@ export default function BatCoachDashboard() {
             variant="outline" 
             size="icon" 
             onClick={() => setIsMuted(!isMuted)} 
-            className="h-8 w-8 text-zinc-400 hover:text-white border-zinc-800"
+            className="h-8 w-8 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 shadow-sm"
             title={isMuted ? "Unmute Voice Coach" : "Mute Voice Coach"}
           >
-            {isMuted ? <VolumeX className="h-4 w-4 text-red-400" /> : <Volume2 className="h-4 w-4 text-emerald-400" />}
+            {isMuted ? <VolumeX className="h-4 w-4 text-red-500 dark:text-red-400" /> : <Volume2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
           </Button>
+
+          {/* Theme Toggle Component */}
+          <ThemeToggle />
 
           <Button
             variant={isLive ? "destructive" : "default"}
             size="sm"
             onClick={handleToggleLive}
             className={cn(
-              "font-bold text-xs gap-1.5 h-8",
-              isLive ? "bg-red-600 hover:bg-red-700" : "bg-emerald-500 hover:bg-emerald-600 text-white"
+              "font-bold text-xs gap-1.5 h-8 shadow-sm",
+              isLive ? "bg-red-600 hover:bg-red-700 text-white" : "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"
             )}
           >
             {isLive ? <Pause className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}
@@ -1181,15 +1185,15 @@ export default function BatCoachDashboard() {
               size="sm"
               onClick={saveSessionToDatabase}
               disabled={isSavingDb}
-              className="text-xs h-8 bg-zinc-900 border-zinc-800 text-zinc-200 hover:text-white"
+              className="text-xs h-8 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-200 hover:text-slate-900 dark:hover:text-white shadow-sm"
               title="Save Session to Supabase PostgreSQL"
             >
-              <Shield className="h-3.5 w-3.5 mr-1 text-emerald-400" />
+              <Shield className="h-3.5 w-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
               {isSavingDb ? "Syncing..." : "Sync DB"}
             </Button>
           )}
 
-          <Separator orientation="vertical" className="h-6 bg-zinc-800" />
+          <Separator orientation="vertical" className="h-6 bg-slate-200 dark:bg-zinc-800" />
 
           {/* User Profile */}
           <div className="flex items-center gap-2.5">
@@ -1197,10 +1201,10 @@ export default function BatCoachDashboard() {
               {getInitials(userProfile.name)}
             </div>
             <div className="hidden lg:block text-left">
-              <div className="text-xs font-semibold text-zinc-200 leading-tight truncate max-w-[120px]">
+              <div className="text-xs font-semibold text-slate-800 dark:text-zinc-200 leading-tight truncate max-w-[120px]">
                 {userProfile.name}
               </div>
-              <div className="text-[10px] text-zinc-500 leading-tight truncate max-w-[120px]">
+              <div className="text-[10px] text-slate-500 dark:text-zinc-500 leading-tight truncate max-w-[120px]">
                 {userProfile.stance}
               </div>
             </div>
@@ -1213,29 +1217,29 @@ export default function BatCoachDashboard() {
         
         {/* ── Left Column: Shot Directory & Drills (3 Cols) ──────────────────── */}
         <div className="col-span-3 flex flex-col gap-3 min-h-0">
-          <div className="flex-1 flex flex-col min-h-0 bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
+          <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm dark:shadow-lg">
             
             {/* Search & Header */}
-            <div className="p-4 pb-3 space-y-3 border-b border-zinc-800">
+            <div className="p-4 pb-3 space-y-3 border-b border-slate-200 dark:border-zinc-800">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-white">Shot Syllabus</h3>
-                  <p className="text-[11px] text-zinc-400">Target stroke to evaluate</p>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Shot Syllabus</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400">Target stroke to evaluate</p>
                 </div>
-                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400">
                   {filteredShots.length} Drills
                 </span>
               </div>
 
               {/* Search Bar */}
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400 dark:text-zinc-500" />
                 <input
                   type="text"
                   placeholder="Search strokes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-zinc-200 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
                 />
               </div>
 
@@ -1248,8 +1252,8 @@ export default function BatCoachDashboard() {
                     className={cn(
                       "px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer",
                       selectedCategory === cat
-                        ? "bg-emerald-500 text-white font-semibold"
-                        : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                        ? "bg-emerald-600 dark:bg-emerald-500 text-white font-semibold shadow-sm"
+                        : "bg-slate-100 dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-200 dark:hover:bg-zinc-800"
                     )}
                   >
                     {cat}
@@ -1270,12 +1274,12 @@ export default function BatCoachDashboard() {
                     className={cn(
                       "w-full text-left p-3 rounded-xl border transition-all duration-150 flex flex-col gap-1.5 group cursor-pointer",
                       isActive
-                        ? "bg-emerald-950/40 border-emerald-500/60 shadow-md"
-                        : "bg-zinc-900/40 border-zinc-800/80 hover:bg-zinc-900/80 hover:border-zinc-700"
+                        ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-500/60 shadow-sm"
+                        : "bg-slate-50/70 dark:bg-zinc-900/40 border-slate-200 dark:border-zinc-800/80 hover:bg-slate-100 dark:hover:bg-zinc-900/80 hover:border-slate-300 dark:hover:border-zinc-700"
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={cn("text-xs font-bold", isActive ? "text-emerald-400" : "text-white")}>
+                      <span className={cn("text-xs font-bold", isActive ? "text-emerald-700 dark:text-emerald-400" : "text-slate-900 dark:text-white")}>
                         {shot.name}
                       </span>
                       <div className="flex items-center gap-1.5">
@@ -1285,30 +1289,30 @@ export default function BatCoachDashboard() {
                             e.stopPropagation();
                             openTutorialModal(shot.id, false);
                           }}
-                          className="p-1 rounded-md bg-zinc-800 hover:bg-emerald-500 hover:text-black text-zinc-400 transition-all cursor-pointer"
+                          className="p-1 rounded-md bg-slate-200/80 dark:bg-zinc-800 hover:bg-emerald-500 hover:text-white text-slate-600 dark:text-zinc-400 transition-all cursor-pointer"
                           title="Watch 5-Second Slow-Mo Blueprint"
                         >
                           <Video className="h-3 w-3" />
                         </button>
-                        <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+                        <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400">
                           {shot.difficulty}
                         </span>
-                        {isActive && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
+                        {isActive && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-zinc-400 leading-snug line-clamp-1">{shot.keyCue}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-snug line-clamp-1">{shot.keyCue}</p>
 
                     {/* Live probability indicator */}
                     {isLive && (
                       <div className="w-full pt-1">
-                        <div className="flex justify-between text-[10px] text-zinc-500 mb-0.5">
+                        <div className="flex justify-between text-[10px] text-slate-500 dark:text-zinc-500 mb-0.5">
                           <span>Match Confidence</span>
-                          <span className="mono font-bold text-zinc-300">{(matchProb * 100).toFixed(0)}%</span>
+                          <span className="mono font-bold text-slate-700 dark:text-zinc-300">{(matchProb * 100).toFixed(0)}%</span>
                         </div>
-                        <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full bg-slate-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                           <div
-                            className={cn("h-full rounded-full transition-all duration-200", isActive ? "bg-emerald-500" : "bg-zinc-600")}
+                            className={cn("h-full rounded-full transition-all duration-200", isActive ? "bg-emerald-500" : "bg-slate-400 dark:bg-zinc-600")}
                             style={{ width: `${matchProb * 100}%` }}
                           />
                         </div>
@@ -1325,7 +1329,7 @@ export default function BatCoachDashboard() {
         {/* ── Center Stage: Live Feed & Video Analysis (6 Cols) ──────────────── */}
         <div className="col-span-6 flex flex-col gap-3 min-h-0">
           
-          <div className="flex-1 flex flex-col min-h-0 bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl relative">
+          <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm dark:shadow-2xl relative">
             
             {/* Viewport Frame */}
             <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
@@ -1384,14 +1388,14 @@ export default function BatCoachDashboard() {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-white">Camera Standby</h4>
-                    <p className="text-xs text-zinc-500 mt-1 max-w-xs">
+                    <p className="text-xs text-zinc-400 mt-1 max-w-xs">
                       {isLive 
                         ? `Connecting to AI backend (${practiceMode === "with_bat" ? "YOLO-OBB + VideoMAE" : "Shadow Biomechanics + VideoMAE"})...` 
                         : "Click 'Start Live Feed' to begin real-time stroke analysis."}
                     </p>
                   </div>
                   {!isLive && (
-                    <Button onClick={() => setIsLive(true)} size="sm" className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs">
+                    <Button onClick={() => setIsLive(true)} size="sm" className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-md">
                       <Play className="h-3.5 w-3.5 fill-current" />
                       Start Practice
                     </Button>
@@ -1609,20 +1613,20 @@ export default function BatCoachDashboard() {
             </div>
 
             {/* Viewport Toolbar Footer */}
-            <div className="p-3 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between text-xs">
+            <div className="p-3 bg-white dark:bg-zinc-950 border-t border-slate-200 dark:border-zinc-800 flex items-center justify-between text-xs transition-colors">
               <div className="flex items-center gap-3">
-                <span className="text-zinc-400 font-semibold">Detected Action:</span>
-                <span className="font-bold text-white px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800">
+                <span className="text-slate-500 dark:text-zinc-400 font-semibold">Detected Action:</span>
+                <span className="font-bold text-slate-900 dark:text-white px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
                   {streamData?.topShot ? streamData.topShot.replace("_", " ").toUpperCase() : "Awaiting Movement"}
                 </span>
                 {streamData?.confidence && (
-                  <span className="text-emerald-400 mono font-bold text-xs">
+                  <span className="text-emerald-600 dark:text-emerald-400 mono font-bold text-xs">
                     {(streamData.confidence * 100).toFixed(0)}%
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-zinc-400">
                 <span className="text-[11px] font-medium">AR Telemetry Overlay</span>
                 <Switch checked={showAngles} onCheckedChange={setShowAngles} />
               </div>
@@ -1635,25 +1639,25 @@ export default function BatCoachDashboard() {
         <div className="col-span-3 flex flex-col gap-3 min-h-0">
           
           {/* Biometrics & Angles Card */}
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-3">
+          <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm dark:shadow-lg space-y-3">
             
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-3">
               <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white">Live Biometrics</h3>
+                <Activity className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Live Biometrics</h3>
               </div>
               <span className={cn(
                 "text-[10px] font-semibold px-2 py-0.5 rounded border",
-                !isBodyDetected ? "bg-zinc-900 border-zinc-800 text-zinc-500" : isElbowGood && isKneeGood ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                !isBodyDetected ? "bg-slate-100 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-500" : isElbowGood && isKneeGood ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400" : "bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400"
               )}>
                 {!isBodyDetected ? "No Stance" : isElbowGood && isKneeGood ? "Optimal Shape" : "Form Adjustment"}
               </span>
             </div>
 
             {!isBodyDetected ? (
-              <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/80 text-center space-y-1">
-                <p className="text-xs text-zinc-300 font-bold">No Batter Stance Detected</p>
-                <p className="text-[11px] text-zinc-500 leading-snug">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800/80 text-center space-y-1">
+                <p className="text-xs text-slate-800 dark:text-zinc-300 font-bold">No Batter Stance Detected</p>
+                <p className="text-[11px] text-slate-500 dark:text-zinc-500 leading-snug">
                   Stand in frame with your torso and arms visible to stream live joint angles.
                 </p>
               </div>
@@ -1662,61 +1666,61 @@ export default function BatCoachDashboard() {
                 <div className={cn("grid gap-2", practiceMode === "with_bat" ? "grid-cols-4" : "grid-cols-3")}>
                   
                   {/* Lead Elbow Metric Gauge */}
-                  <div className="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Elbow</span>
-                    <div className={cn("text-lg font-black mono", isElbowGood ? "text-emerald-400" : "text-amber-400")}>
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 text-center flex flex-col items-center gap-1">
+                    <span className="text-[9px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Elbow</span>
+                    <div className={cn("text-lg font-black mono", isElbowGood ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
                       {elbowAngle.toFixed(0)}°
                     </div>
                     <span className={cn(
                       "text-[8px] font-bold px-1 py-0.2 rounded",
-                      isElbowGood ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
+                      isElbowGood ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
                     )}>
                       ≥{currentMetadata.targetElbowAngle}°
                     </span>
                   </div>
 
                   {/* Lead Knee Metric Gauge */}
-                  <div className="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Knee</span>
-                    <div className={cn("text-lg font-black mono", isKneeGood ? "text-teal-400" : "text-amber-400")}>
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 text-center flex flex-col items-center gap-1">
+                    <span className="text-[9px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Knee</span>
+                    <div className={cn("text-lg font-black mono", isKneeGood ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400")}>
                       {kneeAngle.toFixed(0)}°
                     </div>
                     <span className={cn(
                       "text-[8px] font-bold px-1 py-0.2 rounded",
-                      isKneeGood ? "bg-teal-500/20 text-teal-400" : "bg-amber-500/20 text-amber-400"
+                      isKneeGood ? "bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-400" : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
                     )}>
                       ≤{currentMetadata.targetKneeAngle}°
                     </span>
                   </div>
 
                   {/* Torso Spine Lean Gauge */}
-                  <div className="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Spine Lean</span>
-                    <div className="text-lg font-black mono text-cyan-400">
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 text-center flex flex-col items-center gap-1">
+                    <span className="text-[9px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Spine Lean</span>
+                    <div className="text-lg font-black mono text-cyan-600 dark:text-cyan-400">
                       {bioData?.spine_angle ?? 0}°
                     </div>
-                    <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300">
+                    <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300">
                       Forward
                     </span>
                   </div>
 
                   {/* Bat Blade Angle Gauge (In With Bat mode) */}
                   {practiceMode === "with_bat" && (
-                    <div className="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center gap-1">
-                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Blade</span>
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 text-center flex flex-col items-center gap-1">
+                      <span className="text-[9px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Blade</span>
                       <div className={cn(
                         "text-lg font-black mono", 
                         batData?.detected 
-                          ? batData.alignment_match ? "text-emerald-400" : "text-amber-400" 
-                          : "text-zinc-500"
+                          ? batData.alignment_match ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400" 
+                          : "text-slate-400 dark:text-zinc-500"
                       )}>
                         {batData?.detected ? `${batData.blade_angle}°` : "--"}
                       </div>
                       <span className={cn(
                         "text-[8px] font-bold px-1 py-0.2 rounded",
                         batData?.detected 
-                          ? batData.alignment_match ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400" 
-                          : "bg-zinc-800 text-zinc-500"
+                          ? batData.alignment_match ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400" 
+                          : "bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-zinc-500"
                       )}>
                         {batData?.detected ? (batData.is_vertical ? "Vertical" : "Cross") : "None"}
                       </span>
@@ -1726,25 +1730,25 @@ export default function BatCoachDashboard() {
                 </div>
 
                 {/* Relative Body & Torso Kinematics Summary */}
-                <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-1.5 text-xs">
+                <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 space-y-1.5 text-xs">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-400">Stance Weight:</span>
-                    <span className="font-semibold text-emerald-400 font-mono">
+                    <span className="text-slate-500 dark:text-zinc-400">Stance Weight:</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
                       {bioData?.weight_distribution ?? "Balanced Stance"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-400">Head-over-Knee:</span>
+                    <span className="text-slate-500 dark:text-zinc-400">Head-over-Knee:</span>
                     <span className={cn(
                       "font-semibold font-mono",
-                      bioData?.head_over_knee ? "text-emerald-400" : "text-amber-400"
+                      bioData?.head_over_knee ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
                     )}>
                       {bioData?.head_over_knee ? "Over Front Knee ✓" : "Off Center ⚠️"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-400">Arm Arc Reach:</span>
-                    <span className="font-semibold text-zinc-200 font-mono">
+                    <span className="text-slate-500 dark:text-zinc-400">Arm Arc Reach:</span>
+                    <span className="font-semibold text-slate-800 dark:text-zinc-200 font-mono">
                       {bioData?.arm_extension ? `${(bioData.arm_extension * 100).toFixed(0)}% Extension` : "--"}
                     </span>
                   </div>
@@ -1756,35 +1760,35 @@ export default function BatCoachDashboard() {
 
           {/* YOLOv8-OBB Bat Tracking Telemetry Card (Only in With-Bat Mode) */}
           {practiceMode === "with_bat" && (
-            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-3">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+            <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm dark:shadow-lg space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2">
                 <div className="flex items-center gap-2">
-                  <Cpu className="h-4 w-4 text-emerald-400" />
-                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">YOLO-OBB Bat Telemetry</h3>
+                  <Cpu className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">YOLO-OBB Bat Telemetry</h3>
                 </div>
                 <span className={cn(
                   "text-[9px] font-semibold px-2 py-0.5 rounded border font-mono",
                   batData?.detected
                     ? batData.alignment_match
-                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                      : "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                    : "bg-zinc-900 border-zinc-800 text-zinc-500"
+                      ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                      : "bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400"
+                    : "bg-slate-100 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-500"
                 )}>
                   {batData?.detected ? (batData.alignment_match ? "Optimal Plane ✓" : "Angle Alert ⚠️") : "Standby"}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center">
-                  <span className="text-[9px] text-zinc-500 uppercase font-semibold">Face Alignment</span>
-                  <div className="text-xs font-bold text-zinc-200 mt-1">
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 text-center flex flex-col items-center">
+                  <span className="text-[9px] text-slate-500 dark:text-zinc-500 uppercase font-semibold">Face Alignment</span>
+                  <div className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-1">
                     {batData?.detected ? (batData.is_vertical ? "Vertical Face" : "Horizontal Blade") : "No Bat"}
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center flex flex-col items-center">
-                  <span className="text-[9px] text-zinc-500 uppercase font-semibold">Bat-to-Pad Gap</span>
-                  <div className="text-xs font-bold text-cyan-400 mt-1 mono">
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 text-center flex flex-col items-center">
+                  <span className="text-[9px] text-slate-500 dark:text-zinc-500 uppercase font-semibold">Bat-to-Pad Gap</span>
+                  <div className="text-xs font-bold text-cyan-600 dark:text-cyan-400 mt-1 mono">
                     {batData?.detected && batData?.bat_pad_gap !== null && batData?.bat_pad_gap !== undefined ? `${batData.bat_pad_gap} L (Compact)` : "--"}
                   </div>
                 </div>
@@ -1793,17 +1797,17 @@ export default function BatCoachDashboard() {
           )}
 
           {/* Session Performance Card */}
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 shadow-lg space-y-3">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+          <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm dark:shadow-lg space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">Session Performance</span>
+                <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Session Performance</span>
                 <span className={cn(
                   "text-[9px] font-bold px-2 py-0.5 rounded border font-mono flex items-center gap-1",
                   isDrillLocked 
-                    ? "bg-red-500/20 border-red-500/50 text-red-400 animate-pulse" 
+                    ? "bg-red-100 dark:bg-red-500/20 border-red-300 dark:border-red-500/50 text-red-700 dark:text-red-400 animate-pulse" 
                     : streakCount >= 3 
-                    ? "bg-amber-500/20 border-amber-500/40 text-amber-300" 
-                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                    ? "bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/40 text-amber-800 dark:text-amber-300" 
+                    : "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
                 )}>
                   {isDrillLocked ? (
                     <>
@@ -1812,19 +1816,19 @@ export default function BatCoachDashboard() {
                     </>
                   ) : streakCount >= 3 ? (
                     <>
-                      <Flame className="h-3 w-3 text-amber-400 fill-amber-400" />
+                      <Flame className="h-3 w-3 text-amber-500 fill-amber-500" />
                       <span>ON STREAK</span>
                     </>
                   ) : (
                     <>
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                       <span>ACTIVE DRILL</span>
                     </>
                   )}
                 </span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[10px] text-zinc-400 font-mono">
+                <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono">
                   {totalSwings > 0 ? `${((repCount / totalSwings) * 100).toFixed(0)}% Accuracy` : "0% Accuracy"}
                 </span>
                 <Flame className="h-4 w-4 text-amber-500" />
@@ -1834,43 +1838,43 @@ export default function BatCoachDashboard() {
             <div className="grid grid-cols-3 gap-2">
               <div className={cn(
                 "p-2.5 rounded-xl border text-center transition-all",
-                isDrillLocked ? "bg-red-950/30 border-red-500/30" : "bg-zinc-900/80 border-zinc-800"
+                isDrillLocked ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-500/30" : "bg-slate-50 dark:bg-zinc-900/80 border-slate-200 dark:border-zinc-800"
               )}>
-                <div className="text-[9px] text-zinc-500 uppercase font-semibold flex items-center justify-center gap-1">
+                <div className="text-[9px] text-slate-500 dark:text-zinc-500 uppercase font-semibold flex items-center justify-center gap-1">
                   <span>Clean Reps</span>
-                  {isDrillLocked && <Lock className="h-2.5 w-2.5 text-red-400" />}
+                  {isDrillLocked && <Lock className="h-2.5 w-2.5 text-red-500" />}
                 </div>
-                <div className={cn("text-xl font-black mono mt-0.5", isDrillLocked ? "text-red-400" : "text-emerald-400")}>
+                <div className={cn("text-xl font-black mono mt-0.5", isDrillLocked ? "text-red-500" : "text-emerald-600 dark:text-emerald-400")}>
                   {repCount}
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center">
-                <div className="text-[9px] text-zinc-500 uppercase font-semibold">Total Swings</div>
-                <div className="text-xl font-black mono text-zinc-300 mt-0.5">{totalSwings}</div>
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 text-center">
+                <div className="text-[9px] text-slate-500 dark:text-zinc-500 uppercase font-semibold">Total Swings</div>
+                <div className="text-xl font-black mono text-slate-800 dark:text-zinc-300 mt-0.5">{totalSwings}</div>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-center">
-                <div className="text-[9px] text-zinc-500 uppercase font-semibold">Streak</div>
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 text-center">
+                <div className="text-[9px] text-slate-500 dark:text-zinc-500 uppercase font-semibold">Streak</div>
                 <div className="flex items-center justify-center gap-0.5 mt-0.5">
                   <Flame className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                  <span className="text-xl font-black mono text-emerald-400">{streakCount}</span>
+                  <span className="text-xl font-black mono text-emerald-600 dark:text-emerald-400">{streakCount}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Recent Stroke History Log */}
-          <div className="flex-1 flex flex-col min-h-0 bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
-            <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Activity Timeline</h4>
-              <span className="text-[10px] font-mono text-zinc-400">{sessionLogs.length} Events</span>
+          <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm dark:shadow-lg">
+            <div className="p-3 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Activity Timeline</h4>
+              <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-400">{sessionLogs.length} Events</span>
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
               {sessionLogs.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-4 text-zinc-500 text-xs">
-                  <Info className="h-5 w-5 mb-2 text-zinc-600" />
+                <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-400 dark:text-zinc-500 text-xs">
+                  <Info className="h-5 w-5 mb-2 text-slate-400 dark:text-zinc-600" />
                   No stroke events recorded yet. Perform shots in stance to log feedback.
                 </div>
               ) : (
@@ -1880,10 +1884,10 @@ export default function BatCoachDashboard() {
                     className={cn(
                       "p-2.5 rounded-xl border flex items-center justify-between text-xs transition-all",
                       log.status === "success" 
-                        ? "bg-zinc-900/60 border-zinc-800" 
+                        ? "bg-slate-50 dark:bg-zinc-900/60 border-slate-200 dark:border-zinc-800" 
                         : log.status === "wrong_shot"
-                        ? "bg-red-950/20 border-red-500/30"
-                        : "bg-amber-950/20 border-amber-500/30"
+                        ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-500/30"
+                        : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-500/30"
                     )}
                   >
                     <div className="flex items-center gap-2">
@@ -1892,17 +1896,17 @@ export default function BatCoachDashboard() {
                         log.status === "success" ? "bg-emerald-500" : log.status === "wrong_shot" ? "bg-red-500" : "bg-amber-500"
                       )} />
                       <div>
-                        <div className="font-bold text-white leading-tight">{log.shot}</div>
-                        <div className="text-[10px] text-zinc-500 mono">{log.time}</div>
+                        <div className="font-bold text-slate-900 dark:text-white leading-tight">{log.shot}</div>
+                        <div className="text-[10px] text-slate-500 dark:text-zinc-500 mono">{log.time}</div>
                       </div>
                     </div>
                     <span className={cn(
                       "font-mono text-[10px] font-bold px-2 py-0.5 rounded",
                       log.status === "success" 
-                        ? "bg-emerald-500/20 text-emerald-400" 
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400" 
                         : log.status === "wrong_shot"
-                        ? "bg-red-500/20 text-red-400"
-                        : "bg-amber-500/20 text-amber-400"
+                        ? "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-400"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400"
                     )}>
                       {log.status === "success" ? `${log.grade} (${(log.confidence * 100).toFixed(0)}%)` : log.status === "wrong_shot" ? "Wrong Shot" : "Form Alert"}
                     </span>
