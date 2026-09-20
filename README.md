@@ -1,3 +1,14 @@
+---
+title: BatCoach AI Pro Backend
+emoji: 🏏
+colorFrom: green
+colorTo: blue
+sdk: gradio
+sdk_version: 4.44.0
+app_file: app.py
+pinned: false
+---
+
 # BatCoach AI Pro v2.0
 ### Real-Time Cricket Batting Biomechanics, Dual-Mode YOLOv8-OBB & Neural Stroke Analytics
 
