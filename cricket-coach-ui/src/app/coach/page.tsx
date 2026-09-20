@@ -7,7 +7,7 @@ import {
   Settings, Zap, CheckCircle2, AlertTriangle, Flame, 
   RotateCcw, Shield, Award, Cpu, Search, Sparkles, SlidersHorizontal,
   ChevronRight, BarChart2, Radio, Info, UserCheck, HelpCircle, ArrowLeft, Home,
-  Crosshair, Layers, Compass, Lock, Unlock, AlertOctagon, XCircle, Video, Eye, Check
+  Crosshair, Layers, Compass, Lock, Unlock, AlertOctagon, XCircle, Video, Eye, Check, Calendar
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "../../lib/utils";
+import { TrainingCalendarModal } from "@/components/TrainingCalendarModal";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Shot Catalog & Metadata
@@ -577,6 +578,9 @@ export default function BatCoachDashboard() {
   const [isSavingDb, setIsSavingDb] = useState<boolean>(false);
   const [dbSavedMessage, setDbSavedMessage] = useState<string | null>(null);
 
+  // Training Schedule & Google Calendar Modal State
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
+
   const wsRef = useRef<WebSocket | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -610,6 +614,18 @@ export default function BatCoachDashboard() {
       const storedSeen = localStorage.getItem("batcoach_seen_tutorials");
       if (storedSeen) {
         setSeenTutorials(JSON.parse(storedSeen));
+      }
+
+      // Check URL parameters for direct drill launch or calendar trigger
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const urlShot = params.get("shot");
+        if (urlShot && SHOT_CATALOG.some(s => s.id === urlShot)) {
+          setTargetShot(urlShot);
+        }
+        if (params.get("calendar") === "true") {
+          setIsCalendarOpen(true);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -1112,6 +1128,18 @@ export default function BatCoachDashboard() {
             <span className="text-zinc-500">Session:</span>
             <span className="mono font-bold text-white">{formatTime(sessionSeconds)}</span>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCalendarOpen(true)}
+            className="h-8 gap-1.5 text-xs text-emerald-300 hover:text-white border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-900/60"
+            title="Open Athlete Training Calendar & Google Calendar Sync"
+          >
+            <Calendar className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="hidden sm:inline font-semibold">Training Schedule</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          </Button>
 
           <Button
             variant="outline"
@@ -1904,6 +1932,16 @@ export default function BatCoachDashboard() {
           />
         )}
       </AnimatePresence>
+
+      {/* ── Athlete Training Calendar & Google Calendar Modal ───────────────── */}
+      <TrainingCalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
+        currentActiveShot={targetShot}
+        onLaunchShot={(shotId) => {
+          handleShotChange(shotId);
+        }}
+      />
 
     </div>
   );

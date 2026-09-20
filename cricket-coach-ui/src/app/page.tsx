@@ -7,12 +7,13 @@ import {
   ArrowRight, ChevronLeft, ChevronRight, User, 
   LogIn, X, Lock, Mail, Video, Eye, EyeOff, Dumbbell, Compass,
   Volume2, Flame, BarChart3, Layers, Check, LogOut, ArrowUpRight,
-  TrendingUp, Radio, Target, Sparkles, SlidersHorizontal, RefreshCw
+  TrendingUp, Radio, Target, Sparkles, SlidersHorizontal, RefreshCw, Calendar
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "../lib/utils";
+import { TrainingCalendarModal } from "@/components/TrainingCalendarModal";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // High-Definition Cricket Stadium & Match Photography
@@ -74,7 +75,7 @@ interface UserProfile {
   stance: "Right-Hand Batter" | "Left-Hand Batter";
 }
 
-const GOOGLE_CLIENT_ID = "1052308639879-asjh48bensq4qto0bv29t7h70km9e9lm.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 // Decode JWT token from Google Identity Services
 const parseJwt = (token: string) => {
@@ -98,6 +99,7 @@ const parseJwt = (token: string) => {
 export default function HomePage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isSignInOpen, setIsSignInOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [selectedShotCategory, setSelectedShotCategory] = useState<string>("All");
@@ -301,6 +303,17 @@ export default function HomePage() {
             </Button>
           )}
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCalendarOpen(true)}
+            className="text-xs border-emerald-500/30 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60 hover:text-white gap-1.5 font-medium"
+          >
+            <Calendar className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="hidden sm:inline">Training Schedule</span>
+            <span className="sm:hidden">Calendar</span>
+          </Button>
+
           <Link href="/coach">
             <Button size="sm" className="gap-1.5 font-semibold text-xs bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20">
               <Play className="h-3 w-3 fill-current" />
@@ -368,6 +381,16 @@ export default function HomePage() {
                   <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
               </Link>
+
+              <Button 
+                variant="outline" 
+                size="lg" 
+                onClick={() => setIsCalendarOpen(true)}
+                className="text-sm font-semibold h-12 px-6 bg-emerald-950/40 border-emerald-500/40 hover:bg-emerald-900/50 text-emerald-300 backdrop-blur-md gap-2 shadow-lg shadow-emerald-950/40"
+              >
+                <Calendar className="h-4 w-4 text-emerald-400" />
+                Training Schedule
+              </Button>
 
               <Button 
                 variant="outline" 
@@ -770,6 +793,15 @@ export default function HomePage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── Athlete Training Calendar & Google Calendar Modal ───────────────── */}
+      <TrainingCalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
+        onLaunchShot={(shotId) => {
+          window.location.href = `/coach?shot=${shotId}`;
+        }}
+      />
 
     </div>
   );

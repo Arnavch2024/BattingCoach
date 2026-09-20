@@ -849,6 +849,24 @@ def init_db():
                 coach_feedback TEXT,
                 recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS training_schedules (
+                id SERIAL PRIMARY KEY,
+                schedule_id VARCHAR(100) UNIQUE NOT NULL,
+                athlete_email VARCHAR(255),
+                title VARCHAR(255) NOT NULL,
+                shot_type VARCHAR(100),
+                session_type VARCHAR(50) DEFAULT 'net_session',
+                scheduled_date VARCHAR(50) NOT NULL,
+                start_time VARCHAR(20) NOT NULL,
+                duration_minutes INT DEFAULT 45,
+                target_reps INT DEFAULT 30,
+                location VARCHAR(255) DEFAULT 'Cricket Nets',
+                notes TEXT,
+                completed BOOLEAN DEFAULT FALSE,
+                synced_to_google BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
         """)
         conn.commit()
         cur.close()
@@ -866,6 +884,22 @@ class AthleteSyncRequest(BaseModel):
     name: str
     stance: Optional[str] = "Right-Hand Batter"
     experience_level: Optional[str] = "Club Cricketer"
+
+class ScheduleSyncRequest(BaseModel):
+    id: str
+    title: str
+    shotId: Optional[str] = "cover"
+    shotName: Optional[str] = "Cover Drive"
+    sessionType: Optional[str] = "net_session"
+    date: str
+    startTime: str
+    durationMinutes: Optional[int] = 45
+    targetReps: Optional[int] = 30
+    location: Optional[str] = "Cricket Nets"
+    notes: Optional[str] = ""
+    completed: Optional[bool] = False
+    syncedToGoogle: Optional[bool] = False
+    athlete_email: Optional[str] = "athlete@cricketcoach.ai"
 
 class StrokeLogItem(BaseModel):
     shot_name: str
@@ -1075,6 +1109,105 @@ async def get_stats(email: str = "athlete@batcoach.ai"):
     try:
         stats = await asyncio.to_thread(_db_op)
         return {"success": True, "stats": stats}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/schedule/sync")
+async def sync_schedule(req: ScheduleSyncRequest):
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO training_schedules
+                    (schedule_id, athlete_email, title, shot_type, session_type, scheduled_date, start_time, duration_minutes, target_reps, location, notes, completed, synced_to_google)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (schedule_id)
+                DO UPDATE SET
+                    title = EXCLUDED.title,
+                    shot_type = EXCLUDED.shot_type,
+                    session_type = EXCLUDED.session_type,
+                    scheduled_date = EXCLUDED.scheduled_date,
+                    start_time = EXCLUDED.start_time,
+                    duration_minutes = EXCLUDED.duration_minutes,
+                    target_reps = EXCLUDED.target_reps,
+                    location = EXCLUDED.location,
+                    notes = EXCLUDED.notes,
+                    completed = EXCLUDED.completed,
+                    synced_to_google = EXCLUDED.synced_to_google
+                RETURNING id;
+            """, (
+                req.id, req.athlete_email, req.title, req.shotName or req.shotId,
+                req.sessionType, req.date, req.startTime, req.durationMinutes,
+                req.targetReps, req.location, req.notes, req.completed, req.syncedToGoogle
+            ))
+            sched_id = cur.fetchone()[0]
+            conn.commit()
+            cur.close()
+            return sched_id
+        finally:
+            release_db_conn(conn)
+    try:
+        res_id = await asyncio.to_thread(_db_op)
+        return {"success": True, "schedule_id": res_id}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/schedule/list")
+async def list_schedule(email: str = "athlete@cricketcoach.ai"):
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT schedule_id, title, shot_type, session_type, scheduled_date, start_time, duration_minutes, target_reps, location, notes, completed, synced_to_google, created_at
+                FROM training_schedules
+                WHERE athlete_email = %s OR athlete_email = 'athlete@cricketcoach.ai'
+                ORDER BY scheduled_date ASC, start_time ASC;
+            """, (email,))
+            rows = cur.fetchall()
+            cur.close()
+            return [
+                {
+                    "id": r[0],
+                    "title": r[1],
+                    "shotName": r[2],
+                    "sessionType": r[3],
+                    "date": r[4],
+                    "startTime": r[5],
+                    "durationMinutes": r[6],
+                    "targetReps": r[7],
+                    "location": r[8],
+                    "notes": r[9],
+                    "completed": r[10],
+                    "syncedToGoogle": r[11],
+                    "createdAt": str(r[12]),
+                }
+                for r in rows
+            ]
+        finally:
+            release_db_conn(conn)
+    try:
+        items = await asyncio.to_thread(_db_op)
+        return {"success": True, "schedules": items}
+    except Exception as e:
+        return {"success": False, "error": str(e), "schedules": []}
+
+@app.delete("/api/schedule/{schedule_id}")
+async def delete_schedule(schedule_id: str):
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM training_schedules WHERE schedule_id = %s;", (schedule_id,))
+            conn.commit()
+            cur.close()
+            return True
+        finally:
+            release_db_conn(conn)
+    try:
+        await asyncio.to_thread(_db_op)
+        return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
