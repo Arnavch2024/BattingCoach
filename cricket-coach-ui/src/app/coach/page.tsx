@@ -1938,6 +1938,8 @@ export default function BatCoachDashboard() {
         isOpen={isCalendarOpen}
         onClose={() => setIsCalendarOpen(false)}
         currentActiveShot={targetShot}
+        userEmail={userProfile.email}
+        userName={userProfile.name}
         onLaunchShot={(shotId) => {
           handleShotChange(shotId);
         }}

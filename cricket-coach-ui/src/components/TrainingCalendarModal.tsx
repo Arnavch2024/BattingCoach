@@ -29,6 +29,8 @@ interface TrainingCalendarModalProps {
   onClose: () => void;
   onLaunchShot?: (shotId: string) => void;
   currentActiveShot?: string;
+  userEmail?: string;
+  userName?: string;
 }
 
 const AVAILABLE_SHOTS = [
@@ -49,6 +51,8 @@ export function TrainingCalendarModal({
   onClose,
   onLaunchShot,
   currentActiveShot = "cover",
+  userEmail,
+  userName,
 }: TrainingCalendarModalProps) {
   const [events, setEvents] = useState<TrainingEvent[]>([]);
   const [filterType, setFilterType] = useState<string>("all");
@@ -69,13 +73,26 @@ export function TrainingCalendarModal({
     notes: "",
   });
 
-  // Load existing events from storage
+  // Load existing events isolated specifically for this user
   useEffect(() => {
     if (isOpen) {
-      const loaded = loadTrainingSchedule();
+      // 1. Load from user-specific local storage immediately
+      const loaded = loadTrainingSchedule(userEmail);
       setEvents(loaded);
+
+      // 2. Fetch from backend DB for this user if available
+      const activeEmail = userEmail || "athlete@cricketcoach.ai";
+      fetch(`http://127.0.0.1:8888/api/schedule/list?email=${encodeURIComponent(activeEmail)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.success && Array.isArray(data.schedules) && data.schedules.length > 0) {
+            setEvents(data.schedules);
+            saveTrainingSchedule(data.schedules, userEmail);
+          }
+        })
+        .catch(() => {});
     }
-  }, [isOpen]);
+  }, [isOpen, userEmail]);
 
   // Update target shot default when modal opens
   useEffect(() => {
@@ -130,6 +147,8 @@ export function TrainingCalendarModal({
 
     const shotMeta = AVAILABLE_SHOTS.find(s => s.id === formData.shotId) || AVAILABLE_SHOTS[0];
 
+    const activeEmail = userEmail || "athlete@cricketcoach.ai";
+
     const newEvent: TrainingEvent = {
       id: `sched_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       title: formData.title.trim(),
@@ -144,12 +163,13 @@ export function TrainingCalendarModal({
       notes: formData.notes.trim(),
       completed: false,
       syncedToGoogle: andSyncGoogle,
+      athleteEmail: activeEmail,
       createdAt: new Date().toISOString(),
     };
 
     const updated = [newEvent, ...events];
     setEvents(updated);
-    saveTrainingSchedule(updated);
+    saveTrainingSchedule(updated, userEmail);
     setIsCreating(false);
 
     // Sync to backend if running
@@ -157,7 +177,7 @@ export function TrainingCalendarModal({
       fetch("http://127.0.0.1:8888/api/schedule/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newEvent),
+        body: JSON.stringify({ ...newEvent, athlete_email: activeEmail }),
       }).catch(() => {});
     } catch (_) {}
 
@@ -165,7 +185,7 @@ export function TrainingCalendarModal({
       // 1-Click direct Google Calendar Web Intent
       const gcalUrl = buildGoogleCalendarUrl(newEvent);
       window.open(gcalUrl, "_blank", "noopener,noreferrer");
-      setSyncNotice(`📅 Added "${newEvent.title}" to BatCoach schedule and opened Google Calendar!`);
+      setSyncNotice(`📅 Added "${newEvent.title}" to your schedule and opened Google Calendar!`);
     } else {
       setSyncNotice(`✅ Practice session "${newEvent.title}" scheduled successfully!`);
     }
@@ -182,14 +202,35 @@ export function TrainingCalendarModal({
       return e;
     });
     setEvents(updated);
-    saveTrainingSchedule(updated);
+    saveTrainingSchedule(updated, userEmail);
+
+    // Sync toggle to backend
+    const activeEmail = userEmail || "athlete@cricketcoach.ai";
+    const target = updated.find(e => e.id === id);
+    if (target) {
+      try {
+        fetch("http://127.0.0.1:8888/api/schedule/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...target, athlete_email: activeEmail }),
+        }).catch(() => {});
+      } catch (_) {}
+    }
   };
 
   // Delete session
   const handleDeleteEvent = (id: string) => {
     const updated = events.filter(e => e.id !== id);
     setEvents(updated);
-    saveTrainingSchedule(updated);
+    saveTrainingSchedule(updated, userEmail);
+
+    // Delete from backend for this user
+    const activeEmail = userEmail || "athlete@cricketcoach.ai";
+    try {
+      fetch(`http://127.0.0.1:8888/api/schedule/${id}?email=${encodeURIComponent(activeEmail)}`, {
+        method: "DELETE",
+      }).catch(() => {});
+    } catch (_) {}
   };
 
   // Direct 1-Click Sync to Google Calendar for existing event
@@ -199,25 +240,26 @@ export function TrainingCalendarModal({
     
     const updated = events.map(e => e.id === event.id ? { ...e, syncedToGoogle: true } : e);
     setEvents(updated);
-    saveTrainingSchedule(updated);
+    saveTrainingSchedule(updated, userEmail);
     
     setSyncNotice(`📅 Google Calendar opened for "${event.title}". Click "Save" in Google Calendar!`);
     setTimeout(() => setSyncNotice(null), 4000);
   };
 
-  // Connect Google Account via GIS OAuth
+  // Connect Google Account via GIS OAuth (user-scoped)
   const handleConnectGoogleOAuth = () => {
     setGoogleAuthStatus("authenticating");
     requestGoogleCalendarAuth(
       (token) => {
         setGoogleAuthStatus("connected");
-        setSyncNotice("✨ Google Calendar API connected! Direct API sync enabled.");
+        setSyncNotice("✨ Google Calendar API connected for your account! Direct API sync enabled.");
         setTimeout(() => setSyncNotice(null), 4000);
       },
       (err) => {
         setGoogleAuthStatus("idle");
         alert("Google authorization popup closed or blocked. You can still use the 1-click 'Add to Google Calendar' button anytime!");
-      }
+      },
+      userEmail
     );
   };
 
@@ -239,13 +281,18 @@ export function TrainingCalendarModal({
                 <CalendarIcon className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-lg font-bold text-white tracking-tight">
                     Athlete Training Calendar
                   </h2>
                   <Badge className="bg-emerald-950 text-emerald-300 border-emerald-500/30 text-[10px] font-mono">
                     Google Calendar Sync
                   </Badge>
+                  {userEmail && (
+                    <span className="text-[10px] text-emerald-400 font-mono bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-full">
+                      👤 {userName ? `${userName} (${userEmail})` : userEmail}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-zinc-400">
                   Schedule batting practices, net sessions, and match days with 1-click Google Calendar sync.

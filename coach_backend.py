@@ -1162,7 +1162,7 @@ async def list_schedule(email: str = "athlete@cricketcoach.ai"):
             cur.execute("""
                 SELECT schedule_id, title, shot_type, session_type, scheduled_date, start_time, duration_minutes, target_reps, location, notes, completed, synced_to_google, created_at
                 FROM training_schedules
-                WHERE athlete_email = %s OR athlete_email = 'athlete@cricketcoach.ai'
+                WHERE athlete_email = %s
                 ORDER BY scheduled_date ASC, start_time ASC;
             """, (email,))
             rows = cur.fetchall()
@@ -1194,12 +1194,12 @@ async def list_schedule(email: str = "athlete@cricketcoach.ai"):
         return {"success": False, "error": str(e), "schedules": []}
 
 @app.delete("/api/schedule/{schedule_id}")
-async def delete_schedule(schedule_id: str):
+async def delete_schedule(schedule_id: str, email: str = "athlete@cricketcoach.ai"):
     def _db_op():
         conn = get_db_conn()
         try:
             cur = conn.cursor()
-            cur.execute("DELETE FROM training_schedules WHERE schedule_id = %s;", (schedule_id,))
+            cur.execute("DELETE FROM training_schedules WHERE schedule_id = %s AND athlete_email = %s;", (schedule_id, email))
             conn.commit()
             cur.close()
             return True

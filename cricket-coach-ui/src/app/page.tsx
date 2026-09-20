@@ -798,6 +798,8 @@ export default function HomePage() {
       <TrainingCalendarModal
         isOpen={isCalendarOpen}
         onClose={() => setIsCalendarOpen(false)}
+        userEmail={userProfile?.email}
+        userName={userProfile?.name}
         onLaunchShot={(shotId) => {
           window.location.href = `/coach?shot=${shotId}`;
         }}

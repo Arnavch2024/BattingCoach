@@ -29,6 +29,7 @@ export interface TrainingEvent {
   completed: boolean;
   syncedToGoogle?: boolean;
   googleEventId?: string;
+  athleteEmail?: string;
   createdAt: string;
 }
 
@@ -197,13 +198,20 @@ export function downloadIcsFile(event: TrainingEvent): void {
   window.URL.revokeObjectURL(url);
 }
 
-// Token storage key
-const GOOGLE_ACCESS_TOKEN_KEY = "batcoach_gcal_token";
+export function getGoogleTokenKey(email?: string): string {
+  const clean = (email || "").toLowerCase().trim();
+  return clean ? `batcoach_gcal_token_${clean}` : "batcoach_gcal_token_default";
+}
 
 /**
  * Request Google Calendar OAuth2 Access Token via Google Identity Services (GIS)
+ * Scoped specifically to the logged-in user's email session
  */
-export function requestGoogleCalendarAuth(onSuccess: (token: string) => void, onError?: (err: any) => void): void {
+export function requestGoogleCalendarAuth(
+  onSuccess: (token: string) => void, 
+  onError?: (err: any) => void,
+  userEmail?: string
+): void {
   if (typeof window === "undefined" || !(window as any).google?.accounts?.oauth2) {
     if (onError) onError(new Error("Google Identity Services script not yet loaded"));
     return;
@@ -213,9 +221,10 @@ export function requestGoogleCalendarAuth(onSuccess: (token: string) => void, on
     const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: "https://www.googleapis.com/auth/calendar.events",
+      hint: userEmail || undefined, // Pre-selects the user's specific Google account if provided
       callback: (tokenResponse: any) => {
         if (tokenResponse?.access_token) {
-          sessionStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, tokenResponse.access_token);
+          sessionStorage.setItem(getGoogleTokenKey(userEmail), tokenResponse.access_token);
           onSuccess(tokenResponse.access_token);
         } else if (tokenResponse?.error) {
           if (onError) onError(tokenResponse);
@@ -231,12 +240,18 @@ export function requestGoogleCalendarAuth(onSuccess: (token: string) => void, on
 
 /**
  * Insert event directly into Google Calendar via REST API (if user authorized)
+ * Isolated per user session token
  */
-export async function insertEventToGoogleCalendar(event: TrainingEvent, accessToken?: string): Promise<{ success: boolean; eventId?: string; htmlLink?: string; error?: string }> {
-  const token = accessToken || (typeof window !== "undefined" ? sessionStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY) : null);
+export async function insertEventToGoogleCalendar(
+  event: TrainingEvent, 
+  accessToken?: string,
+  userEmail?: string
+): Promise<{ success: boolean; eventId?: string; htmlLink?: string; error?: string }> {
+  const tokenKey = getGoogleTokenKey(userEmail || event.athleteEmail);
+  const token = accessToken || (typeof window !== "undefined" ? sessionStorage.getItem(tokenKey) : null);
   
   if (!token) {
-    return { success: false, error: "No active Google OAuth token. Use 1-click web intent fallback." };
+    return { success: false, error: "No active Google OAuth token for this athlete. Use 1-click web intent fallback." };
   }
 
   try {
@@ -291,8 +306,9 @@ export async function insertEventToGoogleCalendar(event: TrainingEvent, accessTo
 /**
  * Initial starter cricket practice schedule
  */
-export function getInitialTrainingSchedule(): TrainingEvent[] {
+export function getInitialTrainingSchedule(athleteEmail?: string): TrainingEvent[] {
   const today = new Date();
+  const email = athleteEmail || "athlete@cricketcoach.ai";
   
   // Format Date helper
   const getDateStr = (offsetDays: number): string => {
@@ -304,7 +320,7 @@ export function getInitialTrainingSchedule(): TrainingEvent[] {
 
   return [
     {
-      id: "sched_initial_1",
+      id: `sched_init_1_${Math.random().toString(36).substring(2, 6)}`,
       title: "Cover Drive High-Elbow Net Session",
       shotId: "cover",
       shotName: "Cover Drive",
@@ -317,10 +333,11 @@ export function getInitialTrainingSchedule(): TrainingEvent[] {
       notes: "Focus on knee bend ≤ 155° and keeping lead elbow high at impact line.",
       completed: false,
       syncedToGoogle: false,
+      athleteEmail: email,
       createdAt: new Date().toISOString(),
     },
     {
-      id: "sched_initial_2",
+      id: `sched_init_2_${Math.random().toString(36).substring(2, 6)}`,
       title: "Morning Shadow Biomechanics Calibration",
       shotId: "pull",
       shotName: "Pull Shot",
@@ -333,10 +350,11 @@ export function getInitialTrainingSchedule(): TrainingEvent[] {
       notes: "Quick hip clearance pivot with arms fully extended into horizontal arc.",
       completed: false,
       syncedToGoogle: false,
+      athleteEmail: email,
       createdAt: new Date().toISOString(),
     },
     {
-      id: "sched_initial_3",
+      id: `sched_init_3_${Math.random().toString(36).substring(2, 6)}`,
       title: "Weekend Championship Match & Warmup",
       shotId: "straight",
       shotName: "Straight Drive",
@@ -349,10 +367,11 @@ export function getInitialTrainingSchedule(): TrainingEvent[] {
       notes: "Pre-match 20 textbook straight drives to dial in front-foot balance.",
       completed: false,
       syncedToGoogle: false,
+      athleteEmail: email,
       createdAt: new Date().toISOString(),
     },
     {
-      id: "sched_initial_4",
+      id: `sched_init_4_${Math.random().toString(36).substring(2, 6)}`,
       title: "Forward Defense & Spin Counter Drill",
       shotId: "defense",
       shotName: "Forward Defense",
@@ -365,40 +384,46 @@ export function getInitialTrainingSchedule(): TrainingEvent[] {
       notes: "Soft hands under eyes, zero bat-pad gap.",
       completed: false,
       syncedToGoogle: false,
+      athleteEmail: email,
       createdAt: new Date().toISOString(),
     }
   ];
 }
 
-const STORAGE_KEY = "batcoach_training_schedules_v1";
+export function getScheduleStorageKey(email?: string): string {
+  const clean = (email || "").toLowerCase().trim();
+  return clean ? `batcoach_schedule_${clean}` : "batcoach_schedule_guest";
+}
 
 /**
- * Load training schedule from local storage (or seed initial schedule)
+ * Load training schedule from local storage, strictly partitioned by user email
  */
-export function loadTrainingSchedule(): TrainingEvent[] {
+export function loadTrainingSchedule(userEmail?: string): TrainingEvent[] {
   if (typeof window === "undefined") return [];
+  const key = getScheduleStorageKey(userEmail);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) {
-      const initial = getInitialTrainingSchedule();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
+      const initial = getInitialTrainingSchedule(userEmail);
+      localStorage.setItem(key, JSON.stringify(initial));
       return initial;
     }
     return JSON.parse(raw);
   } catch (e) {
-    console.error("Failed to load training schedule:", e);
-    return getInitialTrainingSchedule();
+    console.error("Failed to load user-specific training schedule:", e);
+    return getInitialTrainingSchedule(userEmail);
   }
 }
 
 /**
- * Save training schedule to local storage
+ * Save training schedule to local storage, strictly partitioned by user email
  */
-export function saveTrainingSchedule(events: TrainingEvent[]): void {
+export function saveTrainingSchedule(events: TrainingEvent[], userEmail?: string): void {
   if (typeof window === "undefined") return;
+  const key = getScheduleStorageKey(userEmail);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+    localStorage.setItem(key, JSON.stringify(events));
   } catch (e) {
-    console.error("Failed to persist training schedule:", e);
+    console.error("Failed to persist user-specific training schedule:", e);
   }
 }
