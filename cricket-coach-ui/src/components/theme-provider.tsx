@@ -40,10 +40,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     if (t === "dark") {
       root.classList.add("dark");
+      document.body?.classList.add("dark");
     } else {
       root.classList.remove("dark");
+      document.body?.classList.remove("dark");
     }
+    root.setAttribute("data-theme", t);
+    root.style.colorScheme = t;
   };
+
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "batcoach_theme" && (e.newValue === "light" || e.newValue === "dark")) {
+        setThemeState(e.newValue);
+        applyTheme(e.newValue);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);

@@ -53,14 +53,22 @@ export default function RootLayout({
               (function() {
                 try {
                   var stored = localStorage.getItem('batcoach_theme');
+                  var isDark = false;
                   if (stored === 'dark') {
-                    document.documentElement.classList.add('dark');
+                    isDark = true;
                   } else if (stored === 'light') {
-                    document.documentElement.classList.remove('dark');
+                    isDark = false;
                   } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    isDark = true;
+                  }
+                  if (isDark) {
                     document.documentElement.classList.add('dark');
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    document.documentElement.style.colorScheme = 'dark';
                   } else {
                     document.documentElement.classList.remove('dark');
+                    document.documentElement.setAttribute('data-theme', 'light');
+                    document.documentElement.style.colorScheme = 'light';
                   }
                 } catch(e) {}
               })();
