@@ -23,6 +23,7 @@ import {
   requestGoogleCalendarAuth,
   insertEventToGoogleCalendar
 } from "@/lib/googleCalendar";
+import { API_BASE_URL } from "@/lib/api-config";
 
 interface TrainingCalendarModalProps {
   isOpen: boolean;
@@ -82,7 +83,7 @@ export function TrainingCalendarModal({
 
       // 2. Fetch from backend DB for this user if available
       const activeEmail = userEmail || "athlete@cricketcoach.ai";
-      fetch(`http://127.0.0.1:8888/api/schedule/list?email=${encodeURIComponent(activeEmail)}`)
+      fetch(`${API_BASE_URL}/api/schedule/list?email=${encodeURIComponent(activeEmail)}`)
         .then(res => res.json())
         .then(data => {
           if (data?.success && Array.isArray(data.schedules) && data.schedules.length > 0) {
@@ -174,7 +175,7 @@ export function TrainingCalendarModal({
 
     // Sync to backend if running
     try {
-      fetch("http://127.0.0.1:8888/api/schedule/sync", {
+      fetch(`${API_BASE_URL}/api/schedule/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...newEvent, athlete_email: activeEmail }),
@@ -209,7 +210,7 @@ export function TrainingCalendarModal({
     const target = updated.find(e => e.id === id);
     if (target) {
       try {
-        fetch("http://127.0.0.1:8888/api/schedule/sync", {
+        fetch(`${API_BASE_URL}/api/schedule/sync`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...target, athlete_email: activeEmail }),
@@ -227,7 +228,7 @@ export function TrainingCalendarModal({
     // Delete from backend for this user
     const activeEmail = userEmail || "athlete@cricketcoach.ai";
     try {
-      fetch(`http://127.0.0.1:8888/api/schedule/${id}?email=${encodeURIComponent(activeEmail)}`, {
+      fetch(`${API_BASE_URL}/api/schedule/${id}?email=${encodeURIComponent(activeEmail)}`, {
         method: "DELETE",
       }).catch(() => {});
     } catch (_) {}

@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "../lib/utils";
 import { TrainingCalendarModal } from "@/components/TrainingCalendarModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { API_BASE_URL } from "@/lib/api-config";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // High-Definition Cricket Stadium & Match Photography
@@ -143,7 +144,7 @@ export default function HomePage() {
 
   const syncUserToSupabase = async (user: UserProfile) => {
     try {
-      await fetch("http://127.0.0.1:8888/api/athlete/sync", {
+      await fetch(`${API_BASE_URL}/api/athlete/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

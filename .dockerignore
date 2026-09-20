@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+cricket-coach-ui/node_modules
+cricket-coach-ui/.next
+*.mp4
+*.avi
+train/
+valid/
+test/
+runs/
+*.zip
+*.tar.gz

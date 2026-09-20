@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "../../lib/utils";
 import { TrainingCalendarModal } from "@/components/TrainingCalendarModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { API_BASE_URL, WS_BASE_URL } from "@/lib/api-config";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Shot Catalog & Metadata
@@ -757,7 +758,7 @@ export default function BatCoachDashboard() {
     let localStream: MediaStream | null = null;
 
     const connect = () => {
-      const defaultWsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://127.0.0.1:8888/ws";
+      const defaultWsUrl = WS_BASE_URL;
       const ws = new WebSocket(defaultWsUrl);
 
       ws.onopen = () => {
@@ -980,7 +981,7 @@ export default function BatCoachDashboard() {
         })),
       };
 
-      const res = await fetch("http://127.0.0.1:8888/api/sessions/save", {
+      const res = await fetch(`${API_BASE_URL}/api/sessions/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

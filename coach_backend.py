@@ -26,6 +26,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from transformers import VideoMAEForVideoClassification, VideoMAEImageProcessor
 from ultralytics import YOLO
 
+# Hugging Face Spaces ZeroGPU Support
+try:
+    import spaces
+    has_zero_gpu = True
+    print("[ZeroGPU] Hugging Face Spaces ZeroGPU detected and enabled.")
+except (ImportError, Exception):
+    has_zero_gpu = False
+    spaces = None
+
+def gpu_inference_decorator(func):
+    if has_zero_gpu and spaces is not None:
+        return spaces.GPU(func)
+    return func
 
 # ──────────────────────────────────────────────────────────────────────────────
 # System & Thread Limits
@@ -655,6 +668,7 @@ def extract_biometrics(
         "live_checklist": live_checklist
     }
 
+@gpu_inference_decorator
 @torch.inference_mode()
 def execute_model_inference(frames_rgb_list: List[np.ndarray]) -> Tuple[np.ndarray, float]:
     t0 = time.perf_counter()
