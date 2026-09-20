@@ -334,8 +334,9 @@ class ThreadedCamera:
                 with self.lock:
                     self.ret = ret
                     self.frame = frame
+                time.sleep(0.015)  # Cap camera grab to ~35 FPS, eliminates 100% CPU core spinning
             else:
-                time.sleep(0.01)
+                time.sleep(0.02)
 
     def read(self) -> Tuple[bool, Optional[np.ndarray]]:
         with self.lock:
@@ -1265,6 +1266,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
             # 2. Acquire Frame (Client stream or Local Hardware Camera)
             if client_frame is not None:
+                if camera is not None:
+                    try:
+                        camera.release()
+                    except Exception:
+                        pass
+                    camera = None
                 frame = client_frame
             else:
                 if camera is None:
@@ -1379,9 +1386,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     swing_cooldown_until = now + 2.0  # 2-second cooldown between strokes
                     swing_state = "IDLE"
 
-            # 8. JPEG Compression (for fallback stream)
-            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
-            frame_base64 = base64.b64encode(buffer).decode('utf-8')
+            # 8. JPEG Compression (only needed when client does not have local camera)
+            frame_base64 = None
+            if client_frame is None:
+                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
+                frame_base64 = base64.b64encode(buffer).decode('utf-8')
 
             # 9. Dispatch Payload
             payload = {
@@ -1415,7 +1424,11 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"[WebSocket Loop Exception]: {e}")
     finally:
-        camera.release()
+        if camera is not None:
+            try:
+                camera.release()
+            except Exception:
+                pass
         if inference_task and not inference_task.done():
             inference_task.cancel()
 
