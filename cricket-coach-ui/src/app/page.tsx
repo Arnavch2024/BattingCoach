@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "../lib/utils";
 import { TrainingCalendarModal } from "@/components/TrainingCalendarModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { CricketScrollAnimation } from "@/components/CricketScrollAnimation";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -245,8 +246,11 @@ export default function HomePage() {
   }, [selectedShotCategory]);
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 text-slate-900 dark:bg-[#09090b] dark:text-zinc-100 flex flex-col font-sans transition-colors duration-200 selection:bg-emerald-500/20 selection:text-emerald-700 dark:selection:text-emerald-300">
+    <div className="min-h-screen w-full bg-slate-50 text-slate-900 dark:bg-[#09090b] dark:text-zinc-100 flex flex-col font-sans transition-colors duration-200 selection:bg-emerald-500/20 selection:text-emerald-700 dark:selection:text-emerald-300 relative">
       
+      {/* ── Left Corner Kinetic Cricket Bat & Dropping Ball Scroll Animation ── */}
+      <CricketScrollAnimation />
+
       {/* ── Fixed Studio Navigation Bar ──────────────────────────────────────── */}
       <header className="fixed top-0 inset-x-0 h-16 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-xl border-b border-slate-200/90 dark:border-zinc-800/80 z-50 px-6 lg:px-12 flex items-center justify-between transition-colors">
         <div className="flex items-center gap-3">
