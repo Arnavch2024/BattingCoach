@@ -98,6 +98,28 @@ function playBatCrackSound() {
   } catch (e) {}
 }
 
+function playWallThudSound() {
+  try {
+    const ctx = getSharedAudioContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(280, t0);
+    osc.frequency.exponentialRampToValueAtTime(85, t0 + 0.05);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.35, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.055);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(t0);
+    osc.stop(t0 + 0.06);
+  } catch (e) {}
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Vector Graphics: Authentic English Willow Bat & 3D Stitched Leather Ball
 // ──────────────────────────────────────────────────────────────────────────────
@@ -164,52 +186,84 @@ function CricketBatSVG({ className }: { className?: string }) {
 
 function CricketBallSVG({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 48 48" className={cn("w-10 h-10 drop-shadow-xl select-none", className)} fill="none">
+    <svg viewBox="0 0 64 64" className={cn("w-12 h-12 drop-shadow-2xl select-none", className)} fill="none">
       <defs>
-        {/* 3D Curvature Radial Shading */}
-        <radialGradient id="leatherShine" cx="35%" cy="30%" r="65%">
-          <stop offset="0%" stopColor="#f87171" />
-          <stop offset="30%" stopColor="#dc2626" />
-          <stop offset="70%" stopColor="#991b1b" />
-          <stop offset="100%" stopColor="#450a0a" />
+        {/* Deep 3D Leather Core with Lacquer Gradient */}
+        <radialGradient id="ballLacquer" cx="30%" cy="26%" r="72%">
+          <stop offset="0%" stopColor="#ff5252" />
+          <stop offset="20%" stopColor="#e51c23" />
+          <stop offset="52%" stopColor="#b71c1c" />
+          <stop offset="80%" stopColor="#7f0000" />
+          <stop offset="100%" stopColor="#2b0004" />
         </radialGradient>
 
-        {/* Specular Glint Highlight */}
-        <linearGradient id="specularGlint" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
-          <stop offset="40%" stopColor="#ffffff" stopOpacity="0" />
+        {/* Primary Stadium Floodlight Specular Flare */}
+        <linearGradient id="primaryGlint" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+          <stop offset="35%" stopColor="#ffffff" stopOpacity="0.75" />
+          <stop offset="70%" stopColor="#ffffff" stopOpacity="0.1" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
+
+        {/* Gloss Curved Shield Reflection (Glass Polyurethane Coat) */}
+        <linearGradient id="glossArc" x1="20%" y1="0%" x2="80%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.65" />
+          <stop offset="45%" stopColor="#ffffff" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+
+        {/* Bottom Ambient Rim Sheen */}
+        <radialGradient id="rimLight" cx="68%" cy="78%" r="45%">
+          <stop offset="0%" stopColor="#ff8a80" stopOpacity="0.4" />
+          <stop offset="60%" stopColor="#b71c1c" stopOpacity="0.1" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
-      {/* Main Red Leather Sphere */}
-      <circle cx="24" cy="24" r="22" fill="url(#leatherShine)" stroke="#7f1d1d" strokeWidth="1" />
+      {/* Ambient Depth Rim */}
+      <circle cx="32" cy="32" r="30" fill="url(#ballLacquer)" stroke="#5c0007" strokeWidth="1.2" />
+      <circle cx="32" cy="32" r="30" fill="url(#rimLight)" />
 
-      {/* Curving Cricket Seam (White Stitched Core) */}
+      {/* Authentic Raised Cricket Seam (White Wax Stitches + Gold Margin) */}
+      {/* Outer seam shadow for 3D depth */}
       <path
-        d="M6 14 C12 22, 18 26, 24 24 C30 22, 36 26, 42 34"
-        stroke="#ffffff"
-        strokeWidth="2.2"
+        d="M8 18 C16 28, 24 34, 32 32 C40 30, 48 36, 56 46"
+        stroke="#3b0004"
+        strokeWidth="3.6"
         strokeLinecap="round"
-        strokeDasharray="2 2.5"
-        strokeOpacity="0.95"
+      />
+      {/* Golden core welt */}
+      <path
+        d="M8 18 C16 28, 24 34, 32 32 C40 30, 48 36, 56 46"
+        stroke="#d4af37"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+      {/* White wax stitched thread dashes */}
+      <path
+        d="M8 18 C16 28, 24 34, 32 32 C40 30, 48 36, 56 46"
+        stroke="#ffffff"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeDasharray="2.5 3"
+        strokeOpacity="0.98"
       />
 
-      {/* Seam Stitching Margin Borders */}
+      {/* Gold Crown / Test Stamp Motif */}
+      <circle cx="24" cy="44" r="5" fill="#f59e0b" fillOpacity="0.22" stroke="#f59e0b" strokeWidth="0.6" strokeDasharray="1 1" />
+
+      {/* High-Gloss Lacquer Reflection Curved Sheen */}
       <path
-        d="M5 12 C11 20, 17 24, 23 22 C29 20, 35 24, 41 32"
-        stroke="#fecaca"
-        strokeWidth="0.75"
-        strokeOpacity="0.6"
-      />
-      <path
-        d="M7 16 C13 24, 19 28, 25 26 C31 24, 37 28, 43 36"
-        stroke="#fecaca"
-        strokeWidth="0.75"
-        strokeOpacity="0.6"
+        d="M12 24 C14 14, 24 8, 36 8 C44 8, 48 11, 51 16 C42 12, 28 14, 18 22 C15 24, 13 25, 12 24 Z"
+        fill="url(#glossArc)"
       />
 
-      {/* Gloss Specular Highlight */}
-      <ellipse cx="16" cy="14" rx="7" ry="4" transform="rotate(-30 16 14)" fill="url(#specularGlint)" />
+      {/* Intense Specular Hot-spot Glint */}
+      <ellipse cx="22" cy="18" rx="8" ry="4.5" transform="rotate(-32 22 18)" fill="url(#primaryGlint)" />
+      <circle cx="19" cy="16" r="2.2" fill="#ffffff" fillOpacity="0.9" />
+
+      {/* Secondary Soft Floodlight Glint */}
+      <ellipse cx="38" cy="22" rx="3.5" ry="2" transform="rotate(-15 38 22)" fill="#ffffff" fillOpacity="0.35" />
     </svg>
   );
 }
@@ -219,11 +273,9 @@ function CricketBallSVG({ className }: { className?: string }) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 const MILESTONES = [
-  { id: "hero", label: "Strike Zone", scrollRatio: 0.04, meter: "0m" },
-  { id: "demo-preview", label: "3D Biomechanics", scrollRatio: 0.32, meter: "45m" },
-  { id: "modules", label: "Stroke Matrix", scrollRatio: 0.58, meter: "78m" },
-  { id: "how-it-works", label: "Action Replay", scrollRatio: 0.82, meter: "95m" },
-  { id: "athlete-portal", label: "Boundary Rope", scrollRatio: 0.96, meter: "115m 🚀" },
+  { id: "hero", label: "Strike Zone", scrollRatio: 0.03, meter: "0m" },
+  { id: "demo-preview", label: "3D Biomechanics", scrollRatio: 0.52, meter: "65m" },
+  { id: "athlete-portal", label: "Boundary Rope", scrollRatio: 0.94, meter: "115m 🚀" },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -236,15 +288,43 @@ export function CricketScrollAnimation() {
   const [hasHit, setHasHit] = useState(false);
   const [showCrackBadge, setShowCrackBadge] = useState(false);
   const [activeMilestone, setActiveMilestone] = useState(0);
-  const [dimensions, setDimensions] = useState({ width: 1200, height: 800 });
+  const [dimensions, setDimensions] = useState({ width: 1200, height: 2600 });
+  const [sectionLines, setSectionLines] = useState({
+    line1: 880,  // Divider line between Overview and Biomechanics Engine
+    line2: 1540, // Divider line between Biomechanics Engine and Stroke Syllabus
+    line3: 2280, // Divider line / boundary rope at Footer
+  });
 
-  // Prime audio context on any early window interaction
+  // Dynamically measure the exact position of the section divider lines in the home page
+  const updateSectionLines = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const demoEl = document.getElementById("demo-preview");
+    const modEl = document.getElementById("modules");
+    const footerEl = document.querySelector("footer");
+
+    // Exact offsetTop of the section borders
+    const line1 = demoEl ? demoEl.offsetTop : Math.round(window.innerHeight * 0.92);
+    const line2 = modEl ? modEl.offsetTop : line1 + 660;
+    const line3 = footerEl ? footerEl.offsetTop : line2 + 720;
+
+    setSectionLines({ line1, line2, line3 });
+    setDimensions({
+      width: window.innerWidth,
+      height: Math.max(document.documentElement.scrollHeight, line3 + 300),
+    });
+  }, []);
+
+  // Prime audio context and track resize/DOM measurements
   useEffect(() => {
     setMounted(true);
-    setDimensions({ width: window.innerWidth, height: window.innerHeight });
+    updateSectionLines();
+
+    // Re-check after images/fonts finish settling
+    const t1 = setTimeout(updateSectionLines, 400);
+    const t2 = setTimeout(updateSectionLines, 1200);
 
     const onResize = () => {
-      setDimensions({ width: window.innerWidth, height: window.innerHeight });
+      updateSectionLines();
     };
     window.addEventListener("resize", onResize);
 
@@ -262,6 +342,8 @@ export function CricketScrollAnimation() {
     window.addEventListener("keydown", unlockAudio, { passive: true });
 
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("pointerdown", unlockAudio);
       window.removeEventListener("touchstart", unlockAudio);
@@ -269,98 +351,223 @@ export function CricketScrollAnimation() {
       window.removeEventListener("scroll", unlockAudio);
       window.removeEventListener("keydown", unlockAudio);
     };
-  }, []);
+  }, [updateSectionLines]);
 
   const { scrollYProgress } = useScroll();
 
-  // 100% scroll-dependent progress without laggy or drifting spring inertia
-  // Direct binding ensures the ball halts DEAD in its tracks the instant scrolling stops
-  const progress = scrollYProgress;
-
-  // 1. VERTICAL POSITION (ballY):
-  // Descends smoothly from strike zone (180px) down to bottom of viewport (viewportHeight - 85px)
-  const ballY = useTransform(progress, (p) => {
-    const startY = 180;
-    const endY = Math.max(450, dimensions.height - 85);
-    return startY + p * (endY - startY);
+  // Smooth physical spring binding: removes harsh mouse-wheel stepped jumps,
+  // creating a silky, glossy, heavy rolling momentum that halts cleanly when scrolling stops.
+  const progress = useSpring(scrollYProgress, {
+    stiffness: 120,
+    damping: 26,
+    mass: 0.7,
+    restDelta: 0.0001,
   });
 
-  // 2. HORIZONTAL DOMINO TRAVERSAL (ballX):
-  // Wide left-to-right, right-to-left traversal across the page like a cascading domino course:
-  // - p = 0.00 to 0.02: Resting at bat sweet spot (left side)
-  // - p = 0.02 to 0.28: Traverses from Left edge across to Right edge (Hero -> Biomechanics)
-  // - p = 0.28 to 0.58: Traverses back from Right edge across to Left edge (Biomechanics -> Stroke Matrix)
-  // - p = 0.58 to 0.84: Traverses from Left edge across to Right edge (Stroke Matrix -> Action Replay)
-  // - p = 0.84 to 1.00: Descends from Right edge into Center Boundary Rope
+  // Track Dimensions across the screen margins:
+  // leftX is stationed in the left margin (at the bat sweet spot)
+  const leftX = Math.max(38, dimensions.width * 0.035);
+  // rightX extends all the way across the screen to the right margin!
+  const rightX = Math.max(leftX + 440, dimensions.width - leftX - 44);
+  const reboundDist = 48; // Realistic 48px momentum rollback upon hitting wall
+
+  // Vertical Coordinates Aligned with Section Divider Lines:
+  const heroBatY = 160;                   // Bat crease height in Overview
+  const y1 = sectionLines.line1;          // Divider Line 1: Between Overview & Biomechanics (#demo-preview)
+  const y2 = sectionLines.line2;          // Divider Line 2: Between Biomechanics & Stroke Syllabus (#modules)
+  const y3 = sectionLines.line3;          // Boundary Rope at Footer
+
+  // The ball sits on top of the section border lines (ball height is 48px)
+  const rollY1 = y1 - 42;
+  const rollY2 = y2 - 42;
+  const rollY3 = y3 - 42;
+
+  // Chute drop X coordinates (after rebounding backwards from wall)
+  const drop1X = rightX - reboundDist;
+  const drop2X = leftX + reboundDist;
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // 1. HORIZONTAL POSITION (ballX):
+  // Aligned with Section Dividers & Margins:
+  // - Starts at Bat Crease in Left Margin (leftX)
+  // - Drops down Left Margin to Line 1 (Overview <-> Biomechanics)
+  // - Rolls across Line 1 to Right Margin (rightX)
+  // - Wall 1 Rebound: Rolls back 48px to drop1X
+  // - Drops down Right Margin to Line 2 (Biomechanics <-> Stroke Syllabus)
+  // - Rolls across Line 2 to Left Margin (leftX)
+  // - Wall 2 Rebound: Rolls back 48px to drop2X
+  // - Drops down Left Margin to Boundary Rope
+  // ────────────────────────────────────────────────────────────────────────────
   const ballX = useTransform(progress, (p) => {
-    const minX = Math.max(28, dimensions.width * 0.04);
-    const maxX = Math.max(300, dimensions.width - 80);
-    const midX = (minX + maxX) / 2;
-
+    // Phase 0: At Crease (p <= 0.02)
     if (p <= 0.02) {
-      return minX + 46; // Resting at sweet spot in front of bat
+      return leftX;
     }
-    if (p <= 0.28) {
-      // Traverse from Left to Right
-      const t = (p - 0.02) / (0.28 - 0.02);
-      const ease = 0.5 - 0.5 * Math.cos(t * Math.PI);
-      return (minX + 46) + ease * (maxX - (minX + 46));
+    // Phase 0B: Vertical drop down left margin to line 1 (p < 0.10)
+    if (p < 0.10) {
+      return leftX; // STRICTLY CONSTANT X!
     }
-    if (p <= 0.58) {
-      // Traverse from Right to Left
-      const t = (p - 0.28) / (0.58 - 0.28);
-      const ease = 0.5 - 0.5 * Math.cos(t * Math.PI);
-      return maxX - ease * (maxX - minX);
+    // Phase 1A: Roll across Line 1 (Overview <-> Biomechanics divider)
+    if (p < 0.44) {
+      const t = (p - 0.10) / (0.44 - 0.10);
+      return leftX + t * (rightX - leftX);
     }
-    if (p <= 0.84) {
-      // Traverse from Left to Right
-      const t = (p - 0.58) / (0.84 - 0.58);
-      const ease = 0.5 - 0.5 * Math.cos(t * Math.PI);
-      return minX + ease * (maxX - minX);
+    // Phase 1B: Wall 1 Impact & Momentum Rebound at right edge
+    if (p < 0.50) {
+      const u = (p - 0.44) / (0.50 - 0.44);
+      const ease = 1 - (1 - u) * (1 - u); // Decelerating momentum rebound
+      return rightX - ease * reboundDist;
     }
-    // Final roll from Right to Center Boundary
-    const t = (p - 0.84) / (1.0 - 0.84);
-    const ease = 0.5 - 0.5 * Math.cos(t * Math.PI);
-    return maxX - ease * (maxX - midX);
+    // Phase 2: Vertical drop down right margin to line 2 (p < 0.60)
+    if (p < 0.60) {
+      return drop1X; // STRICTLY CONSTANT X!
+    }
+    // Phase 3A: Roll across Line 2 (Biomechanics <-> Stroke Syllabus divider)
+    if (p < 0.88) {
+      const t = (p - 0.60) / (0.88 - 0.60);
+      return drop1X - t * (drop1X - leftX);
+    }
+    // Phase 3B: Wall 2 Impact & Momentum Rebound at left edge
+    if (p < 0.93) {
+      const u = (p - 0.88) / (0.93 - 0.88);
+      const ease = 1 - (1 - u) * (1 - u);
+      return leftX + ease * reboundDist;
+    }
+    // Phase 4: Vertical drop down left margin to boundary rope
+    return drop2X; // STRICTLY CONSTANT X!
   });
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // 2. VERTICAL POSITION (ballY):
+  // Aligned with Section Dividers & Margins:
+  // - Starts at heroBatY
+  // - Drops down left margin to rollY1
+  // - Rolls across Line 1 (strictly constant at rollY1!)
+  // - Drops down right margin from rollY1 to rollY2
+  // - Rolls across Line 2 (strictly constant at rollY2!)
+  // - Drops down left margin from rollY2 to rollY3 (boundary rope)
+  // ────────────────────────────────────────────────────────────────────────────
+  const ballY = useTransform(progress, (p) => {
+    // Phase 0: At Crease Strike Zone
+    if (p <= 0.02) {
+      return heroBatY;
+    }
+    // Phase 0B: Drop vertically down left margin from bat to Line 1
+    if (p < 0.10) {
+      const t = (p - 0.02) / (0.10 - 0.02);
+      const gravityT = t * t;
+      return heroBatY + gravityT * (rollY1 - heroBatY);
+    }
+    // Phase 1: On Line 1 between Overview and Biomechanics (Roll + Rebound: STRICTLY LEVEL!)
+    if (p < 0.50) {
+      return rollY1;
+    }
+    // Phase 2: Drop vertically down right margin from Line 1 to Line 2
+    if (p < 0.60) {
+      const t = (p - 0.50) / (0.60 - 0.50);
+      const gravityT = t * t;
+      return rollY1 + gravityT * (rollY2 - rollY1);
+    }
+    // Phase 3: On Line 2 between Biomechanics and Stroke Syllabus (Roll + Rebound: STRICTLY LEVEL!)
+    if (p < 0.93) {
+      return rollY2;
+    }
+    // Phase 4: Drop vertically down left margin from Line 2 to Boundary Rope
+    const t = (p - 0.93) / (1.00 - 0.93);
+    const gravityT = t * t;
+    return rollY2 + gravityT * (rollY3 - rollY2);
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
   // 3. PHYSICAL ROLLING SEAM ROTATION:
-  // Strictly tied to scroll distance - stops spinning instantly when scroll stops
-  const ballRotate = useTransform(progress, [0, 1], [0, 2880]);
+  // 12 Complete 360° revolutions (4320°) per section line traverse!
+  // On wall impact, seam reverses spin during the momentum rollback!
+  // ────────────────────────────────────────────────────────────────────────────
+  const ballRotate = useTransform(progress, (p) => {
+    if (p <= 0.02) return 0;
+    // Initial drop down left margin
+    if (p < 0.10) {
+      const t = (p - 0.02) / (0.10 - 0.02);
+      return t * 360;
+    }
+    // Roll across Line 1 (12 full clockwise rotations):
+    if (p < 0.44) {
+      const t = (p - 0.10) / (0.44 - 0.10);
+      return 360 + t * 4320;
+    }
+    // Wall 1 Rebound (backspin rollback):
+    if (p < 0.50) {
+      const u = (p - 0.44) / (0.50 - 0.44);
+      const ease = 1 - (1 - u) * (1 - u);
+      return 4680 - ease * 240;
+    }
+    // Drop 1 down right margin:
+    if (p < 0.60) {
+      const t = (p - 0.50) / (0.60 - 0.50);
+      return 4440 + t * 240;
+    }
+    // Roll across Line 2 (12 full reverse rotations):
+    if (p < 0.88) {
+      const t = (p - 0.60) / (0.88 - 0.60);
+      return 4680 - t * 4320;
+    }
+    // Wall 2 Rebound (forward spin rollback):
+    if (p < 0.93) {
+      const u = (p - 0.88) / (0.93 - 0.88);
+      const ease = 1 - (1 - u) * (1 - u);
+      return 360 + ease * 240;
+    }
+    // Drop 2 to boundary rope:
+    const t = (p - 0.93) / (1.00 - 0.93);
+    return 600 + t * 240;
+  });
 
   // 4. BAT SWING ARC:
-  // Poised in backlift (-14°), executes crisp drive swing (+38° at p=0.015-0.02), then follow-through
-  const batRotate = useTransform(progress, [0, 0.015, 0.04, 0.12], [-14, 38, 22, 10]);
-  const batScale = useTransform(progress, [0, 0.015, 0.04], [1, 1.12, 1]);
-  // Bat gently fades as athlete scrolls down into deeper syllabus sections
-  const batOpacity = useTransform(progress, [0, 0.18, 0.35], [1, 0.85, 0.2]);
+  // Primed in backlift (-14°), executes crisp drive swing (+38° at p=0.015-0.03), then follow-through
+  const batRotate = useTransform(progress, [0, 0.02, 0.06, 0.16], [-14, 38, 22, 10]);
+  const batScale = useTransform(progress, [0, 0.02, 0.06], [1, 1.12, 1]);
+  // Bat recedes smoothly as user scrolls deep into content
+  const batOpacity = useTransform(progress, [0, 0.12, 0.28], [1, 0.85, 0.2]);
 
-  // Laser trajectory path calculation
-  const trajectoryProgress = useTransform(progress, [0, 1], [0, 1]);
-
-  // Monitor scroll trigger to activate the bat hit and sound
+  // Monitor scroll trigger to activate bat hit, wall impacts, and milestones
   useEffect(() => {
+    let w1Hit = false;
+    let w2Hit = false;
+
     const unsubscribe = scrollYProgress.on("change", (latest) => {
-      if (latest > 0.015 && !hasHit) {
+      // Bat Hit Trigger
+      if (latest > 0.02 && !hasHit) {
         setHasHit(true);
         setShowCrackBadge(true);
         if (soundEnabled) {
           playBatCrackSound();
         }
         setTimeout(() => setShowCrackBadge(false), 2200);
-      } else if (latest <= 0.005 && hasHit) {
-        // Rewound back to top: reset ready stance so user can strike again
+      } else if (latest <= 0.008 && hasHit) {
+        // Rewound back to top: reset ready stance
         setHasHit(false);
       }
 
-      // Update active waypoint milestone
-      const curIndex = MILESTONES.findIndex((m, idx) => {
-        const next = MILESTONES[idx + 1];
-        return latest >= m.scrollRatio && (!next || latest < next.scrollRatio);
-      });
-      if (curIndex !== -1) {
-        setActiveMilestone(curIndex);
+      // Wall Impact 1 (at Line 1 right edge: ~0.44)
+      if (latest >= 0.435 && latest < 0.50 && !w1Hit) {
+        w1Hit = true;
+        if (soundEnabled) playWallThudSound();
+      } else if (latest < 0.42) {
+        w1Hit = false;
       }
+
+      // Wall Impact 2 (at Line 2 left edge: ~0.88)
+      if (latest >= 0.875 && latest < 0.93 && !w2Hit) {
+        w2Hit = true;
+        if (soundEnabled) playWallThudSound();
+      } else if (latest < 0.86) {
+        w2Hit = false;
+      }
+
+      // Update active milestone based on stepped intervals
+      if (latest < 0.44) setActiveMilestone(0); // Strike Zone
+      else if (latest < 0.88) setActiveMilestone(1); // 3D Biomechanics (Line 1)
+      else setActiveMilestone(2); // Boundary Rope (Line 2)
     });
 
     return () => unsubscribe();
@@ -373,7 +580,6 @@ export function CricketScrollAnimation() {
     if (soundEnabled) playBatCrackSound();
     setTimeout(() => setShowCrackBadge(false), 2200);
 
-    // Smoothly scroll down so user witnesses the domino launch
     window.scrollBy({ top: 400, behavior: "smooth" });
   };
 
@@ -386,98 +592,146 @@ export function CricketScrollAnimation() {
 
   if (!mounted) return null;
 
-  // Waypoint position calculations for SVG domino track
-  const minX = Math.max(28, dimensions.width * 0.04);
-  const maxX = Math.max(300, dimensions.width - 80);
-  const midX = (minX + maxX) / 2;
-  const h = dimensions.height;
-
-  // Domino track waypoints
-  const p0 = { x: minX + 46, y: 180 };
-  const p1 = { x: maxX, y: 180 + 0.28 * (h - 265) };
-  const p2 = { x: minX, y: 180 + 0.58 * (h - 265) };
-  const p3 = { x: maxX, y: 180 + 0.84 * (h - 265) };
-  const p4 = { x: midX, y: h - 85 };
-
-  const trackPathD = `M ${p0.x} ${p0.y} C ${p0.x + 150} ${p0.y}, ${p1.x - 150} ${p1.y}, ${p1.x} ${p1.y} C ${p1.x - 150} ${p1.y + 40}, ${p2.x + 150} ${p2.y - 40}, ${p2.x} ${p2.y} C ${p2.x + 150} ${p2.y + 40}, ${p3.x - 150} ${p3.y - 40}, ${p3.x} ${p3.y} C ${p3.x - 100} ${p3.y + 30}, ${p4.x + 80} ${p4.y - 30}, ${p4.x} ${p4.y}`;
-
   return (
     <div
       className={cn(
-        "fixed inset-0 z-30 pointer-events-none select-none overflow-hidden",
-        "hidden md:block" // Clean, sleek presentation on desktop & tablets
+        "absolute inset-0 w-full h-full z-30 pointer-events-none select-none overflow-hidden",
+        "hidden md:block" // Sleek, non-intrusive presentation on desktop & tablets
       )}
       aria-hidden="true"
     >
-      {/* ── Domino Serpentine Hawk-Eye SVG Track ─────────────────────── */}
+      {/* ── Minimalist Athletic Stadium Guide Shelves & Wall Cushions ── */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="dominoNeonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
-            <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.8" />
+          <linearGradient id="shelfAccentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.5" />
+          </linearGradient>
+          <linearGradient id="wallCushionGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#06b6d4" />
+            <stop offset="100%" stopColor="#3b82f6" />
           </linearGradient>
         </defs>
 
-        {/* Faint ambient guide rail */}
-        <path
-          d={trackPathD}
-          fill="none"
+        {/* Initial Left Margin Drop Chute: from Bat to Line 1 */}
+        <line
+          x1={leftX + 24}
+          y1={heroBatY + 24}
+          x2={leftX + 24}
+          y2={y1}
           stroke="currentColor"
-          className="text-slate-300/40 dark:text-zinc-800/60"
-          strokeWidth="1.5"
-          strokeDasharray="4 6"
+          strokeWidth="1"
+          strokeDasharray="3 4"
+          className="text-slate-300 dark:text-zinc-700 opacity-60"
         />
 
-        {/* Neon active tracer following the domino descent */}
-        <path
-          d={trackPathD}
-          fill="none"
-          stroke="url(#dominoNeonGradient)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          className="filter drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]"
+        {/* Shelf Line 1: Exact Divider Line between Overview & Biomechanics (#demo-preview) */}
+        <line
+          x1={leftX}
+          y1={y1}
+          x2={rightX + 44}
+          y2={y1}
+          stroke="url(#shelfAccentGrad)"
+          strokeWidth="1.5"
+          strokeDasharray="4 6"
+          className="opacity-40 dark:opacity-30"
+        />
+
+        {/* Wall 1 Bumper Cushion (Right Margin Boundary) */}
+        <rect
+          x={rightX + 42}
+          y={y1 - 38}
+          width={6}
+          height={44}
+          rx={3}
+          fill="url(#wallCushionGrad)"
+          className="opacity-80"
+        />
+        <circle cx={rightX + 45} cy={y1 - 16} r={14} fill="#06b6d4" fillOpacity={0.15} />
+
+        {/* Right Margin Drop Chute 1: from Line 1 to Line 2 (Outside Biomechanics content) */}
+        <line
+          x1={drop1X + 24}
+          y1={y1}
+          x2={drop1X + 24}
+          y2={y2}
+          stroke="currentColor"
+          strokeWidth="1"
+          strokeDasharray="3 4"
+          className="text-slate-300 dark:text-zinc-700 opacity-60"
+        />
+
+        {/* Shelf Line 2: Exact Divider Line between Biomechanics & Stroke Syllabus (#modules) */}
+        <line
+          x1={leftX - 16}
+          y1={y2}
+          x2={drop1X + 24}
+          y2={y2}
+          stroke="url(#shelfAccentGrad)"
+          strokeWidth="1.5"
+          strokeDasharray="4 6"
+          className="opacity-40 dark:opacity-30"
+        />
+
+        {/* Wall 2 Bumper Cushion (Left Margin Boundary) */}
+        <rect
+          x={leftX - 18}
+          y={y2 - 38}
+          width={6}
+          height={44}
+          rx={3}
+          fill="#10b981"
+          className="opacity-80"
+        />
+        <circle cx={leftX - 15} cy={y2 - 16} r={14} fill="#10b981" fillOpacity={0.15} />
+
+        {/* Left Margin Drop Chute 2: from Line 2 to Boundary Rope (Outside Syllabus content) */}
+        <line
+          x1={drop2X + 24}
+          y1={y2}
+          x2={drop2X + 24}
+          y2={y3}
+          stroke="currentColor"
+          strokeWidth="1"
+          strokeDasharray="3 4"
+          className="text-slate-300 dark:text-zinc-700 opacity-60"
         />
       </svg>
 
-      {/* ── Domino Switchback Waypoint Pips ─────────────────────────── */}
+      {/* ── Architectural Milestone Waypoints at Section Dividers ─────── */}
       {[
-        { m: MILESTONES[0], pos: p0, side: "left" },
-        { m: MILESTONES[1], pos: p1, side: "right" },
-        { m: MILESTONES[2], pos: p2, side: "left" },
-        { m: MILESTONES[3], pos: p3, side: "right" },
-        { m: MILESTONES[4], pos: p4, side: "center" },
-      ].map(({ m, pos, side }, idx) => {
+        { m: MILESTONES[0], x: leftX + 24, y: heroBatY + 24, label: "Strike Zone", meter: "0m", align: "left" },
+        { m: MILESTONES[1], x: drop1X + 24, y: y1, label: "3D Biomechanics Line", meter: "65m", align: "right" },
+        { m: MILESTONES[2], x: drop2X + 24, y: y2, label: "Stroke Syllabus Line", meter: "95m", align: "left" },
+        { m: MILESTONES[3], x: drop2X + 24, y: y3, label: "Boundary Rope", meter: "115m 🚀", align: "left" },
+      ].map((pt, idx) => {
         const isPassed = idx <= activeMilestone;
         return (
           <div
-            key={m.id}
-            style={{ left: pos.x, top: pos.y }}
+            key={pt.m.id}
+            style={{ left: pt.x, top: pt.y }}
             className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center group pointer-events-none"
           >
             <div
               className={cn(
-                "h-3 w-3 rounded-full transition-all duration-300 shadow-sm",
+                "h-2.5 w-2.5 rounded-full transition-all duration-300 shadow-sm",
                 isPassed
                   ? "bg-emerald-500 ring-4 ring-emerald-500/25 scale-125"
                   : "bg-slate-300 dark:bg-zinc-700"
               )}
             />
 
-            {/* Waypoint Label Pill */}
             <div
               className={cn(
-                "absolute px-2 py-0.5 rounded-md text-[10px] font-mono tracking-tight whitespace-nowrap transition-all duration-300 pointer-events-none shadow-md z-40",
-                side === "left" && "left-4",
-                side === "right" && "right-4",
-                side === "center" && "bottom-5 left-1/2 -translate-x-1/2",
+                "absolute px-2.5 py-0.5 rounded-md text-[10px] font-mono tracking-tight whitespace-nowrap transition-all duration-300 pointer-events-none shadow-md z-40",
+                pt.align === "left" ? "left-4" : "right-4",
                 isPassed
                   ? "bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 opacity-90 scale-100"
-                  : "bg-white/90 dark:bg-zinc-900/90 text-slate-500 dark:text-zinc-500 border border-slate-200 dark:border-zinc-800 opacity-60 scale-95"
+                  : "bg-white/90 dark:bg-zinc-900/90 text-slate-500 dark:text-zinc-500 border border-slate-200 dark:border-zinc-800 opacity-50 scale-95"
               )}
             >
-              <span>{m.label}</span>{" "}
-              <span className="text-[9px] text-emerald-400 font-bold">({m.meter})</span>
+              <span>{pt.label}</span>{" "}
+              <span className="text-[9px] text-emerald-400 font-bold">({pt.meter})</span>
             </div>
           </div>
         );
@@ -487,8 +741,8 @@ export function CricketScrollAnimation() {
       <motion.div
         style={{
           opacity: batOpacity,
-          left: minX,
-          top: 88,
+          left: leftX - 38,
+          top: heroBatY - 88,
         }}
         className="absolute pointer-events-auto cursor-pointer"
         onClick={handleManualBatHit}
@@ -498,7 +752,7 @@ export function CricketScrollAnimation() {
           style={{
             rotate: batRotate,
             scale: batScale,
-            transformOrigin: "27px 15px", // Pivot around the top of the handle
+            transformOrigin: "27px 15px", // Pivot around top of handle
           }}
           className="relative filter drop-shadow-xl"
         >
@@ -549,7 +803,7 @@ export function CricketScrollAnimation() {
         </AnimatePresence>
       </motion.div>
 
-      {/* ── The Cricket Ball (Domino Left-to-Right Cascader) ───────────── */}
+      {/* ── The Cricket Ball (Aligned with Section Divider Lines & Margins) ─ */}
       <motion.div
         style={{
           x: ballX,
@@ -557,26 +811,26 @@ export function CricketScrollAnimation() {
           rotate: ballRotate,
         }}
         className="absolute top-0 left-0 pointer-events-auto cursor-pointer z-40"
-        whileHover={{ scale: 1.25 }}
-        whileTap={{ scale: 0.9 }}
+        whileHover={{ scale: 1.15 }}
+        whileTap={{ scale: 0.94 }}
         onClick={handleManualBallClick}
-        title="Cricket Ball: Click to strike! Follows scroll precisely across the domino cascade."
+        title="Cricket Ball: Rolls strictly along section divider lines and rebounds off boundary edges."
       >
         <div className="relative">
           <CricketBallSVG />
 
-          {/* Atmospheric speed trail glow behind ball */}
-          <div className="absolute inset-0 rounded-full bg-red-500/25 blur-md -z-10" />
+          {/* Clean realistic ground contact shadow resting on section divider line */}
+          <div className="absolute -bottom-1.5 left-2 right-2 h-2.5 rounded-full bg-black/25 dark:bg-black/60 blur-[3px] -z-10" />
 
           {/* Current Depth Badge that hovers alongside the ball */}
-          <div className="absolute left-11 top-1/2 -translate-y-1/2 bg-slate-900/90 dark:bg-black/90 text-white text-[9px] font-mono px-2 py-0.5 rounded-full shadow-md border border-slate-700/80 whitespace-nowrap opacity-85 hover:opacity-100 transition-opacity">
+          <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-slate-900/90 dark:bg-black/90 text-white text-[9px] font-mono px-2.5 py-0.5 rounded-full shadow-lg border border-slate-700/80 whitespace-nowrap opacity-90 hover:opacity-100 transition-opacity">
             {MILESTONES[activeMilestone]?.meter || "In Play"}
           </div>
         </div>
       </motion.div>
 
-      {/* ── Audio Mute/Unmute Toggle ──────────────────────────────────── */}
-      <div className="absolute bottom-6 left-6 pointer-events-auto">
+      {/* ── Audio Mute/Unmute Toggle (Fixed to Viewport for Ease of Access) ── */}
+      <div className="fixed bottom-6 left-6 pointer-events-auto z-50">
         <button
           onClick={() => {
             const next = !soundEnabled;
