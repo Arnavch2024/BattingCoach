@@ -166,7 +166,7 @@ export default function HomePage() {
 
   const syncUserToSupabase = async (user: UserProfile) => {
     try {
-      await fetch(`${API_BASE_URL}/api/athlete/sync`, {
+      const res = await fetch(`${API_BASE_URL}/api/athlete/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -176,8 +176,11 @@ export default function HomePage() {
           experience_level: "Club Cricketer",
         }),
       });
-    } catch (e) {
-      console.error("Supabase sync notice:", e);
+      if (!res.ok) {
+        console.warn(`Supabase sync HTTP ${res.status}, profile retained locally.`);
+      }
+    } catch {
+      console.warn("Supabase sync notice: Backend offline or unreachable, profile retained locally.");
     }
   };
 

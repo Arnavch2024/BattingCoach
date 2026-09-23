@@ -22,12 +22,22 @@ import numpy as np
 import torch
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 # Bypass huggingface-hub strict upper-bound check in transformers
 import sys
 import types
-sys.modules["transformers.dependency_versions_check"] = types.ModuleType("transformers.dependency_versions_check")
+mock_deps = types.ModuleType("transformers.dependency_versions_check")
+mock_deps.dep_version_check = lambda *args, **kwargs: None
+mock_deps.require_version_core = lambda *args, **kwargs: None
+mock_deps.require_version = lambda *args, **kwargs: None
+sys.modules["transformers.dependency_versions_check"] = mock_deps
 
-from transformers import VideoMAEForVideoClassification, VideoMAEImageProcessor
+try:
+    from transformers import VideoMAEForVideoClassification, VideoMAEImageProcessor
+except Exception as e:
+    print(f"[Warning] Failed to import transformers VideoMAE: {e}")
+    VideoMAEForVideoClassification = None
+    VideoMAEImageProcessor = None
 from ultralytics import YOLO
 
 # Hugging Face Spaces ZeroGPU Support
