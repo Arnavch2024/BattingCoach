@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence } from "framer-motion";
 import { Sparkles, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -387,6 +387,11 @@ export function CricketScrollAnimation() {
   const drop1X = rightX - reboundDist;
   const drop2X = leftX + reboundDist;
 
+  // State machine for straight-up ascent when scrolling up from the left side
+  const straightUpMotionVal = useMotionValue(0);
+  const lastScrollProgressRef = useRef(0);
+  const isAscendingStraightUpRef = useRef(false);
+
   // ────────────────────────────────────────────────────────────────────────────
   // 1. HORIZONTAL POSITION (ballX):
   // Aligned with Section Dividers & Margins:
@@ -396,10 +401,17 @@ export function CricketScrollAnimation() {
   // - Wall 1 Rebound: Rolls back 48px to drop1X
   // - Drops down Right Margin to Line 2 (Biomechanics <-> Stroke Syllabus)
   // - Rolls across Line 2 to Left Margin (leftX)
-  // - Wall 2 Rebound: Rolls back 48px to drop2X
-  // - Drops down Left Margin to Boundary Rope
+  // - Drops down Left Margin to Boundary Rope directly below starting point!
+  // - When scrolling UP from left side: moves STRAIGHT UP at leftX!
+  // - When scrolling UP from right side: exactly retraces path taken!
   // ────────────────────────────────────────────────────────────────────────────
-  const ballX = useTransform(progress, (p) => {
+  const ballX = useTransform([progress, straightUpMotionVal], ([p, s]: number[]) => {
+    // When in straight-up ascending mode: strictly locked to left margin directly below starting point!
+    if (s >= 0.5) {
+      return leftX;
+    }
+
+    // Normal downward / right-side retrace trajectory:
     // Phase 0: At Crease (p <= 0.02)
     if (p <= 0.02) {
       return leftX;
@@ -431,24 +443,26 @@ export function CricketScrollAnimation() {
     // Phase 3B: Wall 2 Impact & Momentum Rebound at left edge
     if (p < 0.93) {
       const u = (p - 0.88) / (0.93 - 0.88);
-      const ease = 1 - (1 - u) * (1 - u);
-      return leftX + ease * reboundDist;
+      const bounce = Math.sin(u * Math.PI);
+      return leftX + bounce * 24;
     }
-    // Phase 4: Vertical drop down left margin to boundary rope
-    return drop2X; // STRICTLY CONSTANT X!
+    // Phase 4: Vertical drop down left margin to boundary rope, strictly aligned with leftX!
+    return leftX;
   });
 
   // ────────────────────────────────────────────────────────────────────────────
   // 2. VERTICAL POSITION (ballY):
-  // Aligned with Section Dividers & Margins:
   // - Starts at heroBatY
-  // - Drops down left margin to rollY1
-  // - Rolls across Line 1 (strictly constant at rollY1!)
-  // - Drops down right margin from rollY1 to rollY2
-  // - Rolls across Line 2 (strictly constant at rollY2!)
-  // - Drops down left margin from rollY2 to rollY3 (boundary rope)
+  // - When in straight-up ascending mode: moves upward in a straight line from rollY3 to heroBatY!
+  // - Normal path: follows section lines and margin chutes
   // ────────────────────────────────────────────────────────────────────────────
-  const ballY = useTransform(progress, (p) => {
+  const ballY = useTransform([progress, straightUpMotionVal], ([p, s]: number[]) => {
+    // When in straight-up ascending mode: moves upward in a continuous straight line!
+    if (s >= 0.5) {
+      return heroBatY + p * (rollY3 - heroBatY);
+    }
+
+    // Normal downward / right-side retrace trajectory:
     // Phase 0: At Crease Strike Zone
     if (p <= 0.02) {
       return heroBatY;
@@ -481,10 +495,16 @@ export function CricketScrollAnimation() {
 
   // ────────────────────────────────────────────────────────────────────────────
   // 3. PHYSICAL ROLLING SEAM ROTATION:
-  // 12 Complete 360° revolutions (4320°) per section line traverse!
-  // On wall impact, seam reverses spin during the momentum rollback!
+  // - 12 Complete 360° revolutions (4320°) per section line traverse!
+  // - On wall impact, seam reverses spin during the momentum rollback!
+  // - When moving straight up, spiraling spin remains active!
   // ────────────────────────────────────────────────────────────────────────────
-  const ballRotate = useTransform(progress, (p) => {
+  const ballRotate = useTransform([progress, straightUpMotionVal], ([p, s]: number[]) => {
+    // When ascending straight up: smooth continuous seam spiraling spin!
+    if (s >= 0.5) {
+      return p * 840;
+    }
+
     if (p <= 0.02) return 0;
     // Initial drop down left margin
     if (p < 0.10) {
@@ -536,6 +556,26 @@ export function CricketScrollAnimation() {
     let w2Hit = false;
 
     const unsubscribe = scrollYProgress.on("change", (latest) => {
+      const delta = latest - lastScrollProgressRef.current;
+      lastScrollProgressRef.current = latest;
+
+      // ── Directional Vertical Ascent Controller ────────────────────────────
+      // 1. Reset back to normal trajectory once at top strike zone
+      if (latest <= 0.025) {
+        if (isAscendingStraightUpRef.current) {
+          isAscendingStraightUpRef.current = false;
+          straightUpMotionVal.set(0);
+        }
+      }
+      // 2. When ball is at the left side / bottom (p >= 0.88) and user scrolls UP:
+      // activate straight-up ascent!
+      else if (latest >= 0.88 && delta < -0.0003) {
+        if (!isAscendingStraightUpRef.current) {
+          isAscendingStraightUpRef.current = true;
+          straightUpMotionVal.set(1);
+        }
+      }
+
       // Bat Hit Trigger
       if (latest > 0.02 && !hasHit) {
         setHasHit(true);
