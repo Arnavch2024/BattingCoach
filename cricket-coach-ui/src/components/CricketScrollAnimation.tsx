@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { motion, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, useMotionValue, animate, AnimatePresence } from "framer-motion";
 import { Sparkles, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -392,6 +392,17 @@ export function CricketScrollAnimation() {
   const lastScrollProgressRef = useRef(0);
   const isAscendingStraightUpRef = useRef(false);
 
+  // Natural continuous fall under gravity (does not pause even if scroll stops)
+  const fall1Progress = useMotionValue(0);
+  const fall2Progress = useMotionValue(0);
+  const fall3Progress = useMotionValue(0);
+  const ballBounceY = useMotionValue(0);
+  const ballTilt = useMotionValue(0);
+
+  const fall1ActiveRef = useRef(false);
+  const fall2ActiveRef = useRef(false);
+  const fall3ActiveRef = useRef(false);
+
   // ────────────────────────────────────────────────────────────────────────────
   // 1. HORIZONTAL POSITION (ballX):
   // Aligned with Section Dividers & Margins:
@@ -452,101 +463,112 @@ export function CricketScrollAnimation() {
 
   // ────────────────────────────────────────────────────────────────────────────
   // 2. VERTICAL POSITION (ballY):
-  // - Starts at heroBatY
-  // - When in straight-up ascending mode: moves upward in a straight line from rollY3 to heroBatY!
-  // - Normal path: follows section lines and margin chutes
+  // - Natural continuous fall without freezing mid-air even if scrolling pauses!
+  // - Realistic micro-bounce on landing!
   // ────────────────────────────────────────────────────────────────────────────
-  const ballY = useTransform([progress, straightUpMotionVal], ([p, s]: number[]) => {
-    // When in straight-up ascending mode:
-    // Moves upward with the exact same energetic physical velocity as the chutes (~6,050 px/unit p)!
-    if (s >= 0.5) {
-      const u = Math.min(1, Math.max(0, (1.00 - p) / 0.35));
-      const ease = u * (2 - u); // Smooth physical deceleration curve
-      return rollY3 - ease * (rollY3 - heroBatY);
-    }
+  const ballY = useTransform(
+    [progress, straightUpMotionVal, fall1Progress, fall2Progress, fall3Progress, ballBounceY],
+    ([p, s, f1, f2, f3, bounce]: number[]) => {
+      // When in straight-up ascending mode:
+      if (s >= 0.5) {
+        const u = Math.min(1, Math.max(0, (1.00 - p) / 0.35));
+        const ease = u * (2 - u); // Smooth physical deceleration curve
+        return rollY3 - ease * (rollY3 - heroBatY) + bounce;
+      }
 
-    // Normal downward / right-side retrace trajectory:
-    // Phase 0: At Crease Strike Zone
-    if (p <= 0.02) {
-      return heroBatY;
-    }
-    // Phase 0B: Drop vertically down left margin from bat to Line 1
-    if (p < 0.10) {
-      const t = (p - 0.02) / (0.10 - 0.02);
+      // Normal downward / right-side retrace trajectory:
+      // Phase 0: At Crease Strike Zone
+      if (p <= 0.02 && f1 <= 0.01) {
+        return heroBatY + bounce;
+      }
+      // Phase 0B: Vertical drop down left margin from bat to Line 1
+      // Continuous natural fall under gravity: does not pause even if scrolling stops!
+      if (p < 0.10 || f1 < 1.0) {
+        const scrollT = p > 0.02 ? (p - 0.02) / (0.10 - 0.02) : 0;
+        const t = Math.min(1, Math.max(scrollT, f1));
+        const gravityT = t * t;
+        return heroBatY + gravityT * (rollY1 - heroBatY) + bounce;
+      }
+      // Phase 1: On Line 1 between Overview and Biomechanics (Roll + Rebound: STRICTLY LEVEL!)
+      if (p < 0.50 && f2 <= 0.01) {
+        return rollY1 + bounce;
+      }
+      // Phase 2: Drop vertically down right margin from Line 1 to Line 2
+      // Continuous natural fall under gravity: does not pause even if scrolling stops!
+      if (p < 0.60 || f2 < 1.0) {
+        const scrollT = p >= 0.50 ? (p - 0.50) / (0.60 - 0.50) : 0;
+        const t = Math.min(1, Math.max(scrollT, f2));
+        const gravityT = t * t;
+        return rollY1 + gravityT * (rollY2 - rollY1) + bounce;
+      }
+      // Phase 3: On Line 2 between Biomechanics and Stroke Syllabus (Roll + Rebound: STRICTLY LEVEL!)
+      if (p < 0.93 && f3 <= 0.01) {
+        return rollY2 + bounce;
+      }
+      // Phase 4: Drop vertically down left margin from Line 2 to Boundary Rope
+      // Continuous natural fall under gravity: does not pause even if scrolling stops!
+      const scrollT = p >= 0.93 ? (p - 0.93) / (1.00 - 0.93) : 0;
+      const t = Math.min(1, Math.max(scrollT, f3));
       const gravityT = t * t;
-      return heroBatY + gravityT * (rollY1 - heroBatY);
+      return rollY2 + gravityT * (rollY3 - rollY2) + bounce;
     }
-    // Phase 1: On Line 1 between Overview and Biomechanics (Roll + Rebound: STRICTLY LEVEL!)
-    if (p < 0.50) {
-      return rollY1;
-    }
-    // Phase 2: Drop vertically down right margin from Line 1 to Line 2
-    if (p < 0.60) {
-      const t = (p - 0.50) / (0.60 - 0.50);
-      const gravityT = t * t;
-      return rollY1 + gravityT * (rollY2 - rollY1);
-    }
-    // Phase 3: On Line 2 between Biomechanics and Stroke Syllabus (Roll + Rebound: STRICTLY LEVEL!)
-    if (p < 0.93) {
-      return rollY2;
-    }
-    // Phase 4: Drop vertically down left margin from Line 2 to Boundary Rope
-    const t = (p - 0.93) / (1.00 - 0.93);
-    const gravityT = t * t;
-    return rollY2 + gravityT * (rollY3 - rollY2);
-  });
+  );
 
   // ────────────────────────────────────────────────────────────────────────────
   // 3. PHYSICAL ROLLING SEAM ROTATION:
   // - 12 Complete 360° revolutions (4320°) per section line traverse!
-  // - On wall impact, seam reverses spin during the momentum rollback!
-  // - When moving straight up, spiraling spin matches high-speed 12-turn roll rate!
+  // - Active spin during natural gravity falls!
   // ────────────────────────────────────────────────────────────────────────────
-  const ballRotate = useTransform([progress, straightUpMotionVal], ([p, s]: number[]) => {
-    // When ascending straight up:
-    // 12 Complete 360° revolutions (4320°) matching the high-speed seam rotation of the horizontal rolls and chutes!
-    if (s >= 0.5) {
-      const u = Math.min(1, Math.max(0, (1.00 - p) / 0.35));
-      return 840 + u * 4320;
-    }
+  const ballRotate = useTransform(
+    [progress, straightUpMotionVal, fall1Progress, fall2Progress, fall3Progress],
+    ([p, s, f1, f2, f3]: number[]) => {
+      // When ascending straight up:
+      if (s >= 0.5) {
+        const u = Math.min(1, Math.max(0, (1.00 - p) / 0.35));
+        return 840 + u * 4320;
+      }
 
-    if (p <= 0.02) return 0;
-    // Initial drop down left margin
-    if (p < 0.10) {
-      const t = (p - 0.02) / (0.10 - 0.02);
-      return t * 360;
+      if (p <= 0.02 && f1 <= 0.01) return 0;
+      // Initial drop down left margin with continuous gravity spin
+      if (p < 0.10 || f1 < 1.0) {
+        const scrollT = p > 0.02 ? (p - 0.02) / (0.10 - 0.02) : 0;
+        const t = Math.min(1, Math.max(scrollT, f1));
+        return t * 360;
+      }
+      // Roll across Line 1 (12 full clockwise rotations):
+      if (p < 0.44) {
+        const t = (p - 0.10) / (0.44 - 0.10);
+        return 360 + t * 4320;
+      }
+      // Wall 1 Rebound (backspin rollback):
+      if (p < 0.50 && f2 <= 0.01) {
+        const u = (p - 0.44) / (0.50 - 0.44);
+        const ease = 1 - (1 - u) * (1 - u);
+        return 4680 - ease * 240;
+      }
+      // Drop 1 down right margin with continuous gravity spin:
+      if (p < 0.60 || f2 < 1.0) {
+        const scrollT = p >= 0.50 ? (p - 0.50) / (0.60 - 0.50) : 0;
+        const t = Math.min(1, Math.max(scrollT, f2));
+        return 4440 + t * 240;
+      }
+      // Roll across Line 2 (12 full reverse rotations):
+      if (p < 0.88) {
+        const t = (p - 0.60) / (0.88 - 0.60);
+        return 4680 - t * 4320;
+      }
+      // Wall 2 Rebound (forward spin rollback):
+      if (p < 0.93 && f3 <= 0.01) {
+        const u = (p - 0.88) / (0.93 - 0.88);
+        const ease = 1 - (1 - u) * (1 - u);
+        return 360 + ease * 240;
+      }
+      // Drop 2 to boundary rope with continuous gravity spin:
+      const scrollT = p >= 0.93 ? (p - 0.93) / (1.00 - 0.93) : 0;
+      const t = Math.min(1, Math.max(scrollT, f3));
+      return 600 + t * 240;
     }
-    // Roll across Line 1 (12 full clockwise rotations):
-    if (p < 0.44) {
-      const t = (p - 0.10) / (0.44 - 0.10);
-      return 360 + t * 4320;
-    }
-    // Wall 1 Rebound (backspin rollback):
-    if (p < 0.50) {
-      const u = (p - 0.44) / (0.50 - 0.44);
-      const ease = 1 - (1 - u) * (1 - u);
-      return 4680 - ease * 240;
-    }
-    // Drop 1 down right margin:
-    if (p < 0.60) {
-      const t = (p - 0.50) / (0.60 - 0.50);
-      return 4440 + t * 240;
-    }
-    // Roll across Line 2 (12 full reverse rotations):
-    if (p < 0.88) {
-      const t = (p - 0.60) / (0.88 - 0.60);
-      return 4680 - t * 4320;
-    }
-    // Wall 2 Rebound (forward spin rollback):
-    if (p < 0.93) {
-      const u = (p - 0.88) / (0.93 - 0.88);
-      const ease = 1 - (1 - u) * (1 - u);
-      return 360 + ease * 240;
-    }
-    // Drop 2 to boundary rope:
-    const t = (p - 0.93) / (1.00 - 0.93);
-    return 600 + t * 240;
-  });
+  );
 
   // 4. BAT SWING ARC:
   // Primed in backlift (-14°), executes crisp drive swing (+38° at p=0.015-0.03), then follow-through
@@ -579,6 +601,63 @@ export function CricketScrollAnimation() {
           isAscendingStraightUpRef.current = true;
           straightUpMotionVal.set(1);
         }
+      }
+
+      // ── Natural Falling Triggers (runs to completion even if scrolling stops) ──
+      // Fall 1: Off Bat down to Line 1
+      if (latest > 0.02 && !fall1ActiveRef.current) {
+        fall1ActiveRef.current = true;
+        animate(fall1Progress, 1, {
+          duration: 0.46,
+          ease: [0.4, 0, 0.2, 1], // Natural gravity drop curve
+          onComplete: () => {
+            // Ball hits Line 1: bounces a little and tilts left-right before stopping!
+            animate(ballBounceY, [0, -12, 0, -4, 0], { duration: 0.32, ease: "easeOut" });
+            animate(ballTilt, [0, -9, 7, -4, 2, 0], { duration: 0.44, ease: "easeOut" });
+            if (soundEnabled) playWallThudSound();
+          },
+        });
+      } else if (latest <= 0.01 && fall1ActiveRef.current) {
+        fall1ActiveRef.current = false;
+        fall1Progress.set(0);
+        ballBounceY.set(0);
+        ballTilt.set(0);
+      }
+
+      // Fall 2: Off Line 1 down to Line 2
+      if (latest >= 0.50 && latest < 0.65 && !fall2ActiveRef.current) {
+        fall2ActiveRef.current = true;
+        animate(fall2Progress, 1, {
+          duration: 0.48,
+          ease: [0.4, 0, 0.2, 1],
+          onComplete: () => {
+            // Ball hits Line 2: bounces a little and tilts left-right before stopping!
+            animate(ballBounceY, [0, -12, 0, -4, 0], { duration: 0.32, ease: "easeOut" });
+            animate(ballTilt, [0, 8, -6, 3, -1, 0], { duration: 0.44, ease: "easeOut" });
+            if (soundEnabled) playWallThudSound();
+          },
+        });
+      } else if (latest < 0.46 && fall2ActiveRef.current) {
+        fall2ActiveRef.current = false;
+        fall2Progress.set(0);
+      }
+
+      // Fall 3: Off Line 2 down to Ground (Boundary Rope)
+      if (latest >= 0.93 && !fall3ActiveRef.current) {
+        fall3ActiveRef.current = true;
+        animate(fall3Progress, 1, {
+          duration: 0.50,
+          ease: [0.4, 0, 0.2, 1],
+          onComplete: () => {
+            // Ball hits ground: bounces a little and tilts left-right before coming to rest!
+            animate(ballBounceY, [0, -14, 0, -5, 0], { duration: 0.34, ease: "easeOut" });
+            animate(ballTilt, [0, -10, 8, -5, 2, 0], { duration: 0.46, ease: "easeOut" });
+            if (soundEnabled) playWallThudSound();
+          },
+        });
+      } else if (latest < 0.88 && fall3ActiveRef.current) {
+        fall3ActiveRef.current = false;
+        fall3Progress.set(0);
       }
 
       // Bat Hit Trigger
@@ -625,6 +704,20 @@ export function CricketScrollAnimation() {
     setShowCrackBadge(true);
     if (soundEnabled) playBatCrackSound();
     setTimeout(() => setShowCrackBadge(false), 2200);
+
+    // Trigger Fall 1
+    if (!fall1ActiveRef.current) {
+      fall1ActiveRef.current = true;
+      animate(fall1Progress, 1, {
+        duration: 0.46,
+        ease: [0.4, 0, 0.2, 1],
+        onComplete: () => {
+          animate(ballBounceY, [0, -12, 0, -4, 0], { duration: 0.32, ease: "easeOut" });
+          animate(ballTilt, [0, -9, 7, -4, 2, 0], { duration: 0.44, ease: "easeOut" });
+          if (soundEnabled) playWallThudSound();
+        },
+      });
+    }
 
     window.scrollBy({ top: 400, behavior: "smooth" });
   };
@@ -863,7 +956,7 @@ export function CricketScrollAnimation() {
         onClick={handleManualBallClick}
         title="Cricket Ball: Rolls strictly along section divider lines and rebounds off boundary edges."
       >
-        <div className="relative">
+        <motion.div style={{ rotate: ballTilt }} className="relative">
           <CricketBallSVG />
 
           {/* Clean realistic ground contact shadow resting on section divider line */}
@@ -873,7 +966,7 @@ export function CricketScrollAnimation() {
           <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-slate-900/90 dark:bg-black/90 text-white text-[9px] font-mono px-2.5 py-0.5 rounded-full shadow-lg border border-slate-700/80 whitespace-nowrap opacity-90 hover:opacity-100 transition-opacity">
             {MILESTONES[activeMilestone]?.meter || "In Play"}
           </div>
-        </div>
+        </motion.div>
       </motion.div>
 
       {/* ── Audio Mute/Unmute Toggle (Fixed to Viewport for Ease of Access) ── */}
