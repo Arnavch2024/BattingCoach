@@ -457,9 +457,12 @@ export function CricketScrollAnimation() {
   // - Normal path: follows section lines and margin chutes
   // ────────────────────────────────────────────────────────────────────────────
   const ballY = useTransform([progress, straightUpMotionVal], ([p, s]: number[]) => {
-    // When in straight-up ascending mode: moves upward in a continuous straight line!
+    // When in straight-up ascending mode:
+    // Moves upward with the exact same energetic physical velocity as the chutes (~6,050 px/unit p)!
     if (s >= 0.5) {
-      return heroBatY + p * (rollY3 - heroBatY);
+      const u = Math.min(1, Math.max(0, (1.00 - p) / 0.35));
+      const ease = u * (2 - u); // Smooth physical deceleration curve
+      return rollY3 - ease * (rollY3 - heroBatY);
     }
 
     // Normal downward / right-side retrace trajectory:
@@ -497,12 +500,14 @@ export function CricketScrollAnimation() {
   // 3. PHYSICAL ROLLING SEAM ROTATION:
   // - 12 Complete 360° revolutions (4320°) per section line traverse!
   // - On wall impact, seam reverses spin during the momentum rollback!
-  // - When moving straight up, spiraling spin remains active!
+  // - When moving straight up, spiraling spin matches high-speed 12-turn roll rate!
   // ────────────────────────────────────────────────────────────────────────────
   const ballRotate = useTransform([progress, straightUpMotionVal], ([p, s]: number[]) => {
-    // When ascending straight up: smooth continuous seam spiraling spin!
+    // When ascending straight up:
+    // 12 Complete 360° revolutions (4320°) matching the high-speed seam rotation of the horizontal rolls and chutes!
     if (s >= 0.5) {
-      return p * 840;
+      const u = Math.min(1, Math.max(0, (1.00 - p) / 0.35));
+      return 840 + u * 4320;
     }
 
     if (p <= 0.02) return 0;
