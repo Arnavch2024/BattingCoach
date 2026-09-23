@@ -50,6 +50,13 @@ const HERO_SLIDES = [
     tag: "NEURAL CLASSIFIER",
     title: "VideoMAE Spatiotemporal AI",
     subtitle: "Deep 16-frame action recognition model fine-tuned on professional stroke footage.",
+  },
+  {
+    id: 5,
+    url: "https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&w=2000&q=85",
+    tag: "SEAM & ROTATION",
+    title: "Ball Spin & Trajectory Telemetry",
+    subtitle: "High-precision rotational ball tracking, seam orientation analysis, and dynamic trajectory prediction.",
   }
 ];
 
