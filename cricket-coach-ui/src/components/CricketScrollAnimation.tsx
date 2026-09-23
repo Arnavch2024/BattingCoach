@@ -273,9 +273,10 @@ function CricketBallSVG({ className }: { className?: string }) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 const MILESTONES = [
-  { id: "hero", label: "Strike Zone", scrollRatio: 0.03, meter: "0m" },
-  { id: "demo-preview", label: "3D Biomechanics", scrollRatio: 0.52, meter: "65m" },
-  { id: "athlete-portal", label: "Boundary Rope", scrollRatio: 0.94, meter: "115m 🚀" },
+  { id: "hero", label: "Strike Zone", scrollRatio: 0.02, meter: "0m" },
+  { id: "demo-preview", label: "3D Biomechanics", scrollRatio: 0.44, meter: "65m" },
+  { id: "modules", label: "Stroke Syllabus", scrollRatio: 0.86, meter: "95m" },
+  { id: "athlete-portal", label: "Boundary Rope", scrollRatio: 0.98, meter: "115m 🚀" },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -705,10 +706,11 @@ export function CricketScrollAnimation() {
         { m: MILESTONES[2], x: drop2X + 24, y: y2, label: "Stroke Syllabus Line", meter: "95m", align: "left" },
         { m: MILESTONES[3], x: drop2X + 24, y: y3, label: "Boundary Rope", meter: "115m 🚀", align: "left" },
       ].map((pt, idx) => {
+        if (!pt?.m) return null;
         const isPassed = idx <= activeMilestone;
         return (
           <div
-            key={pt.m.id}
+            key={pt.m?.id || idx}
             style={{ left: pt.x, top: pt.y }}
             className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center group pointer-events-none"
           >
