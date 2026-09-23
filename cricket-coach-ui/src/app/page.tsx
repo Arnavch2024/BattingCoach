@@ -32,7 +32,7 @@ const HERO_SLIDES = [
   },
   {
     id: 2,
-    url: "https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&w=2000&q=85",
+    url: "/images/front-elbow-alignment.jpg",
     tag: "DRIVE PRECISION",
     title: "Front Elbow Alignment",
     subtitle: "Instant lead elbow elevation measurement ensuring textbook vertical presentation.",
