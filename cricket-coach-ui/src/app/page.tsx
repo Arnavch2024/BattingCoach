@@ -57,6 +57,20 @@ const HERO_SLIDES = [
     tag: "SEAM & ROTATION",
     title: "Ball Spin & Trajectory Telemetry",
     subtitle: "High-precision rotational ball tracking, seam orientation analysis, and dynamic trajectory prediction.",
+  },
+  {
+    id: 6,
+    url: "/images/sweet-spot-impact.jpg",
+    tag: "SWEET SPOT PRECISION",
+    title: "Blade Impact & Willow Dynamics",
+    subtitle: "Microsecond acoustic & visual impact telemetry mapping sweet-spot collision efficiency.",
+  },
+  {
+    id: 7,
+    url: "/images/glossy-seam-flight.jpg",
+    tag: "AERODYNAMICS & DRIFT",
+    title: "Upright Seam & Angular Velocity",
+    subtitle: "Continuous measurement of revolutions per minute (RPM) and seam wobble physics in flight.",
   }
 ];
 
