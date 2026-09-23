@@ -32,45 +32,45 @@ const HERO_SLIDES = [
   },
   {
     id: 2,
-    url: "/images/front-elbow-alignment.jpg",
-    tag: "DRIVE PRECISION",
-    title: "Front Elbow Alignment",
-    subtitle: "Instant lead elbow elevation measurement ensuring textbook vertical presentation.",
-  },
-  {
-    id: 3,
-    url: "https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?auto=format&fit=crop&w=2000&q=85",
-    tag: "POWER & CROSS-BAT",
-    title: "Kinematic Weight Transfer",
-    subtitle: "Measure back-foot load and hip pivot during pull and hook execution.",
-  },
-  {
-    id: 4,
-    url: "https://images.unsplash.com/photo-1593341646782-e0b495cff86d?auto=format&fit=crop&w=2000&q=85",
-    tag: "NEURAL CLASSIFIER",
-    title: "VideoMAE Spatiotemporal AI",
-    subtitle: "Deep 16-frame action recognition model fine-tuned on professional stroke footage.",
-  },
-  {
-    id: 5,
     url: "https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&w=2000&q=85",
     tag: "SEAM & ROTATION",
     title: "Ball Spin & Trajectory Telemetry",
     subtitle: "High-precision rotational ball tracking, seam orientation analysis, and dynamic trajectory prediction.",
   },
   {
-    id: 6,
+    id: 3,
+    url: "/images/front-elbow-alignment.jpg",
+    tag: "DRIVE PRECISION",
+    title: "Front Elbow Alignment",
+    subtitle: "Instant lead elbow elevation measurement ensuring textbook vertical presentation.",
+  },
+  {
+    id: 4,
     url: "/images/sweet-spot-impact.jpg",
     tag: "SWEET SPOT PRECISION",
     title: "Blade Impact & Willow Dynamics",
     subtitle: "Microsecond acoustic & visual impact telemetry mapping sweet-spot collision efficiency.",
   },
   {
-    id: 7,
+    id: 5,
+    url: "https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?auto=format&fit=crop&w=2000&q=85",
+    tag: "POWER & CROSS-BAT",
+    title: "Kinematic Weight Transfer",
+    subtitle: "Measure back-foot load and hip pivot during pull and hook execution.",
+  },
+  {
+    id: 6,
     url: "/images/glossy-seam-flight.jpg",
     tag: "AERODYNAMICS & DRIFT",
     title: "Upright Seam & Angular Velocity",
     subtitle: "Continuous measurement of revolutions per minute (RPM) and seam wobble physics in flight.",
+  },
+  {
+    id: 7,
+    url: "https://images.unsplash.com/photo-1593341646782-e0b495cff86d?auto=format&fit=crop&w=2000&q=85",
+    tag: "NEURAL CLASSIFIER",
+    title: "VideoMAE Spatiotemporal AI",
+    subtitle: "Deep 16-frame action recognition model fine-tuned on professional stroke footage.",
   }
 ];
 
