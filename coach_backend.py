@@ -22,7 +22,11 @@ import numpy as np
 import torch
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
+# Bypass huggingface-hub strict upper-bound check in transformers
+import sys
+import types
+sys.modules["transformers.dependency_versions_check"] = types.ModuleType("transformers.dependency_versions_check")
+
 from transformers import VideoMAEForVideoClassification, VideoMAEImageProcessor
 from ultralytics import YOLO
 
