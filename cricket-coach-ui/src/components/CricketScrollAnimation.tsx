@@ -399,6 +399,15 @@ export function CricketScrollAnimation() {
   const ballBounceY = useMotionValue(0);
   const ballTilt = useMotionValue(0);
 
+  // Micro-rebound dynamic shadow scaling
+  const shadowScaleX = useTransform(ballBounceY, [0, -10], [1, 0.75]);
+  const shadowOpacity = useTransform(ballBounceY, [0, -10], [0.8, 0.3]);
+
+  // Seam spin landing roll-out (subtle forward friction roll upon landing)
+  const fall1LandingRoll = useMotionValue(0);
+  const fall2LandingRoll = useMotionValue(0);
+  const fall3LandingRoll = useMotionValue(0);
+
   const fall1ActiveRef = useRef(false);
   const fall2ActiveRef = useRef(false);
   const fall3ActiveRef = useRef(false);
@@ -517,11 +526,21 @@ export function CricketScrollAnimation() {
   // ────────────────────────────────────────────────────────────────────────────
   // 3. PHYSICAL ROLLING SEAM ROTATION:
   // - 12 Complete 360° revolutions (4320°) per section line traverse!
-  // - Active spin during natural gravity falls!
+  // - Active spin during free fall with constant angular velocity!
+  // - Natural friction roll-out upon surface contact!
   // ────────────────────────────────────────────────────────────────────────────
   const ballRotate = useTransform(
-    [progress, straightUpMotionVal, fall1Progress, fall2Progress, fall3Progress],
-    ([p, s, f1, f2, f3]: number[]) => {
+    [
+      progress,
+      straightUpMotionVal,
+      fall1Progress,
+      fall2Progress,
+      fall3Progress,
+      fall1LandingRoll,
+      fall2LandingRoll,
+      fall3LandingRoll,
+    ],
+    ([p, s, f1, f2, f3, r1, r2, r3]: number[]) => {
       // When ascending straight up:
       if (s >= 0.5) {
         const u = Math.min(1, Math.max(0, (1.00 - p) / 0.35));
@@ -529,11 +548,11 @@ export function CricketScrollAnimation() {
       }
 
       if (p <= 0.02 && f1 <= 0.01) return 0;
-      // Initial drop down left margin with continuous gravity spin
+      // Initial drop down left margin: constant angular momentum in flight + friction rollout on landing
       if (p < 0.10 || f1 < 1.0) {
         const scrollT = p > 0.02 ? (p - 0.02) / (0.10 - 0.02) : 0;
         const t = Math.min(1, Math.max(scrollT, f1));
-        return t * 360;
+        return t * 320 + r1;
       }
       // Roll across Line 1 (12 full clockwise rotations):
       if (p < 0.44) {
@@ -546,11 +565,11 @@ export function CricketScrollAnimation() {
         const ease = 1 - (1 - u) * (1 - u);
         return 4680 - ease * 240;
       }
-      // Drop 1 down right margin with continuous gravity spin:
+      // Drop 1 down right margin: constant angular momentum in flight + friction rollout on landing
       if (p < 0.60 || f2 < 1.0) {
         const scrollT = p >= 0.50 ? (p - 0.50) / (0.60 - 0.50) : 0;
         const t = Math.min(1, Math.max(scrollT, f2));
-        return 4440 + t * 240;
+        return 4440 + t * 200 + r2;
       }
       // Roll across Line 2 (12 full reverse rotations):
       if (p < 0.88) {
@@ -563,10 +582,10 @@ export function CricketScrollAnimation() {
         const ease = 1 - (1 - u) * (1 - u);
         return 360 + ease * 240;
       }
-      // Drop 2 to boundary rope with continuous gravity spin:
+      // Drop 2 to boundary rope: constant angular momentum in flight + friction rollout on landing
       const scrollT = p >= 0.93 ? (p - 0.93) / (1.00 - 0.93) : 0;
       const t = Math.min(1, Math.max(scrollT, f3));
-      return 600 + t * 240;
+      return 600 + t * 200 + r3;
     }
   );
 
@@ -603,61 +622,71 @@ export function CricketScrollAnimation() {
         }
       }
 
-      // ── Natural Falling Triggers (runs to completion even if scrolling stops) ──
-      // Fall 1: Off Bat down to Line 1
+      // ── Natural Gravitational Falling Triggers (continuous fall without pausing) ──
+      // Fall 1: Off Bat down to Line 1 (High velocity impact from ~550px drop)
       if (latest > 0.02 && !fall1ActiveRef.current) {
         fall1ActiveRef.current = true;
         animate(fall1Progress, 1, {
-          duration: 0.46,
-          ease: [0.4, 0, 0.2, 1], // Natural gravity drop curve
+          duration: 0.38,
+          ease: "linear", // Linear time parameterization -> quadratic y = t*t gives real-world gravity acceleration
           onComplete: () => {
-            // Ball hits Line 1: bounces a little and tilts left-right before stopping!
-            animate(ballBounceY, [0, -12, 0, -4, 0], { duration: 0.32, ease: "easeOut" });
-            animate(ballTilt, [0, -9, 7, -4, 2, 0], { duration: 0.44, ease: "easeOut" });
+            // Punchy, realistic cricket ball impact matching high speed: lively micro-rebound & dynamic seam tilt settle
+            animate(ballBounceY, [0, -8.5, 0, -2.8, 0], { duration: 0.28, ease: "easeOut" });
+            animate(ballTilt, [0, -5.2, 2.8, -1.0, 0], { duration: 0.30, ease: "easeOut" });
+            animate(fall1LandingRoll, 40, { duration: 0.28, ease: "easeOut" });
             if (soundEnabled) playWallThudSound();
           },
         });
       } else if (latest <= 0.01 && fall1ActiveRef.current) {
         fall1ActiveRef.current = false;
         fall1Progress.set(0);
+        fall1LandingRoll.set(0);
         ballBounceY.set(0);
         ballTilt.set(0);
       }
 
-      // Fall 2: Off Line 1 down to Line 2
+      // Fall 2: Off Line 1 down to Line 2 (Rebound drop from right wall)
       if (latest >= 0.50 && latest < 0.65 && !fall2ActiveRef.current) {
         fall2ActiveRef.current = true;
         animate(fall2Progress, 1, {
-          duration: 0.48,
-          ease: [0.4, 0, 0.2, 1],
+          duration: 0.36,
+          ease: "linear",
           onComplete: () => {
-            // Ball hits Line 2: bounces a little and tilts left-right before stopping!
-            animate(ballBounceY, [0, -12, 0, -4, 0], { duration: 0.32, ease: "easeOut" });
-            animate(ballTilt, [0, 8, -6, 3, -1, 0], { duration: 0.44, ease: "easeOut" });
+            // Natural impact matching descent speed on Line 2
+            animate(ballBounceY, [0, -7.5, 0, -2.4, 0], { duration: 0.26, ease: "easeOut" });
+            animate(ballTilt, [0, 4.8, -2.5, 0.8, 0], { duration: 0.28, ease: "easeOut" });
+            animate(fall2LandingRoll, 40, { duration: 0.26, ease: "easeOut" });
             if (soundEnabled) playWallThudSound();
           },
         });
       } else if (latest < 0.46 && fall2ActiveRef.current) {
         fall2ActiveRef.current = false;
         fall2Progress.set(0);
+        fall2LandingRoll.set(0);
+        ballBounceY.set(0);
+        ballTilt.set(0);
       }
 
       // Fall 3: Off Line 2 down to Ground (Boundary Rope)
       if (latest >= 0.93 && !fall3ActiveRef.current) {
         fall3ActiveRef.current = true;
         animate(fall3Progress, 1, {
-          duration: 0.50,
-          ease: [0.4, 0, 0.2, 1],
+          duration: 0.34,
+          ease: "linear",
           onComplete: () => {
-            // Ball hits ground: bounces a little and tilts left-right before coming to rest!
-            animate(ballBounceY, [0, -14, 0, -5, 0], { duration: 0.34, ease: "easeOut" });
-            animate(ballTilt, [0, -10, 8, -5, 2, 0], { duration: 0.46, ease: "easeOut" });
+            // Turf boundary landing matching terminal drop velocity
+            animate(ballBounceY, [0, -7.0, 0, -2.0, 0], { duration: 0.26, ease: "easeOut" });
+            animate(ballTilt, [0, -4.6, 2.4, -0.8, 0], { duration: 0.28, ease: "easeOut" });
+            animate(fall3LandingRoll, 40, { duration: 0.26, ease: "easeOut" });
             if (soundEnabled) playWallThudSound();
           },
         });
       } else if (latest < 0.88 && fall3ActiveRef.current) {
         fall3ActiveRef.current = false;
         fall3Progress.set(0);
+        fall3LandingRoll.set(0);
+        ballBounceY.set(0);
+        ballTilt.set(0);
       }
 
       // Bat Hit Trigger
@@ -709,11 +738,12 @@ export function CricketScrollAnimation() {
     if (!fall1ActiveRef.current) {
       fall1ActiveRef.current = true;
       animate(fall1Progress, 1, {
-        duration: 0.46,
-        ease: [0.4, 0, 0.2, 1],
+        duration: 0.38,
+        ease: "linear",
         onComplete: () => {
-          animate(ballBounceY, [0, -12, 0, -4, 0], { duration: 0.32, ease: "easeOut" });
-          animate(ballTilt, [0, -9, 7, -4, 2, 0], { duration: 0.44, ease: "easeOut" });
+          animate(ballBounceY, [0, -8.5, 0, -2.8, 0], { duration: 0.28, ease: "easeOut" });
+          animate(ballTilt, [0, -5.2, 2.8, -1.0, 0], { duration: 0.30, ease: "easeOut" });
+          animate(fall1LandingRoll, 40, { duration: 0.28, ease: "easeOut" });
           if (soundEnabled) playWallThudSound();
         },
       });
@@ -948,25 +978,40 @@ export function CricketScrollAnimation() {
         style={{
           x: ballX,
           y: ballY,
-          rotate: ballRotate,
         }}
         className="absolute top-0 left-0 pointer-events-auto cursor-pointer z-40"
-        whileHover={{ scale: 1.15 }}
+        whileHover={{ scale: 1.12 }}
         whileTap={{ scale: 0.94 }}
         onClick={handleManualBallClick}
         title="Cricket Ball: Rolls strictly along section divider lines and rebounds off boundary edges."
       >
-        <motion.div style={{ rotate: ballTilt }} className="relative">
-          <CricketBallSVG />
+        <div className="relative">
+          {/* Clean realistic ground contact shadow resting level on section divider line (scales with micro-bounce) */}
+          <motion.div
+            style={{
+              scaleX: shadowScaleX,
+              opacity: shadowOpacity,
+            }}
+            className="absolute -bottom-1 left-2 right-2 h-2.5 rounded-full bg-black/30 dark:bg-black/70 blur-[3px] pointer-events-none -z-10"
+          />
 
-          {/* Clean realistic ground contact shadow resting on section divider line */}
-          <div className="absolute -bottom-1.5 left-2 right-2 h-2.5 rounded-full bg-black/25 dark:bg-black/60 blur-[3px] -z-10" />
+          {/* Cricket Ball: Only the ball graphic rotates with seam spin and subtle physical tilt */}
+          <motion.div
+            style={{
+              rotate: ballRotate,
+            }}
+            className="relative"
+          >
+            <motion.div style={{ rotate: ballTilt }}>
+              <CricketBallSVG />
+            </motion.div>
+          </motion.div>
 
-          {/* Current Depth Badge that hovers alongside the ball */}
-          <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-slate-900/90 dark:bg-black/90 text-white text-[9px] font-mono px-2.5 py-0.5 rounded-full shadow-lg border border-slate-700/80 whitespace-nowrap opacity-90 hover:opacity-100 transition-opacity">
+          {/* Current Depth Badge that hovers alongside the ball (stays upright and readable) */}
+          <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-slate-900/90 dark:bg-black/90 text-white text-[9px] font-mono px-2.5 py-0.5 rounded-full shadow-lg border border-slate-700/80 whitespace-nowrap opacity-90 hover:opacity-100 transition-opacity pointer-events-none">
             {MILESTONES[activeMilestone]?.meter || "In Play"}
           </div>
-        </motion.div>
+        </div>
       </motion.div>
 
       {/* ── Audio Mute/Unmute Toggle (Fixed to Viewport for Ease of Access) ── */}
