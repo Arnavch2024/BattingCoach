@@ -1,0 +1,57 @@
+name: Library & Dependency Version Audit
+
+on:
+  schedule:
+    # Run every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - 'requirements.txt'
+      - 'cricket-coach-ui/package.json'
+      - '.github/scripts/audit_libraries.py'
+      - '.github/workflows/dependency-audit.yml'
+  workflow_dispatch:
+
+# Grant write permissions so the workflow can open and manage GitHub Issues
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit-libraries:
+    name: Audit Python & NPM Libraries
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'cricket-coach-ui/package-lock.json'
+
+      - name: 📦 Install Python Audit Tools & Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+          # Install CPU-optimized PyTorch first for fast dependency resolution
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt || true
+
+      - name: 🔍 Run Library Audit & Manage GitHub Issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          python .github/scripts/audit_libraries.py
