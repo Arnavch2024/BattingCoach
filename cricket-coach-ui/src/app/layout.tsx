@@ -4,6 +4,7 @@ import "./globals.css";
 import { PwaRegister, PwaInstallPrompt } from "@/components/pwa-register";
 import { ThemeProvider } from "@/components/theme-provider";
 import { DatadogRum } from "@/components/DatadogRum";
+import { TelemetryFloatingWidget } from "@/components/TelemetryFloatingWidget";
 
 export const viewport: Viewport = {
   themeColor: "#059669",
@@ -86,6 +87,7 @@ export default function RootLayout({
           <PwaRegister />
           {children}
           <DatadogRum />
+          <TelemetryFloatingWidget />
           <PwaInstallPrompt />
         </ThemeProvider>
       </body>
