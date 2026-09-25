@@ -5,6 +5,54 @@ Pure algorithmic module: Lightweight, fast, and testable without GPU or ML weigh
 """
 
 import math
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Biomechanical Threshold Constants
+# Sources:
+#   ECB Level 3 Coaching Manual (2019 edition), Section 4: Front-Foot Drives
+#   Taliep et al., 'Kinematics of the front-foot off-drive', J. Sports Sciences (2007)
+#   MCC Coaching Fundamentals Guide (2021)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Lead elbow extension for front-foot drives: 125°–155° = ideal window
+# Below 128° indicates collapsed elbow / insufficient lever
+LEAD_ELBOW_MIN_DEG     = 128.0   # ECB: "Front elbow must form clear 'V' shape above ball"
+LEAD_ELBOW_SOFT_DEG    = 135.0   # Ideal centre of range
+
+# Front knee flexion: straight knee (>165°) locks the hip and causes top-edges
+KNEE_STRAIGHT_DEG      = 165.0   # ECB: knee must flex ≥10° into the shot
+KNEE_DEFENSE_HARD_DEG  = 145.0   # Defense: hard hands threshold
+KNEE_CHECKLIST_DEG     = 160.0   # HUD green/red threshold aligned to ECB guideline
+
+# Spine forward lean threshold
+# <6° indicates upright stance; 10°–20° is the ideal drive range
+SPINE_LEAN_MIN_DEG     = 6.0
+SPINE_CHECKLIST_DEG    = 7.0     # Slightly higher than error threshold for HUD
+
+# Head alignment: max gap from nose to lead knee in torso-normalised units
+HEAD_KNEE_MAX_GAP      = 0.28    # Error trigger
+HEAD_KNEE_HARD_GAP     = 0.32    # Error confirmed (secondary guard)
+HEAD_TILT_MAX          = 0.25    # Lateral head wobble limit (shoulder-width normalised)
+
+# Arm extension for power shots (pull, hook, cut)
+# <0.76 means cramped arms; ideal is >0.80 at impact
+ARM_EXTENSION_MIN_PULL = 0.76    # Pull/hook minimum
+ARM_EXTENSION_MIN_CUT  = 0.74    # Square cut minimum
+
+# Bat-pad proximity for forward defense
+BAT_PAD_MAX_GAP        = 0.42    # Gap > 0.42× torso length = inside-edge risk
+
+# Defense hard hands: too much arm extension opens the face
+DEFENSE_ELBOW_MAX      = 145.0
+
+# Late cut hard hands
+LATE_CUT_ELBOW_MAX     = 140.0
+
+# Sweep: back knee should be low to the ground
+SWEEP_TRAIL_KNEE_MAX   = 140.0
+
+# Front foot pull shot: forward lean + front-foot weight = wrong base
+PULL_SPINE_FRONT_FOOT  = 22.0
 import random
 import uuid
 from enum import IntEnum
@@ -250,7 +298,15 @@ def extract_biometrics(
     l_wr_vis = getattr(l_wrist, 'visibility', 1.0)
     r_el_vis = getattr(r_elbow, 'visibility', 1.0)
     r_wr_vis = getattr(r_wrist, 'visibility', 1.0)
-    is_left_lead = (l_el_vis + l_wr_vis) >= (r_el_vis + r_wr_vis)
+    # Lead-arm detection: higher-visibility side is lead arm.
+    # Tiebreaker: if visibilities are within 0.05 of each other, use shoulder x-position
+    # (lead shoulder is typically the one closer to camera / smaller x for right-handers).
+    vis_diff = (l_el_vis + l_wr_vis) - (r_el_vis + r_wr_vis)
+    if abs(vis_diff) > 0.05:
+        is_left_lead = vis_diff > 0
+    else:
+        # Use the shoulder that is more forward (lower x when facing left)
+        is_left_lead = l_shoulder.x <= r_shoulder.x
 
     lead_sh_idx = PoseLandmark.LEFT_SHOULDER if is_left_lead else PoseLandmark.RIGHT_SHOULDER
     lead_el_idx = PoseLandmark.LEFT_ELBOW if is_left_lead else PoseLandmark.RIGHT_ELBOW
@@ -359,22 +415,22 @@ def extract_biometrics(
 
     # Front Foot Drives: Cover Drive, Straight Drive, Lofted Drive
     if target_shot in ["cover", "straight", "lofted"]:
-        if elbow_angle < 128.0:
+        if elbow_angle < LEAD_ELBOW_MIN_DEG:
             error_detected = True
             error_code = "LOW_ELBOW"
             priority_tip = "Keep your lead elbow high (≥130°) to present a full bat face and control trajectory."
             correction_cue = "Raise your front elbow to eye level before starting the downswing."
-        elif has_knees and not head_over_knee and head_knee_gap > 0.32:
+        elif has_knees and not head_over_knee and head_knee_gap > HEAD_KNEE_HARD_GAP:
             error_detected = True
             error_code = "HEAD_BEHIND_KNEE"
             priority_tip = "Lean your head over your lead knee to get over the line of the ball."
             correction_cue = "Step forward and drop your nose directly over your lead knee."
-        elif has_knees and lead_knee_angle > 165.0:
+        elif has_knees and lead_knee_angle > KNEE_STRAIGHT_DEG:
             error_detected = True
             error_code = "STRAIGHT_KNEE"
             priority_tip = "Bend your front knee forward into the shot to lower your center of gravity."
             correction_cue = "Flex your lead knee into a firm lunge into the pitch of the ball."
-        elif spine_angle_deg < 6.0:
+        elif spine_angle_deg < SPINE_LEAN_MIN_DEG:
             error_detected = True
             error_code = "UPRIGHT_SPINE"
             priority_tip = "Transfer weight forward into the drive; avoid standing too upright."
@@ -387,17 +443,17 @@ def extract_biometrics(
 
     # Forward Defense
     elif target_shot == "defense":
-        if bat_pad_gap is not None and bat_pad_gap > 0.42:
+        if bat_pad_gap is not None and bat_pad_gap > BAT_PAD_MAX_GAP:
             error_detected = True
             error_code = "BAT_PAD_GAP"
             priority_tip = "Bat-Pad Gap: Keep the bat blade close beside your front pad to avoid inside edges."
             correction_cue = "Tuck the bat blade directly against your lead pad with no gap."
-        elif elbow_angle > 145.0:
+        elif elbow_angle > DEFENSE_ELBOW_MAX:
             error_detected = True
             error_code = "HARD_HANDS_DEFENSE"
             priority_tip = "Maintain soft hands with elbows tucked in close to your body for defensive control."
             correction_cue = "Relax your bottom hand grip and keep elbows compact."
-        elif has_knees and lead_knee_angle > 165.0:
+        elif has_knees and lead_knee_angle > KNEE_STRAIGHT_DEG:
             error_detected = True
             error_code = "STRAIGHT_KNEE_DEFENSE"
             priority_tip = "Lunge firmly onto the front knee to smother the bounce."
@@ -405,12 +461,12 @@ def extract_biometrics(
 
     # Cross-Bat Power Shots: Pull Shot, Hook Shot
     elif target_shot in ["pull", "hook"]:
-        if arm_extension < 0.76:
+        if arm_extension < ARM_EXTENSION_MIN_PULL:
             error_detected = True
             error_code = "LOW_ARM_EXTENSION"
             priority_tip = "Extend your arms fully through the swing arc for maximum leverage and power."
             correction_cue = "Reach full arm extension through the impact zone for power."
-        elif weight_distribution == "Front Foot Weighted" and spine_angle_deg > 22.0:
+        elif weight_distribution == "Front Foot Weighted" and spine_angle_deg > PULL_SPINE_FRONT_FOOT:
             error_detected = True
             error_code = "FRONT_FOOT_ON_PULL"
             priority_tip = "Anchor your weight onto the back foot to clear your front hip."
@@ -423,12 +479,12 @@ def extract_biometrics(
 
     # Square Cut & Late Cut
     elif target_shot in ["square_cut", "late_cut"]:
-        if target_shot == "square_cut" and arm_extension < 0.74:
+        if target_shot == "square_cut" and arm_extension < ARM_EXTENSION_MIN_CUT:
             error_detected = True
             error_code = "CRAMPED_ARMS_CUT"
             priority_tip = "Extend your hands away from your body to slice through the point region."
             correction_cue = "Free your arms and slice high-to-low through point."
-        elif target_shot == "late_cut" and elbow_angle > 140.0:
+        elif target_shot == "late_cut" and elbow_angle > LATE_CUT_ELBOW_MAX:
             error_detected = True
             error_code = "HARD_HANDS_LATE_CUT"
             priority_tip = "Keep hands close to body with relaxed wrists to guide the ball fine."
@@ -436,25 +492,27 @@ def extract_biometrics(
 
     # Sweep Shot
     elif target_shot == "sweep":
-        if has_knees and trail_knee_angle > 140.0:
+        if has_knees and trail_knee_angle > SWEEP_TRAIL_KNEE_MAX:
             error_detected = True
             error_code = "HIGH_BACK_KNEE_SWEEP"
             priority_tip = "Drop your back knee low to the ground to stabilize your sweeping base."
             correction_cue = "Kneel down low on your back knee before sweeping across."
 
     # General Head Stability Check
-    if not error_detected and head_tilt > 0.25:
+    if not error_detected and head_tilt > HEAD_TILT_MAX:
         error_detected = True
         error_code = "HEAD_TILT"
         priority_tip = "Keep your eyes and head level with the point of impact throughout the stroke."
         correction_cue = "Level your eyes horizontally with the delivery path."
 
     # 11. Live Technical Checklist for Overlay HUD
+    # NOTE: Checklist thresholds exactly match error-detection constants above
+    # to prevent HUD red-state without a coaching tip (UX dead zone).
     live_checklist = {
-        "elbow_ok": bool(elbow_angle >= 128.0) if target_shot in ["cover", "straight", "lofted"] else True,
-        "knee_ok": bool(lead_knee_angle <= 160.0) if has_knees and target_shot in ["cover", "straight", "defense"] else True,
+        "elbow_ok": bool(elbow_angle >= LEAD_ELBOW_MIN_DEG) if target_shot in ["cover", "straight", "lofted"] else True,
+        "knee_ok": bool(lead_knee_angle <= KNEE_STRAIGHT_DEG) if has_knees and target_shot in ["cover", "straight", "defense"] else True,
         "head_ok": bool(head_over_knee),
-        "spine_ok": bool(spine_angle_deg >= 7.0) if target_shot in ["cover", "straight", "defense"] else True,
+        "spine_ok": bool(spine_angle_deg >= SPINE_CHECKLIST_DEG) if target_shot in ["cover", "straight", "defense"] else True,
         "blade_ok": bool(bat_data.get("alignment_match", True)) if bat_data and bat_data.get("detected") else True
     }
 

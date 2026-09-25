@@ -71,12 +71,6 @@ def create_synthetic_landmarks(
 
     return lm
 
-    # Trail Leg (Right Leg)
-    lm[PoseLandmark.RIGHT_KNEE] = Landmark(0.58, 0.70, 0.0)
-    lm[PoseLandmark.RIGHT_ANKLE] = Landmark(0.62, 0.88, 0.0)
-
-    return lm
-
 
 class Test3DAngleCalculations(unittest.TestCase):
     """Verifies vector dot product and Euclidean angle mathematics."""
@@ -240,6 +234,136 @@ class TestCoachingFeedbackLogic(unittest.TestCase):
         self.assertEqual(feedback["status"], "form_error")
         self.assertEqual(feedback["error_code"], "BLADE_ALIGNMENT_MISMATCH")
         self.assertIn("Blade Angle Alert", feedback["message"])
+
+class TestBiomechanicalEngineExtended(unittest.TestCase):
+    """Extended tests covering all remaining error codes in extract_biometrics."""
+
+    def test_upright_spine_on_drive(self):
+        """Completely upright posture (near-zero forward lean) triggers UPRIGHT_SPINE."""
+        # Place shoulders and hips at same x (no lean), so spine_angle_deg ≈ 0°
+        landmarks = create_synthetic_landmarks()
+        landmarks[PoseLandmark.LEFT_SHOULDER] = Landmark(0.36, 0.30, 0.0)
+        landmarks[PoseLandmark.RIGHT_SHOULDER] = Landmark(0.48, 0.30, 0.0)
+        landmarks[PoseLandmark.LEFT_HIP] = Landmark(0.36, 0.55, 0.0)   # same x as shoulder -> 0 lean
+        landmarks[PoseLandmark.RIGHT_HIP] = Landmark(0.48, 0.55, 0.0)
+        bio = extract_biometrics(landmarks, target_shot="cover")
+        self.assertIsNotNone(bio)
+        self.assertTrue(bio["error_detected"])
+        self.assertEqual(bio["error_code"], "UPRIGHT_SPINE")
+
+    def test_head_tilt_fallthrough(self):
+        """If no other error, excessive lateral head tilt triggers HEAD_TILT."""
+        landmarks = create_synthetic_landmarks()
+        # Use pull shot to avoid HEAD_BEHIND_KNEE (which only fires on cover/straight/lofted).
+        # Move nose far to the right: head_tilt = |0.75 - 0.42| / 0.12 = 2.75 >> 0.25 threshold.
+        landmarks[PoseLandmark.NOSE] = Landmark(0.75, 0.20, 0.0)
+        bio = extract_biometrics(landmarks, target_shot="pull")
+        self.assertIsNotNone(bio)
+        self.assertTrue(bio["error_detected"])
+        self.assertEqual(bio["error_code"], "HEAD_TILT")
+
+    def test_sweep_high_back_knee_error(self):
+        """On a sweep shot, trail knee angle > 140° must trigger HIGH_BACK_KNEE_SWEEP."""
+        landmarks = create_synthetic_landmarks()
+        # Right is the trail knee. Align trail hip, knee, ankle vertically -> ~180°
+        landmarks[PoseLandmark.RIGHT_HIP]   = Landmark(0.60, 0.50, 0.0)
+        landmarks[PoseLandmark.RIGHT_KNEE]  = Landmark(0.60, 0.70, 0.0)
+        landmarks[PoseLandmark.RIGHT_ANKLE] = Landmark(0.60, 0.90, 0.0)
+        bio = extract_biometrics(landmarks, target_shot="sweep")
+        self.assertIsNotNone(bio)
+        self.assertTrue(bio["error_detected"])
+        self.assertEqual(bio["error_code"], "HIGH_BACK_KNEE_SWEEP")
+
+    def test_low_arm_extension_on_pull_shot(self):
+        """Cramped arms (extension ≈ 0.0) on a pull shot must trigger LOW_ARM_EXTENSION."""
+        # Collapse wrist onto the same position as the elbow -> upper arm exists, forearm = 0
+        # direct_reach / total_arm = upper_arm / (upper_arm + 0) = 1.0 -> that's still high.
+        # Instead fully collapse everything: elbow AND wrist at shoulder position -> arm_extension ≈ 0
+        landmarks = create_synthetic_landmarks()
+        # Shoulder is at (0.36, 0.30). Collapse wrist to shoulder position.
+        # upper_arm = dist(shoulder, elbow), forearm = dist(elbow, wrist), direct_reach = dist(shoulder, wrist)
+        # Move wrist and elbow both to the same position slightly below shoulder -> near-zero reach ratio.
+        landmarks[PoseLandmark.LEFT_ELBOW] = Landmark(0.36, 0.31, 0.0)
+        landmarks[PoseLandmark.LEFT_WRIST] = Landmark(0.36, 0.30, 0.0)  # wrist at shoulder
+        bio = extract_biometrics(landmarks, target_shot="pull")
+        self.assertIsNotNone(bio)
+        # arm_extension = direct_reach / total_arm. direct_reach~0, total_arm~small but > 0
+        # With wrist at shoulder, direct_reach is very small; extension < 0.76
+        self.assertTrue(bio["error_detected"])
+        self.assertEqual(bio["error_code"], "LOW_ARM_EXTENSION")
+
+    def test_weight_distribution_field_is_populated(self):
+        """extract_biometrics must always return a non-empty weight_distribution string."""
+        landmarks = create_synthetic_landmarks()
+        bio = extract_biometrics(landmarks, target_shot="cover")
+        self.assertIsNotNone(bio)
+        self.assertIn("weight_distribution", bio)
+        self.assertIsInstance(bio["weight_distribution"], str)
+        self.assertGreater(len(bio["weight_distribution"]), 0)
+
+    def test_arm_extension_within_valid_range(self):
+        """arm_extension must be a float clipped strictly within [0.0, 1.0]."""
+        landmarks = create_synthetic_landmarks()
+        bio = extract_biometrics(landmarks, target_shot="pull")
+        self.assertIsNotNone(bio)
+        self.assertGreaterEqual(bio["arm_extension"], 0.0)
+        self.assertLessEqual(bio["arm_extension"], 1.0)
+
+
+class TestCoachingFeedbackEdgeCases(unittest.TestCase):
+    """Covers edge cases: no body detected, low confidence, and clean with_bat paths."""
+
+    def test_low_confidence_returns_uncertain(self):
+        """Confidence below 0.35 with matching shot returns 'uncertain' status."""
+        feedback = get_coaching_feedback(
+            detected_shot="cover",
+            target_shot="cover",
+            confidence=0.20,
+            bio_data={"error_detected": False},
+        )
+        self.assertEqual(feedback["status"], "uncertain")
+        self.assertFalse(feedback["is_correct"])
+        self.assertEqual(feedback["error_code"], "LOW_CONFIDENCE")
+
+    def test_no_bio_data_does_not_crash(self):
+        """When bio_data is None (body not detected), feedback must still return cleanly."""
+        feedback = get_coaching_feedback(
+            detected_shot="cover",
+            target_shot="cover",
+            confidence=0.80,
+            bio_data=None,
+        )
+        self.assertIn("status", feedback)
+        self.assertIn(feedback["status"], ["success", "uncertain", "form_error", "wrong_shot"])
+
+    def test_with_bat_mode_clean_alignment_returns_success(self):
+        """In with_bat mode, if blade IS aligned and shot matches, return success."""
+        bat_data = {
+            "detected": True,
+            "alignment_match": True,
+            "blade_angle": 88.0,
+            "is_vertical": True,
+        }
+        feedback = get_coaching_feedback(
+            detected_shot="cover",
+            target_shot="cover",
+            confidence=0.78,
+            bio_data={"error_detected": False},
+            bat_data=bat_data,
+            practice_mode="with_bat",
+        )
+        self.assertEqual(feedback["status"], "success")
+        self.assertTrue(feedback["is_correct"])
+
+    def test_coaching_tips_always_returned_as_list(self):
+        """feedback['tips'] must always be a list regardless of error state."""
+        feedback = get_coaching_feedback(
+            detected_shot="hook",
+            target_shot="hook",
+            confidence=0.60,
+            bio_data={"error_detected": False},
+        )
+        self.assertIsInstance(feedback["tips"], list)
 
 
 if __name__ == "__main__":
