@@ -1,16 +1,10 @@
-name: Frontend CI (Next.js)
+name: CI Pipeline
 
 on:
   push:
     branches: [main]
-    paths:
-      - 'cricket-coach-ui/**'
-      - '.github/workflows/frontend-ci.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'cricket-coach-ui/**'
-      - '.github/workflows/frontend-ci.yml'
   workflow_dispatch:
 
 concurrency:
@@ -18,8 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build & Type-Check
+  frontend-build:
+    name: Frontend Build & Type-Check
     runs-on: ubuntu-latest
 
     defaults:
@@ -58,3 +52,26 @@ jobs:
 
       - name: 🏗️ Next.js Production Build & TypeScript Verification
         run: npm run build
+
+  biomechanics-tests:
+    name: Biomechanical Vector & Angle Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: 📦 Install Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pytest
+
+      - name: 🧪 Run Biomechanical Math & Rule Engine Tests
+        run: |
+          python -m pytest tests/test_biomechanics.py -v
