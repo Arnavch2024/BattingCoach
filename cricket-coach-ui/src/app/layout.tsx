@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import { PwaRegister, PwaInstallPrompt } from "@/components/pwa-register";
 import { ThemeProvider } from "@/components/theme-provider";
+import { DatadogRum } from "@/components/DatadogRum";
 
 export const viewport: Viewport = {
   themeColor: "#059669",
@@ -84,6 +85,7 @@ export default function RootLayout({
         <ThemeProvider>
           <PwaRegister />
           {children}
+          <DatadogRum />
           <PwaInstallPrompt />
         </ThemeProvider>
       </body>

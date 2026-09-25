@@ -18,6 +18,19 @@ try:
 except ImportError:
     pass
 
+# Datadog APM & Tracing Initialization (Datadog Pro / GitHub Student Pack)
+try:
+    import ddtrace
+    from ddtrace import tracer
+    os.environ.setdefault("DD_SITE", "us5.datadoghq.com")
+    os.environ.setdefault("DD_SERVICE", "batcoach-backend")
+    os.environ.setdefault("DD_ENV", os.getenv("APP_ENV", "development"))
+    if os.getenv("DD_API_KEY"):
+        ddtrace.patch_all(fastapi=True, psycopg=True)
+        print(f"[Datadog APM] Tracing active | Site: {os.environ.get('DD_SITE')} | Service: {os.environ.get('DD_SERVICE')}")
+except Exception as _dd_err:
+    tracer = None
+
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -178,6 +191,7 @@ def extract_bat_telemetry(frame: np.ndarray, target_shot: str) -> Dict:
     """
     if bat_model is None:
         return {"detected": False}
+    span = tracer.trace("ai.yolo.bat_obb", service="batcoach-backend", resource="YOLOv8-OBB") if tracer else None
     try:
         h, w = frame.shape[:2]
         results = bat_model.predict(frame, imgsz=320, conf=0.25, verbose=False)
@@ -218,6 +232,9 @@ def extract_bat_telemetry(frame: np.ndarray, target_shot: str) -> Dict:
     except Exception as e:
         print(f"[Bat Telemetry Error]: {e}")
         return {"detected": False}
+    finally:
+        if span:
+            span.finish()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -273,18 +290,23 @@ class ThreadedCamera:
 @torch.inference_mode()
 def execute_model_inference(frames_rgb_list: List[np.ndarray]) -> Tuple[np.ndarray, float]:
     t0 = time.perf_counter()
-    inputs = processor(frames_rgb_list, return_tensors="pt")
-    pixel_values = inputs["pixel_values"].to(device)
-    
-    if use_fp16:
-        with torch.autocast(device_type="cuda", dtype=torch.float16):
-            outputs = model(pixel_values=pixel_values)
-    else:
-        outputs = model(pixel_values=pixel_values)
+    span = tracer.trace("ai.videomae.inference", service="batcoach-backend", resource="VideoMAEForVideoClassification") if tracer else None
+    try:
+        inputs = processor(frames_rgb_list, return_tensors="pt")
+        pixel_values = inputs["pixel_values"].to(device)
         
-    probs = torch.softmax(outputs.logits, dim=-1)[0].cpu().numpy()
-    inference_time_ms = (time.perf_counter() - t0) * 1000.0
-    return probs, inference_time_ms
+        if use_fp16:
+            with torch.autocast(device_type="cuda", dtype=torch.float16):
+                outputs = model(pixel_values=pixel_values)
+        else:
+            outputs = model(pixel_values=pixel_values)
+            
+        probs = torch.softmax(outputs.logits, dim=-1)[0].cpu().numpy()
+        inference_time_ms = (time.perf_counter() - t0) * 1000.0
+        return probs, inference_time_ms
+    finally:
+        if span:
+            span.finish()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # get_coaching_feedback is imported from biomechanics.py

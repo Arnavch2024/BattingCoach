@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@datadog/browser-rum": "^7.14.0",
     "@tailwindcss/postcss": "^4",
     "@vercel/analytics": "^2.0.1",
     "clsx": "^2.1.1",
