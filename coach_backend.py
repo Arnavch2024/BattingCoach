@@ -21,8 +21,11 @@ import mediapipe as mp
 import numpy as np
 import torch
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import re
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 # Bypass huggingface-hub strict upper-bound check in transformers
 import sys
 import types
@@ -807,7 +810,16 @@ from psycopg2 import pool
 from pydantic import BaseModel
 
 # Read strictly from environment variable (never hardcoded in source)
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+def _enforce_ssl_url(url: str) -> str:
+    """Enforces TLS/SSL in-transit encryption for remote PostgreSQL connections."""
+    if not url:
+        return url
+    if "sslmode=" not in url.lower() and "localhost" not in url.lower() and "127.0.0.1" not in url:
+        sep = "&" if "?" in url else "?"
+        return f"{url}{sep}sslmode=require"
+    return url
+
+DATABASE_URL = _enforce_ssl_url(os.getenv("DATABASE_URL", ""))
 
 db_pool = None
 if DATABASE_URL:
@@ -949,18 +961,88 @@ class PracticeSessionSaveRequest(BaseModel):
     strokes: Optional[List[StrokeLogItem]] = []
 
 # ──────────────────────────────────────────────────────────────────────────────
-# FastAPI App & WebSocket Endpoint with Swing Motion State Machine
+# Security: Strict CORS Whitelisting, Rate Limiting & HTTP Security Headers
 # ──────────────────────────────────────────────────────────────────────────────
+
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8888",
+    "http://127.0.0.1:8888",
+]
+env_origins = os.getenv("ALLOWED_ORIGINS", "")
+if env_origins:
+    ALLOWED_ORIGINS = [orig.strip() for orig in env_origins.split(",") if orig.strip()]
+else:
+    ALLOWED_ORIGINS = DEFAULT_ALLOWED_ORIGINS
 
 app = FastAPI(title="BatCoach AI Pro Backend", version="2.0.0")
 
+# 1. Strict CORS Whitelisting (RFC Compliant with allow_credentials=True)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$",
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# 2. HTTP Security Defense Headers
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. In-Memory Sliding-Window Rate Limiter
+class RateLimiterMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, max_requests: int = 150, window_seconds: int = 60):
+        super().__init__(app)
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.requests = collections.defaultdict(list)
+        self.lock = asyncio.Lock()
+
+    async def dispatch(self, request: Request, call_next):
+        # Exclude real-time WebSocket frames and static health checks from rate limiter
+        if request.url.path in ("/health", "/ws"):
+            return await call_next(request)
+
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+
+        async with self.lock:
+            timestamps = self.requests[client_ip]
+            cutoff = now - self.window_seconds
+            self.requests[client_ip] = [t for t in timestamps if t > cutoff]
+
+            if len(self.requests[client_ip]) >= self.max_requests:
+                retry_after = int(self.window_seconds - (now - self.requests[client_ip][0]))
+                return JSONResponse(
+                    status_code=429,
+                    content={"error": "Too Many Requests", "message": "API rate limit reached. Please wait before retrying."},
+                    headers={
+                        "Retry-After": str(max(1, retry_after)),
+                        "X-RateLimit-Limit": str(self.max_requests),
+                        "X-RateLimit-Remaining": "0",
+                    }
+                )
+
+            self.requests[client_ip].append(now)
+            remaining = self.max_requests - len(self.requests[client_ip])
+
+        response: Response = await call_next(request)
+        response.headers["X-RateLimit-Limit"] = str(self.max_requests)
+        response.headers["X-RateLimit-Remaining"] = str(max(0, remaining))
+        return response
+
+app.add_middleware(RateLimiterMiddleware, max_requests=150, window_seconds=60)
 
 @app.get("/health")
 async def health():
@@ -1242,6 +1324,14 @@ async def delete_schedule(schedule_id: str, email: str = "athlete@cricketcoach.a
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    # Cross-Site WebSocket Hijacking (CSWSH) Origin Validation
+    origin = websocket.headers.get("origin", "")
+    if origin and not any(origin.startswith(allowed) for allowed in ALLOWED_ORIGINS):
+        if not re.match(r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$", origin):
+            print(f"[WebSocket Security] Blocked connection from unauthorized origin: {origin}")
+            await websocket.close(code=1008)
+            return
+
     await websocket.accept()
     print("[WebSocket] Client connected")
 
