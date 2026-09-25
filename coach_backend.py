@@ -20,16 +20,17 @@ except ImportError:
 
 # Datadog APM & Tracing Initialization (Datadog Pro / GitHub Student Pack)
 try:
-    import ddtrace
-    from ddtrace import tracer
     os.environ.setdefault("DD_SITE", "us5.datadoghq.com")
     os.environ.setdefault("DD_SERVICE", "batcoach-backend")
     os.environ.setdefault("DD_ENV", os.getenv("APP_ENV", "development"))
-    if os.getenv("DD_API_KEY"):
-        ddtrace.patch_all(fastapi=True, psycopg=True)
-        print(f"[Datadog APM] Tracing active | Site: {os.environ.get('DD_SITE')} | Service: {os.environ.get('DD_SERVICE')}")
+    import ddtrace.auto
+    from ddtrace import tracer
+    print(f"[Datadog APM] Auto-instrumentation active | Site: {os.environ.get('DD_SITE')} | Service: {os.environ.get('DD_SERVICE')}")
 except Exception as _dd_err:
-    tracer = None
+    try:
+        from ddtrace import tracer
+    except Exception:
+        tracer = None
 
 import cv2
 import mediapipe as mp

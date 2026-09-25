@@ -5,6 +5,17 @@ import os
 import signal
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# Ensure Datadog APM environment defaults
+os.environ.setdefault("DD_SITE", "us5.datadoghq.com")
+os.environ.setdefault("DD_SERVICE", "batcoach-backend")
+os.environ.setdefault("DD_ENV", "development")
+
 def kill_proc_tree(proc):
     """Cleanly terminates a process and all its children across platforms."""
     if proc is None:
