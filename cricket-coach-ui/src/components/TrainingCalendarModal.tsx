@@ -83,8 +83,15 @@ export function TrainingCalendarModal({
 
       // 2. Fetch from backend DB for this user if available
       const activeEmail = userEmail || "athlete@cricketcoach.ai";
-      fetch(`${API_BASE_URL}/api/schedule/list?email=${encodeURIComponent(activeEmail)}`)
-        .then(res => res.json())
+      fetch(`${API_BASE_URL}/api/schedule/list?email=${encodeURIComponent(activeEmail)}`, {
+        headers: {
+          "X-Athlete-Email": activeEmail,
+        },
+      })
+        .then(res => {
+          if (!res.ok) throw new Error("Schedule fetch failed");
+          return res.json();
+        })
         .then(data => {
           if (data?.success && Array.isArray(data.schedules) && data.schedules.length > 0) {
             setEvents(data.schedules);
@@ -177,7 +184,10 @@ export function TrainingCalendarModal({
     try {
       fetch(`${API_BASE_URL}/api/schedule/sync`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Athlete-Email": activeEmail,
+        },
         body: JSON.stringify({ ...newEvent, athlete_email: activeEmail }),
       }).catch(() => {});
     } catch (_) {}
@@ -212,7 +222,10 @@ export function TrainingCalendarModal({
       try {
         fetch(`${API_BASE_URL}/api/schedule/sync`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Athlete-Email": activeEmail,
+          },
           body: JSON.stringify({ ...target, athlete_email: activeEmail }),
         }).catch(() => {});
       } catch (_) {}
@@ -230,6 +243,9 @@ export function TrainingCalendarModal({
     try {
       fetch(`${API_BASE_URL}/api/schedule/${id}?email=${encodeURIComponent(activeEmail)}`, {
         method: "DELETE",
+        headers: {
+          "X-Athlete-Email": activeEmail,
+        },
       }).catch(() => {});
     } catch (_) {}
   };

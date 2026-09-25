@@ -7,8 +7,10 @@ import threading
 import time
 import os
 import uuid
+import ipaddress
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 try:
     from dotenv import load_dotenv
@@ -21,8 +23,7 @@ import mediapipe as mp
 import numpy as np
 import torch
 import uvicorn
-import re
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response, Header, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -430,7 +431,7 @@ class ScheduleSyncRequest(BaseModel):
     notes: Optional[str] = ""
     completed: Optional[bool] = False
     syncedToGoogle: Optional[bool] = False
-    athlete_email: Optional[str] = "athlete@cricketcoach.ai"
+    athlete_email: Optional[str] = None
 
 class StrokeLogItem(BaseModel):
     shot_name: str
@@ -449,6 +450,51 @@ class PracticeSessionSaveRequest(BaseModel):
     best_streak: int
     avg_confidence: float
     strokes: Optional[List[StrokeLogItem]] = []
+
+def _normalize_origin(origin: str) -> str:
+    return origin.strip().rstrip("/")
+
+def _is_local_network_origin(origin: str) -> bool:
+    try:
+        parsed = urlparse(origin)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        hostname = (parsed.hostname or "").strip().lower()
+        if hostname in ("localhost", "127.0.0.1"):
+            return True
+        ip = ipaddress.ip_address(hostname)
+        return ip.is_private
+    except Exception:
+        return False
+
+def _is_allowed_origin(origin: str) -> bool:
+    if not origin:
+        return True
+    normalized = _normalize_origin(origin)
+    if normalized in {_normalize_origin(o) for o in ALLOWED_ORIGINS}:
+        return True
+    return _is_local_network_origin(normalized)
+
+def _normalize_email(email: str) -> str:
+    return (email or "").strip().lower()
+
+def _validate_email_or_422(email: str, field_name: str = "email") -> str:
+    normalized = _normalize_email(email)
+    if not normalized or " " in normalized:
+        raise HTTPException(status_code=422, detail=f"Invalid {field_name}.")
+    local_part, sep, domain_part = normalized.partition("@")
+    if sep != "@" or not local_part or not domain_part:
+        raise HTTPException(status_code=422, detail=f"Invalid {field_name}.")
+    if "." not in domain_part or domain_part.startswith(".") or domain_part.endswith("."):
+        raise HTTPException(status_code=422, detail=f"Invalid {field_name}.")
+    return normalized
+
+def _enforce_email_scope_or_raise(request_email: str, scope_header_email: Optional[str], field_name: str = "email") -> str:
+    scoped = _validate_email_or_422(scope_header_email or "", "X-Athlete-Email header")
+    requested = _validate_email_or_422(request_email, field_name)
+    if requested != scoped:
+        raise HTTPException(status_code=403, detail="Email scope mismatch.")
+    return requested
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Security: Strict CORS Whitelisting, Rate Limiting & HTTP Security Headers
@@ -472,7 +518,6 @@ app = FastAPI(title="BatCoach AI Pro Backend", version="2.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -556,7 +601,8 @@ async def health():
     }
 
 @app.post("/api/athlete/sync")
-async def sync_athlete(req: AthleteSyncRequest):
+async def sync_athlete(req: AthleteSyncRequest, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
+    req.email = _enforce_email_scope_or_raise(req.email, x_athlete_email, "athlete email")
     def _db_op():
         conn = get_db_conn()
         try:
@@ -592,7 +638,8 @@ async def sync_athlete(req: AthleteSyncRequest):
         return {"success": False, "error": str(e)}
 
 @app.post("/api/sessions/save")
-async def save_session(req: PracticeSessionSaveRequest):
+async def save_session(req: PracticeSessionSaveRequest, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
+    req.athlete_email = _enforce_email_scope_or_raise(req.athlete_email, x_athlete_email, "athlete_email")
     def _db_op():
         conn = get_db_conn()
         try:
@@ -643,7 +690,8 @@ async def save_session(req: PracticeSessionSaveRequest):
         return {"success": False, "error": str(e)}
 
 @app.get("/api/sessions/history")
-async def get_session_history(email: str = "athlete@batcoach.ai"):
+async def get_session_history(email: str, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
+    email = _enforce_email_scope_or_raise(email, x_athlete_email, "email")
     def _db_op():
         conn = get_db_conn()
         try:
@@ -680,7 +728,8 @@ async def get_session_history(email: str = "athlete@batcoach.ai"):
         return {"success": False, "error": str(e), "sessions": []}
 
 @app.get("/api/stats")
-async def get_stats(email: str = "athlete@batcoach.ai"):
+async def get_stats(email: str, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
+    email = _enforce_email_scope_or_raise(email, x_athlete_email, "email")
     def _db_op():
         conn = get_db_conn()
         try:
@@ -714,7 +763,10 @@ async def get_stats(email: str = "athlete@batcoach.ai"):
         return {"success": False, "error": str(e)}
 
 @app.post("/api/schedule/sync")
-async def sync_schedule(req: ScheduleSyncRequest):
+async def sync_schedule(req: ScheduleSyncRequest, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
+    if req.athlete_email is None:
+        raise HTTPException(status_code=422, detail="athlete_email is required.")
+    req.athlete_email = _enforce_email_scope_or_raise(req.athlete_email, x_athlete_email, "athlete_email")
     def _db_op():
         conn = get_db_conn()
         try:
@@ -755,7 +807,8 @@ async def sync_schedule(req: ScheduleSyncRequest):
         return {"success": False, "error": str(e)}
 
 @app.get("/api/schedule/list")
-async def list_schedule(email: str = "athlete@cricketcoach.ai"):
+async def list_schedule(email: str, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
+    email = _enforce_email_scope_or_raise(email, x_athlete_email, "email")
     def _db_op():
         conn = get_db_conn()
         try:
@@ -795,7 +848,8 @@ async def list_schedule(email: str = "athlete@cricketcoach.ai"):
         return {"success": False, "error": str(e), "schedules": []}
 
 @app.delete("/api/schedule/{schedule_id}")
-async def delete_schedule(schedule_id: str, email: str = "athlete@cricketcoach.ai"):
+async def delete_schedule(schedule_id: str, email: str, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
+    email = _enforce_email_scope_or_raise(email, x_athlete_email, "email")
     def _db_op():
         conn = get_db_conn()
         try:
@@ -816,11 +870,10 @@ async def delete_schedule(schedule_id: str, email: str = "athlete@cricketcoach.a
 async def websocket_endpoint(websocket: WebSocket):
     # Cross-Site WebSocket Hijacking (CSWSH) Origin Validation
     origin = websocket.headers.get("origin", "")
-    if origin and not any(origin.startswith(allowed) for allowed in ALLOWED_ORIGINS):
-        if not re.match(r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$", origin):
-            print(f"[WebSocket Security] Blocked connection from unauthorized origin: {origin}")
-            await websocket.close(code=1008)
-            return
+    if origin and not _is_allowed_origin(origin):
+        print(f"[WebSocket Security] Blocked connection from unauthorized origin: {origin}")
+        await websocket.close(code=1008)
+        return
 
     await websocket.accept()
     print("[WebSocket] Client connected")
@@ -857,9 +910,13 @@ async def websocket_endpoint(websocket: WebSocket):
                 msg = await asyncio.wait_for(websocket.receive_text(), timeout=0.005)
                 data = json.loads(msg)
                 if "target" in data:
-                    target_shot = data["target"]
+                    requested_target = str(data["target"]).strip().lower()
+                    if requested_target in CLASS_NAMES:
+                        target_shot = requested_target
                 if "practice_mode" in data:
-                    practice_mode = data["practice_mode"]
+                    requested_mode = str(data["practice_mode"]).strip().lower()
+                    if requested_mode in ("no_bat", "with_bat"):
+                        practice_mode = requested_mode
                 
                 # Cloud mode: Decode client stream from browser / phone
                 if "image" in data and data["image"]:

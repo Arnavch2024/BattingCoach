@@ -168,7 +168,10 @@ export default function HomePage() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/athlete/sync`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Athlete-Email": user.email,
+        },
         body: JSON.stringify({
           email: user.email,
           name: user.name,

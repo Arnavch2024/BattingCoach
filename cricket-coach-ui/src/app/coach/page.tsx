@@ -590,11 +590,16 @@ export default function BatCoachDashboard() {
   const streamIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastProcessedEventIdRef = useRef<string>("");
   const lastSpokenRef = useRef<string>("");
+  const repeatErrorCountRef = useRef<number>(repeatErrorCount);
+  const isDrillLockedRef = useRef<boolean>(isDrillLocked);
+  const isLiveRef = useRef<boolean>(isLive);
 
   const targetShotRef = useRef<string>(targetShot);
   useEffect(() => {
     targetShotRef.current = targetShot;
     // Reset repeated error state when changing target shot
+    repeatErrorCountRef.current = 0;
+    isDrillLockedRef.current = false;
     setRepeatErrorCount(0);
     setIsDrillLocked(false);
     setLockedErrorTitle(null);
@@ -606,6 +611,18 @@ export default function BatCoachDashboard() {
   useEffect(() => {
     practiceModeRef.current = practiceMode;
   }, [practiceMode]);
+
+  useEffect(() => {
+    repeatErrorCountRef.current = repeatErrorCount;
+  }, [repeatErrorCount]);
+
+  useEffect(() => {
+    isDrillLockedRef.current = isDrillLocked;
+  }, [isDrillLocked]);
+
+  useEffect(() => {
+    isLiveRef.current = isLive;
+  }, [isLive]);
 
   useEffect(() => {
     try {
@@ -834,8 +851,10 @@ export default function BatCoachDashboard() {
             // STROKE EVALUATION & REPEATED MISTAKE DETECTION
             if (data.feedback.status === "success") {
               // SUCCESS: Clean stroke execution!
-              if (isDrillLocked) {
+              if (isDrillLockedRef.current) {
                 // Break out of the error lock
+                isDrillLockedRef.current = false;
+                repeatErrorCountRef.current = 0;
                 setIsDrillLocked(false);
                 setRepeatErrorCount(0);
                 setLockedErrorTitle(null);
@@ -851,13 +870,15 @@ export default function BatCoachDashboard() {
               const currentErrCode = data.feedback.error_code || data.feedback.message || "FORM_ERROR";
               let nextRepeat = 1;
               if (currentErrCode === lastErrorCodeRef.current && currentErrCode !== "NONE") {
-                nextRepeat = repeatErrorCount + 1;
+                nextRepeat = repeatErrorCountRef.current + 1;
               }
               lastErrorCodeRef.current = currentErrCode;
+              repeatErrorCountRef.current = nextRepeat;
               setRepeatErrorCount(nextRepeat);
 
               // If repeating the same mistake 2 or more times, FREEZE REPS and display coaching lock!
               if (nextRepeat >= 2) {
+                isDrillLockedRef.current = true;
                 setIsDrillLocked(true);
                 setLockedErrorTitle(`Repeated Mistake (${nextRepeat}x): ${data.feedback.message}`);
                 setLockedCorrectionCue(data.feedback.correction_cue || data.feedback.tips?.[0] || "Correct your technique before attempting another rep.");
@@ -870,7 +891,7 @@ export default function BatCoachDashboard() {
             const newLog: SessionLogItem = {
               id: data.feedback.id,
               time: timeStr,
-              shot: currentMetadata.name,
+              shot: (SHOT_CATALOG.find((s) => s.id === targetShotRef.current) || SHOT_CATALOG[0]).name,
               confidence: p,
               grade: data.feedback.status === "success" ? (p > 0.7 ? "A+" : "A") : data.feedback.status === "wrong_shot" ? "Wrong" : "Alert",
               status: data.feedback.status,
@@ -893,7 +914,7 @@ export default function BatCoachDashboard() {
 
       ws.onclose = () => {
         setIsConnected(false);
-        if (isLive) setTimeout(connect, 2000);
+        if (isLiveRef.current) setTimeout(connect, 2000);
       };
 
       wsRef.current = ws;
@@ -908,11 +929,13 @@ export default function BatCoachDashboard() {
         localStream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [isLive, isDrillLocked, repeatErrorCount]);
+  }, [isLive]);
 
   const handleShotChange = (shotId: string) => {
     setTargetShot(shotId);
     targetShotRef.current = shotId;
+    repeatErrorCountRef.current = 0;
+    isDrillLockedRef.current = false;
     setPersistentFeedback(null);
     setRepeatErrorCount(0);
     setIsDrillLocked(false);
@@ -933,6 +956,8 @@ export default function BatCoachDashboard() {
   };
 
   const handleManualUnlockDrill = () => {
+    isDrillLockedRef.current = false;
+    repeatErrorCountRef.current = 0;
     setIsDrillLocked(false);
     setRepeatErrorCount(0);
     setLockedErrorTitle(null);
@@ -983,7 +1008,10 @@ export default function BatCoachDashboard() {
 
       const res = await fetch(`${API_BASE_URL}/api/sessions/save`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Athlete-Email": userProfile.email,
+        },
         body: JSON.stringify(payload),
       });
       const json = await res.json();
@@ -1955,4 +1983,3 @@ export default function BatCoachDashboard() {
     </div>
   );
 }
-
