@@ -366,5 +366,82 @@ class TestCoachingFeedbackEdgeCases(unittest.TestCase):
         self.assertIsInstance(feedback["tips"], list)
 
 
+
+class TestPracticeModes(unittest.TestCase):
+    """Verifies with_bat vs no_bat mode isolation in extract_biometrics."""
+
+    def _bat(self, is_vertical=True, aligned=True):
+        return {
+            'detected': True, 'confidence': 0.87,
+            'blade_angle': 90.0 if is_vertical else 10.0,
+            'is_vertical': is_vertical, 'alignment_match': aligned,
+            'polygon': [[0.3, 0.4], [0.4, 0.4], [0.4, 0.6], [0.3, 0.6]],
+            'center': [0.35, 0.5], 'width': 0.1, 'height': 0.2,
+        }
+
+    def test_no_bat_blade_ok_always_true(self):
+        """In no_bat mode, blade_ok must be True even with bat_data present."""
+        landmarks = create_synthetic_landmarks()
+        bio = extract_biometrics(
+            landmarks, target_shot='cover',
+            bat_data=self._bat(is_vertical=False, aligned=False),
+            practice_mode='no_bat'
+        )
+        self.assertIsNotNone(bio)
+        self.assertTrue(bio['live_checklist']['blade_ok'])
+        self.assertNotEqual(bio['error_code'], 'CROSS_BAT_ON_DRIVE')
+
+    def test_with_bat_vertical_on_pull_fires(self):
+        """In with_bat mode, vertical blade on pull fires VERTICAL_BAT_ON_PULL."""
+        landmarks = create_synthetic_landmarks()
+        bio = extract_biometrics(
+            landmarks, target_shot='pull',
+            bat_data=self._bat(is_vertical=True, aligned=False),
+            practice_mode='with_bat'
+        )
+        self.assertIsNotNone(bio)
+        self.assertTrue(bio['error_detected'])
+        self.assertEqual(bio['error_code'], 'VERTICAL_BAT_ON_PULL')
+
+    def test_no_bat_vertical_on_pull_does_not_fire(self):
+        """In no_bat mode, bat checks suppressed; VERTICAL_BAT_ON_PULL must not fire."""
+        landmarks = create_synthetic_landmarks()
+        bio = extract_biometrics(
+            landmarks, target_shot='pull',
+            bat_data=self._bat(is_vertical=True, aligned=False),
+            practice_mode='no_bat'
+        )
+        self.assertIsNotNone(bio)
+        self.assertNotEqual(bio.get('error_code'), 'VERTICAL_BAT_ON_PULL')
+
+    def test_practice_mode_in_return_dict(self):
+        """bio_data return dict must include practice_mode for downstream logging."""
+        landmarks = create_synthetic_landmarks()
+        bio_wb = extract_biometrics(landmarks, target_shot='cover', practice_mode='with_bat')
+        bio_nb = extract_biometrics(landmarks, target_shot='cover', practice_mode='no_bat')
+        self.assertEqual(bio_wb['practice_mode'], 'with_bat')
+        self.assertEqual(bio_nb['practice_mode'], 'no_bat')
+
+    def test_bat_pad_gap_none_in_no_bat_mode(self):
+        """bat_pad_gap must be None in no_bat mode even when bat_data is present."""
+        landmarks = create_synthetic_landmarks()
+        bio = extract_biometrics(
+            landmarks, target_shot='defense',
+            bat_data=self._bat(), practice_mode='no_bat'
+        )
+        self.assertIsNotNone(bio)
+        self.assertIsNone(bio['bat_pad_gap'])
+
+    def test_bat_pad_gap_computed_in_with_bat_mode(self):
+        """bat_pad_gap must be a float in with_bat mode when bat is detected."""
+        landmarks = create_synthetic_landmarks()
+        bio = extract_biometrics(
+            landmarks, target_shot='defense',
+            bat_data=self._bat(), practice_mode='with_bat'
+        )
+        self.assertIsNotNone(bio)
+        self.assertIsNotNone(bio['bat_pad_gap'])
+        self.assertIsInstance(bio['bat_pad_gap'], float)
+
 if __name__ == "__main__":
     unittest.main()

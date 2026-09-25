@@ -922,10 +922,11 @@ async def websocket_endpoint(websocket: WebSocket):
             if pose_results and pose_results.pose_landmarks:
                 world_lms = pose_results.pose_world_landmarks.landmark if pose_results.pose_world_landmarks else None
                 bio_data = extract_biometrics(
-                    pose_results.pose_landmarks.landmark, 
-                    target_shot, 
+                    pose_results.pose_landmarks.landmark,
+                    target_shot,
                     world_landmarks=world_lms,
-                    bat_data=bat_data
+                    bat_data=bat_data,
+                    practice_mode=practice_mode,
                 )
                 
                 if bio_data and bio_data.get("body_detected") and mp_draw and mp_pose:

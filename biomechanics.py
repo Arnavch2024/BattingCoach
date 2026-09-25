@@ -243,15 +243,24 @@ def extract_biometrics(
     landmarks_2d,
     target_shot: str,
     world_landmarks=None,
-    bat_data: Optional[Dict] = None
+    bat_data: Optional[Dict] = None,
+    practice_mode: str = "no_bat",
 ) -> Optional[Dict]:
     """
-    Computes body-relative, perspective-invariant biomechanics and bat-to-torso kinematics:
-    1. Torso & Spine coordinate frame (forward/backward lean in degrees).
-    2. Head-over-knee alignment relative to batter's torso scale.
-    3. Stride length and stance weight transfer (front-foot vs back-foot).
-    4. Lead arm 3D angle and extension reach ratio.
-    5. Bat-to-pad proximity and blade-to-spine relative orientation (in With-Bat mode).
+    Computes body-relative, perspective-invariant biomechanics and bat-to-torso kinematics.
+
+    Args:
+        landmarks_2d:   MediaPipe 33-point landmark list (normalised [0,1] coordinates).
+        target_shot:    Drill target (e.g. 'cover', 'pull', 'sweep').
+        world_landmarks: MediaPipe 3D world landmark list for true metric joint angles.
+        bat_data:       YOLO-OBB bat telemetry dict (only populated when practice_mode='with_bat').
+                        NOTE: bat_data coordinates are normalised over the SAME downsampled frame
+                        that MediaPipe processed, so the coordinate spaces are directly comparable.
+        practice_mode:  'with_bat'  — live willow session; YOLO bat checks active.
+                        'no_bat'    — shadow/ghost swing; bat checks suppressed.
+
+    Returns:
+        Dict of biomechanical metrics, or None if body is too occluded to measure.
     """
     nose = landmarks_2d[PoseLandmark.NOSE]
     l_shoulder = landmarks_2d[PoseLandmark.LEFT_SHOULDER]
@@ -392,11 +401,15 @@ def extract_biometrics(
         elif trail_knee_angle < 150.0 or spine_angle_deg < 6.0:
             weight_distribution = "Back Foot Anchored"
 
-    # 9. Bat-to-Body Kinematics
+    # 9. Bat-to-Body Kinematics (With-Bat mode only)
+    # YOLO bat_data and MediaPipe landmarks are both normalized over the same 320×240
+    # downsampled frame, so bat_data["center"] and lead_knee.x/y share the same coordinate space.
     bat_pad_gap = None
     bat_rel_spine_deg = None
 
-    if bat_data and bat_data.get("detected"):
+    has_bat = (practice_mode == "with_bat") and bool(bat_data and bat_data.get("detected"))
+
+    if has_bat:
         bat_center = bat_data.get("center")
         if bat_center:
             dx = bat_center[0] - lead_knee.x
@@ -435,7 +448,7 @@ def extract_biometrics(
             error_code = "UPRIGHT_SPINE"
             priority_tip = "Transfer weight forward into the drive; avoid standing too upright."
             correction_cue = "Tilt your torso forward 15°–20° toward the bowler."
-        elif bat_data and bat_data.get("detected") and not bat_data.get("is_vertical"):
+        elif bat_data and has_bat and not bat_data.get("is_vertical"):
             error_detected = True
             error_code = "CROSS_BAT_ON_DRIVE"
             priority_tip = "Keep bat blade vertical down the line — avoid cross-bat swinging on drives."
@@ -471,7 +484,7 @@ def extract_biometrics(
             error_code = "FRONT_FOOT_ON_PULL"
             priority_tip = "Anchor your weight onto the back foot to clear your front hip."
             correction_cue = "Shift your center of mass back onto the rear leg and pivot."
-        elif bat_data and bat_data.get("detected") and bat_data.get("is_vertical"):
+        elif bat_data and has_bat and bat_data.get("is_vertical"):
             error_detected = True
             error_code = "VERTICAL_BAT_ON_PULL"
             priority_tip = "Swing horizontally across the line with wrists rolled over the ball."
@@ -508,17 +521,19 @@ def extract_biometrics(
     # 11. Live Technical Checklist for Overlay HUD
     # NOTE: Checklist thresholds exactly match error-detection constants above
     # to prevent HUD red-state without a coaching tip (UX dead zone).
+    # blade_ok: always True in no_bat mode (shadow practice — no bat to judge).
     live_checklist = {
         "elbow_ok": bool(elbow_angle >= LEAD_ELBOW_MIN_DEG) if target_shot in ["cover", "straight", "lofted"] else True,
         "knee_ok": bool(lead_knee_angle <= KNEE_STRAIGHT_DEG) if has_knees and target_shot in ["cover", "straight", "defense"] else True,
         "head_ok": bool(head_over_knee),
         "spine_ok": bool(spine_angle_deg >= SPINE_CHECKLIST_DEG) if target_shot in ["cover", "straight", "defense"] else True,
-        "blade_ok": bool(bat_data.get("alignment_match", True)) if bat_data and bat_data.get("detected") else True
+        "blade_ok": bool(bat_data.get("alignment_match", True)) if has_bat else True,
     }
 
     return {
         "body_detected": True,
         "is_3d": world_landmarks is not None,
+        "practice_mode": practice_mode,
         "elbow_angle": round(elbow_angle, 1),
         "knee_angle": round(lead_knee_angle, 1),
         "trail_knee_angle": round(trail_knee_angle, 1),
