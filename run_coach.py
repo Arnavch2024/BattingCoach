@@ -15,6 +15,8 @@ except ImportError:
 os.environ.setdefault("DD_SITE", "us5.datadoghq.com")
 os.environ.setdefault("DD_SERVICE", "batcoach-backend")
 os.environ.setdefault("DD_ENV", "development")
+os.environ.setdefault("DD_MAIN_PACKAGE", "coach_backend")
+os.environ.setdefault("DD_GIT_REPOSITORY_URL", "https://github.com/Arnavch2024/BattingCoach")
 
 def kill_proc_tree(proc):
     """Cleanly terminates a process and all its children across platforms."""

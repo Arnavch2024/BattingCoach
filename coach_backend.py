@@ -23,6 +23,8 @@ try:
     os.environ.setdefault("DD_SITE", "us5.datadoghq.com")
     os.environ.setdefault("DD_SERVICE", "batcoach-backend")
     os.environ.setdefault("DD_ENV", os.getenv("APP_ENV", "development"))
+    os.environ.setdefault("DD_MAIN_PACKAGE", "coach_backend")
+    os.environ.setdefault("DD_GIT_REPOSITORY_URL", "https://github.com/Arnavch2024/BattingCoach")
     import ddtrace.auto
     from ddtrace import tracer
     print(f"[Datadog APM] Auto-instrumentation active | Site: {os.environ.get('DD_SITE')} | Service: {os.environ.get('DD_SERVICE')}")
