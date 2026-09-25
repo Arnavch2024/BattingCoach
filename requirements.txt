@@ -12,5 +12,5 @@ aiofiles>=23.2.1
 python-dotenv>=1.0.0
 ultralytics>=8.1.0
 gradio>=4.44.0
-huggingface_hub<0.25.0,>=0.21.0
+huggingface_hub>=0.24.7,<0.25.0
 ddtrace>=4.15.0
