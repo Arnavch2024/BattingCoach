@@ -921,6 +921,286 @@ async def delete_schedule(schedule_id: str, email: str, x_athlete_email: Optiona
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Admin Dashboard Aggregation API Endpoints
+# ──────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/admin/overview")
+async def admin_overview():
+    """Global KPIs for the Head Coach cockpit: total athletes, sessions, reps, accuracy, avg confidence."""
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            # Athlete count
+            cur.execute("SELECT COUNT(*) FROM athletes;")
+            athlete_count = cur.fetchone()[0] or 0
+
+            # Session aggregates
+            cur.execute("""
+                SELECT
+                    COUNT(*),
+                    COALESCE(SUM(total_reps), 0),
+                    COALESCE(SUM(successful_reps), 0),
+                    COALESCE(MAX(best_streak), 0),
+                    COALESCE(AVG(avg_confidence), 0.0),
+                    COALESCE(SUM(session_duration_seconds), 0)
+                FROM practice_sessions;
+            """)
+            row = cur.fetchone()
+            total_sessions = int(row[0])
+            total_reps = int(row[1])
+            successful_reps = int(row[2])
+            best_streak = int(row[3])
+            avg_confidence = round(float(row[4]), 2)
+            total_practice_seconds = int(row[5])
+            accuracy = round((successful_reps / total_reps * 100), 1) if total_reps > 0 else 0.0
+
+            cur.close()
+            return {
+                "athlete_count": athlete_count,
+                "total_sessions": total_sessions,
+                "total_reps": total_reps,
+                "successful_reps": successful_reps,
+                "accuracy": accuracy,
+                "best_streak": best_streak,
+                "avg_confidence": avg_confidence,
+                "total_practice_hours": round(total_practice_seconds / 3600, 1),
+            }
+        finally:
+            release_db_conn(conn)
+    try:
+        data = await asyncio.to_thread(_db_op)
+        return {"success": True, "overview": data}
+    except Exception as e:
+        return {"success": True, "overview": {
+            "athlete_count": 0, "total_sessions": 0, "total_reps": 0,
+            "successful_reps": 0, "accuracy": 0.0, "best_streak": 0,
+            "avg_confidence": 0.0, "total_practice_hours": 0.0,
+        }, "fallback": True, "error": str(e)}
+
+
+@app.get("/api/admin/shot-distribution")
+async def admin_shot_distribution():
+    """Shot popularity matrix: how many sessions per target_shot, with accuracy."""
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT
+                    target_shot,
+                    COUNT(*) as session_count,
+                    COALESCE(SUM(total_reps), 0) as total_reps,
+                    COALESCE(SUM(successful_reps), 0) as successful_reps,
+                    COALESCE(AVG(avg_confidence), 0.0) as avg_conf,
+                    COALESCE(MAX(best_streak), 0) as max_streak
+                FROM practice_sessions
+                GROUP BY target_shot
+                ORDER BY session_count DESC;
+            """)
+            rows = cur.fetchall()
+            cur.close()
+            return [
+                {
+                    "shot": r[0],
+                    "sessions": int(r[1]),
+                    "total_reps": int(r[2]),
+                    "successful_reps": int(r[3]),
+                    "accuracy": round((int(r[3]) / int(r[2]) * 100), 1) if int(r[2]) > 0 else 0.0,
+                    "avg_confidence": round(float(r[4]), 2),
+                    "max_streak": int(r[5]),
+                }
+                for r in rows
+            ]
+        finally:
+            release_db_conn(conn)
+    try:
+        data = await asyncio.to_thread(_db_op)
+        return {"success": True, "distribution": data}
+    except Exception as e:
+        return {"success": True, "distribution": [], "fallback": True, "error": str(e)}
+
+
+@app.get("/api/admin/flaw-hotspots")
+async def admin_flaw_hotspots():
+    """Biomechanical flaw frequency from stroke_telemetry_logs where status != 'success'."""
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            # Count errors by feedback/status
+            cur.execute("""
+                SELECT
+                    coach_feedback,
+                    status,
+                    shot_name,
+                    COUNT(*) as occurrence_count,
+                    COALESCE(AVG(elbow_angle), 0.0) as avg_elbow,
+                    COALESCE(AVG(knee_angle), 0.0) as avg_knee
+                FROM stroke_telemetry_logs
+                WHERE status != 'success' AND status IS NOT NULL AND coach_feedback IS NOT NULL AND coach_feedback != ''
+                GROUP BY coach_feedback, status, shot_name
+                ORDER BY occurrence_count DESC
+                LIMIT 20;
+            """)
+            rows = cur.fetchall()
+            cur.close()
+            return [
+                {
+                    "feedback": r[0] or "Unknown",
+                    "status": r[1],
+                    "shot": r[2],
+                    "count": int(r[3]),
+                    "avg_elbow": round(float(r[4]), 1),
+                    "avg_knee": round(float(r[5]), 1),
+                }
+                for r in rows
+            ]
+        finally:
+            release_db_conn(conn)
+    try:
+        data = await asyncio.to_thread(_db_op)
+        return {"success": True, "hotspots": data}
+    except Exception as e:
+        return {"success": True, "hotspots": [], "fallback": True, "error": str(e)}
+
+
+@app.get("/api/admin/athletes")
+async def admin_athletes():
+    """Full athlete roster with aggregated practice stats per athlete."""
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT
+                    a.id, a.email, a.name, a.stance, a.experience_level, a.created_at,
+                    COALESCE(COUNT(ps.id), 0) as session_count,
+                    COALESCE(SUM(ps.total_reps), 0) as total_reps,
+                    COALESCE(SUM(ps.successful_reps), 0) as successful_reps,
+                    COALESCE(MAX(ps.best_streak), 0) as best_streak,
+                    COALESCE(AVG(ps.avg_confidence), 0.0) as avg_confidence,
+                    COALESCE(SUM(ps.session_duration_seconds), 0) as total_time
+                FROM athletes a
+                LEFT JOIN practice_sessions ps ON a.email = ps.athlete_email
+                GROUP BY a.id, a.email, a.name, a.stance, a.experience_level, a.created_at
+                ORDER BY session_count DESC;
+            """)
+            rows = cur.fetchall()
+            cur.close()
+            return [
+                {
+                    "id": r[0],
+                    "email": r[1],
+                    "name": r[2],
+                    "stance": r[3],
+                    "experience": r[4],
+                    "joined": str(r[5]),
+                    "sessions": int(r[6]),
+                    "total_reps": int(r[7]),
+                    "successful_reps": int(r[8]),
+                    "accuracy": round((int(r[8]) / int(r[7]) * 100), 1) if int(r[7]) > 0 else 0.0,
+                    "best_streak": int(r[9]),
+                    "avg_confidence": round(float(r[10]), 2),
+                    "practice_hours": round(int(r[11]) / 3600, 1),
+                }
+                for r in rows
+            ]
+        finally:
+            release_db_conn(conn)
+    try:
+        data = await asyncio.to_thread(_db_op)
+        return {"success": True, "athletes": data}
+    except Exception as e:
+        return {"success": True, "athletes": [], "fallback": True, "error": str(e)}
+
+
+@app.get("/api/admin/sessions/recent")
+async def admin_recent_sessions():
+    """Most recent practice sessions across all athletes (for the session feed)."""
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT
+                    ps.id, ps.athlete_email, ps.target_shot, ps.total_reps, ps.successful_reps,
+                    ps.best_streak, ps.avg_confidence, ps.session_duration_seconds, ps.created_at,
+                    COALESCE(a.name, ps.athlete_email) as athlete_name
+                FROM practice_sessions ps
+                LEFT JOIN athletes a ON ps.athlete_email = a.email
+                ORDER BY ps.created_at DESC
+                LIMIT 50;
+            """)
+            rows = cur.fetchall()
+            cur.close()
+            return [
+                {
+                    "id": r[0],
+                    "email": r[1],
+                    "shot": r[2],
+                    "total_reps": int(r[3]),
+                    "successful_reps": int(r[4]),
+                    "accuracy": round((int(r[4]) / int(r[3]) * 100), 1) if int(r[3]) > 0 else 0.0,
+                    "best_streak": int(r[5]),
+                    "avg_confidence": round(float(r[6] or 0), 2),
+                    "duration_seconds": int(r[7]),
+                    "created_at": str(r[8]),
+                    "athlete_name": r[9],
+                }
+                for r in rows
+            ]
+        finally:
+            release_db_conn(conn)
+    try:
+        data = await asyncio.to_thread(_db_op)
+        return {"success": True, "sessions": data}
+    except Exception as e:
+        return {"success": True, "sessions": [], "fallback": True, "error": str(e)}
+
+
+@app.get("/api/admin/timeline")
+async def admin_timeline():
+    """Daily aggregated metrics for time-series charts (last 30 days)."""
+    def _db_op():
+        conn = get_db_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT
+                    DATE(created_at) as day,
+                    COUNT(*) as sessions,
+                    COALESCE(SUM(total_reps), 0) as reps,
+                    COALESCE(SUM(successful_reps), 0) as clean_reps,
+                    COALESCE(AVG(avg_confidence), 0.0) as avg_conf
+                FROM practice_sessions
+                WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+                GROUP BY DATE(created_at)
+                ORDER BY day ASC;
+            """)
+            rows = cur.fetchall()
+            cur.close()
+            return [
+                {
+                    "date": str(r[0]),
+                    "sessions": int(r[1]),
+                    "reps": int(r[2]),
+                    "clean_reps": int(r[3]),
+                    "accuracy": round((int(r[3]) / int(r[2]) * 100), 1) if int(r[2]) > 0 else 0.0,
+                    "avg_confidence": round(float(r[4]), 2),
+                }
+                for r in rows
+            ]
+        finally:
+            release_db_conn(conn)
+    try:
+        data = await asyncio.to_thread(_db_op)
+        return {"success": True, "timeline": data}
+    except Exception as e:
+        return {"success": True, "timeline": [], "fallback": True, "error": str(e)}
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     # Cross-Site WebSocket Hijacking (CSWSH) Origin Validation
