@@ -34,22 +34,27 @@ except Exception as _dd_err:
     except Exception:
         tracer = None
 
-# Sentry Crash Diagnostics & Exception Tracking (GitHub Student Pack)
+# Sentry Performance Tracing, Apdex & Crash Diagnostics (GitHub Student Pack)
 SENTRY_DSN = os.getenv("SENTRY_DSN")
 if SENTRY_DSN:
     try:
         import sentry_sdk
         from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.starlette import StarletteIntegration
         from sentry_sdk.integrations.logging import LoggingIntegration
         sentry_sdk.init(
             dsn=SENTRY_DSN,
-            traces_sample_rate=1.0,
+            traces_sample_rate=1.0,  # 100% of transactions captured for Apdex calculation
             default_integrations=False,
             auto_enabling_integrations=False,
-            integrations=[FastApiIntegration(), LoggingIntegration()],
+            integrations=[
+                StarletteIntegration(transaction_style="endpoint"),
+                FastApiIntegration(transaction_style="endpoint"),
+                LoggingIntegration(),
+            ],
             environment=os.getenv("DD_ENV", "development"),
         )
-        print("[Sentry] Crash tracking & exception diagnostics active.")
+        print("[Sentry APM] Performance tracing & Apdex monitoring active.")
     except Exception as _sentry_err:
         print(f"[Sentry Notice]: {_sentry_err}")
 
@@ -214,6 +219,7 @@ def extract_bat_telemetry(frame: np.ndarray, target_shot: str) -> Dict:
     if bat_model is None:
         return {"detected": False}
     span = tracer.trace("ai.yolo.bat_obb", service="batcoach-backend", resource="YOLOv8-OBB") if tracer else None
+    sentry_span = sentry_sdk.start_span(op="ai.yolo.bat_obb", description="YOLOv8-OBB bat blade tracking") if SENTRY_DSN else None
     try:
         h, w = frame.shape[:2]
         results = bat_model.predict(frame, imgsz=320, conf=0.25, verbose=False)
@@ -257,6 +263,8 @@ def extract_bat_telemetry(frame: np.ndarray, target_shot: str) -> Dict:
     finally:
         if span:
             span.finish()
+        if sentry_span:
+            sentry_span.finish()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -313,6 +321,7 @@ class ThreadedCamera:
 def execute_model_inference(frames_rgb_list: List[np.ndarray]) -> Tuple[np.ndarray, float]:
     t0 = time.perf_counter()
     span = tracer.trace("ai.videomae.inference", service="batcoach-backend", resource="VideoMAEForVideoClassification") if tracer else None
+    sentry_span = sentry_sdk.start_span(op="ai.inference", description="VideoMAE 16-frame classification") if SENTRY_DSN else None
     try:
         inputs = processor(frames_rgb_list, return_tensors="pt")
         pixel_values = inputs["pixel_values"].to(device)
@@ -329,6 +338,8 @@ def execute_model_inference(frames_rgb_list: List[np.ndarray]) -> Tuple[np.ndarr
     finally:
         if span:
             span.finish()
+        if sentry_span:
+            sentry_span.finish()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # get_coaching_feedback is imported from biomechanics.py
