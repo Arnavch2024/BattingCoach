@@ -6,7 +6,7 @@ mediapipe==0.10.14
 opencv-python-headless<5.0.0,>=4.9.0.80
 psycopg2-binary>=2.9.9
 pydantic>=2.6.0
-numpy<2.0.0,>=1.24.0
+numpy>=1.26.4,<2.0.0
 python-multipart>=0.0.9
 aiofiles>=23.2.1
 python-dotenv>=1.0.0
