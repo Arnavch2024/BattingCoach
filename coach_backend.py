@@ -34,6 +34,25 @@ except Exception as _dd_err:
     except Exception:
         tracer = None
 
+# Sentry Crash Diagnostics & Exception Tracking (GitHub Student Pack)
+SENTRY_DSN = os.getenv("SENTRY_DSN")
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            traces_sample_rate=1.0,
+            default_integrations=False,
+            auto_enabling_integrations=False,
+            integrations=[FastApiIntegration(), LoggingIntegration()],
+            environment=os.getenv("DD_ENV", "development"),
+        )
+        print("[Sentry] Crash tracking & exception diagnostics active.")
+    except Exception as _sentry_err:
+        print(f"[Sentry Notice]: {_sentry_err}")
+
 import cv2
 import mediapipe as mp
 import numpy as np

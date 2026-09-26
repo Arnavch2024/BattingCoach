@@ -207,6 +207,25 @@ export function TelemetryFloatingWidget() {
                   </div>
                 </div>
 
+                {/* Sentry Card */}
+                <div className="p-2.5 rounded-xl bg-orange-950/20 border border-orange-500/20 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-orange-300 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3 h-3 text-orange-400" />
+                      Sentry Crash Tracking
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-orange-500/20 text-orange-300 font-bold">
+                      ACTIVE
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 text-[10px] text-zinc-400 font-mono">
+                    <div>Project: <span className="text-zinc-200">batcoach-ai</span></div>
+                    <div>Org: <span className="text-zinc-200">vesit-0s</span></div>
+                    <div>Sampling: <span className="text-zinc-200">100% Traces</span></div>
+                    <div>Plan: <span className="text-zinc-200">Student Team</span></div>
+                  </div>
+                </div>
+
                 {/* Backend FastAPI Link */}
                 <div className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-1.5">
                   <div className="flex items-center justify-between">
