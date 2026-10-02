@@ -129,29 +129,34 @@ All biomechanical thresholds are codified as named constants cited directly from
 ## System Architecture
 
 ```mermaid
-graph TD
-    A[Webcam 25 FPS] --> B[Dual-Mode Processing Pipeline]
-    
-    subgraph AI Backend [FastAPI Server :8888]
-        B -->|Shadow Mode: no_bat| C[MediaPipe 3D Euclidean Landmarks]
-        B -->|Willow Mode: with_bat| D[YOLOv8-OBB Oriented Bat Tracking]
-        C --> E[biomechanics.py: Kinematics & Flaw Diagnosis]
+flowchart TD
+    A["Webcam Video Stream (25 FPS)"] --> B["Dual-Mode Processing Pipeline"]
+
+    subgraph Backend ["AI Backend (FastAPI Server :8888)"]
+        direction TB
+        B -->|"Shadow Mode (no bat)"| C["MediaPipe 3D Euclidean Landmarks"]
+        B -->|"Willow Mode (with bat)"| D["YOLOv8-OBB Oriented Bat Tracking"]
+        B --> F["16-Frame VideoMAE Buffer"]
+        
+        C --> E["biomechanics.py (Kinematics & Flaw Diagnosis)"]
         D --> E
-        B --> F[16-Frame VideoMAE Buffer]
-        F --> G[Async PyTorch FP16 VideoMAE]
-        E --> H[Coaching Feedback Engine]
+        F --> G["Async PyTorch FP16 VideoMAE Classifier"]
+        
+        E --> H["Coaching Feedback Engine"]
         G --> H
-        H --> I[WebSocket Stream JSON Payload]
-        H --> J[(Supabase PostgreSQL Pool)]
+        
+        H --> I["WebSocket Stream (JSON Telemetry Payload)"]
+        H --> J[("Supabase PostgreSQL Pool")]
     end
-    
-    subgraph Next.js React Dashboard [:3000]
-        I --> K[Live AR Video Viewport & Telemetry HUD]
-        I --> L[30 FPS Kinematic Checklist]
-        I --> M[Rep Counter & Repeated Error Freeze Engine]
-        I --> N[Web Speech Audio Coach]
-        I --> O[5s Multi-Speed Slow-Mo Video Masterclass]
-        I --> P[Interactive Training Calendar Modal]
+
+    subgraph Frontend ["Next.js React Dashboard (:3000)"]
+        direction TB
+        I --> K["Live AR Video Viewport & Telemetry HUD"]
+        I --> L["30 FPS Kinematic Checklist"]
+        I --> M["Rep Counter & Error Freeze Engine"]
+        I --> N["Web Speech Audio Coach"]
+        I --> O["5s Multi-Speed Slow-Mo Masterclass"]
+        I --> P["Interactive Training Calendar Modal"]
     end
 ```
 

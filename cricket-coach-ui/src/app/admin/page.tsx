@@ -8,7 +8,8 @@ import {
   BarChart3, Award, RefreshCw, CheckCircle2, AlertTriangle, Play, Layers,
   Sparkles, Flame, Clock, Compass, ArrowLeft, Users, Calendar, Target,
   ChevronRight, Eye, Hash, Timer, Crosshair, Radio, PieChart, LineChart,
-  UserCheck, Brain, Gauge, CircleDot, Dumbbell, Search
+  UserCheck, Brain, Gauge, CircleDot, Dumbbell, Search, Lock, Key,
+  LogOut, Check, EyeOff, ShieldCheck, ShieldAlert
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid,
@@ -235,19 +236,96 @@ export default function AdminDashboardPage() {
   const [lastRefreshed, setLastRefreshed] = useState<string>("Loading...");
   const [athleteSearch, setAthleteSearch] = useState("");
 
+  // Security & Authentication State
+  const [authToken, setAuthToken] = useState<string>("");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [inputToken, setInputToken] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
+
   const apiUrl = typeof window !== "undefined"
     ? (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8888")
     : "http://127.0.0.1:8888";
 
+  // Verify token against backend
+  const verifyToken = useCallback(async (token: string, silent = false) => {
+    if (!silent) setIsVerifying(true);
+    setAuthError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/verify`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token.trim()}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        const cleaned = token.trim();
+        setAuthToken(cleaned);
+        setIsAuthenticated(true);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("batcoach_admin_token", cleaned);
+        }
+      } else {
+        if (!silent) {
+          setAuthError(data.error || "Authentication failed. Invalid admin token.");
+        }
+        setIsAuthenticated(false);
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("batcoach_admin_token");
+        }
+      }
+    } catch {
+      if (!silent) {
+        setAuthError("Failed to reach backend server at " + apiUrl);
+      }
+      setIsAuthenticated(false);
+    } finally {
+      if (!silent) setIsVerifying(false);
+    }
+  }, [apiUrl]);
+
+  // Check stored token on initial mount
+  useEffect(() => {
+    const stored = typeof window !== "undefined" ? sessionStorage.getItem("batcoach_admin_token") : null;
+    if (stored) {
+      verifyToken(stored, true);
+    } else {
+      setIsAuthenticated(false);
+    }
+  }, [verifyToken]);
+
+  const handleLogout = () => {
+    setAuthToken("");
+    setIsAuthenticated(false);
+    setInputToken("");
+    setAuthError(null);
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("batcoach_admin_token");
+    }
+  };
+
+  const handleAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputToken.trim()) return;
+    verifyToken(inputToken.trim(), false);
+  };
+
   const fetchAll = useCallback(async () => {
+    if (!authToken) return;
     setIsRefreshing(true);
     const t0 = performance.now();
-    const headers = { "Content-Type": "application/json" };
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${authToken}`
+    };
     const opts: RequestInit = { method: "GET", headers, signal: AbortSignal.timeout(8000) };
 
     try {
       const [healthRes, overviewRes, shotsRes, flawsRes, athletesRes, sessionsRes, timelineRes] = await Promise.allSettled([
-        fetch(`${apiUrl}/health`, opts),
+        fetch(`${apiUrl}/health`, { method: "GET", signal: AbortSignal.timeout(8000) }),
         fetch(`${apiUrl}/api/admin/overview`, opts),
         fetch(`${apiUrl}/api/admin/shot-distribution`, opts),
         fetch(`${apiUrl}/api/admin/flaw-hotspots`, opts),
@@ -263,6 +341,13 @@ export default function AdminDashboardPage() {
         setHealth({ ...d, pingMs });
       } else {
         setHealth({ status: "offline", pingMs });
+      }
+
+      // Check if unauthorized
+      if (overviewRes.status === "fulfilled" && (overviewRes.value.status === 401 || overviewRes.value.status === 403)) {
+        setIsAuthenticated(false);
+        setAuthError("Session expired or token rejected. Please re-authenticate.");
+        return;
       }
 
       if (overviewRes.status === "fulfilled" && overviewRes.value.ok) {
@@ -295,13 +380,15 @@ export default function AdminDashboardPage() {
       setIsRefreshing(false);
       setLastRefreshed(new Date().toLocaleTimeString());
     }
-  }, [apiUrl]);
+  }, [apiUrl, authToken]);
 
   useEffect(() => {
-    fetchAll();
-    const interval = setInterval(fetchAll, 15000);
-    return () => clearInterval(interval);
-  }, [fetchAll]);
+    if (isAuthenticated && authToken) {
+      fetchAll();
+      const interval = setInterval(fetchAll, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [fetchAll, isAuthenticated, authToken]);
 
   const isOnline = health?.status === "online";
   const dbConnected = health?.database === "connected";
@@ -367,18 +454,39 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-mono text-zinc-500 hidden lg:inline">
-              Last sync: {lastRefreshed}
-            </span>
-            <button
-              onClick={fetchAll}
-              disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800/60 text-xs font-mono text-zinc-300 transition-all active:scale-95"
-            >
-              <RefreshCw className={`w-3 h-3 ${isRefreshing ? "animate-spin text-emerald-400" : ""}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
+          <div className="flex items-center gap-2.5">
+            {isAuthenticated ? (
+              <>
+                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/20 text-emerald-400 text-[11px] font-mono">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Authorized</span>
+                </div>
+                <span className="text-[10px] font-mono text-zinc-500 hidden lg:inline">
+                  Sync: {lastRefreshed}
+                </span>
+                <button
+                  onClick={fetchAll}
+                  disabled={isRefreshing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800/60 text-xs font-mono text-zinc-300 transition-all active:scale-95"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? "animate-spin text-emerald-400" : ""}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+                <button
+                  onClick={handleLogout}
+                  title="Lock terminal and clear credentials"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-red-950/40 border border-zinc-800/60 hover:border-red-500/30 text-xs font-mono text-zinc-400 hover:text-red-300 transition-all active:scale-95"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span className="hidden sm:inline">Lock</span>
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-950/40 border border-amber-500/20 text-amber-400 text-[11px] font-mono">
+                <Lock className="w-3.5 h-3.5" />
+                <span>Terminal Locked</span>
+              </div>
+            )}
             <Link
               href="/coach"
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-bold text-xs transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
@@ -390,8 +498,128 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      {/* ── TAB NAVIGATION ── */}
-      <div className="border-b border-zinc-800/40 bg-zinc-950/50 backdrop-blur-xl sticky top-16 z-40">
+      {/* ── AUTH CHECKING SESSION LOADER ── */}
+      {isAuthenticated === null && (
+        <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3">
+          <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
+          <span className="text-xs font-mono text-zinc-500">Checking terminal security session...</span>
+        </div>
+      )}
+
+      {/* ── AUTH GATE (WHEN LOCKED) ── */}
+      {isAuthenticated === false && (
+        <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 relative overflow-hidden">
+          {/* Subtle Cyber Glowing Background */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none" />
+          <div className="absolute top-1/3 left-1/3 w-[300px] h-[300px] bg-teal-500/10 rounded-full blur-[100px] pointer-events-none" />
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="w-full max-w-md relative z-10"
+          >
+            <div className="rounded-3xl bg-zinc-950/80 border border-zinc-800/80 p-8 shadow-2xl shadow-black/80 backdrop-blur-2xl space-y-6">
+              {/* Crest / Header */}
+              <div className="text-center space-y-3">
+                <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 text-emerald-400 shadow-lg shadow-emerald-500/10">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/40 text-[10px] font-mono text-emerald-400 uppercase tracking-wider">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>Protected Admin Terminal</span>
+                  </div>
+                  <h2 className="text-xl font-bold tracking-tight text-white">
+                    Head Coach Authentication
+                  </h2>
+                  <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">
+                    Enter the 256-bit cryptographic API secret to decrypt athlete records, flaw telemetry, and APM metrics.
+                  </p>
+                </div>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleAuthSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono text-zinc-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Key className="w-3 h-3 text-emerald-400" />
+                      <span>Admin Access Key</span>
+                    </span>
+                    <span className="text-[10px] text-zinc-500 font-mono">Bearer Secret</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={inputToken}
+                      onChange={(e) => setInputToken(e.target.value)}
+                      placeholder="Paste your ADMIN_API_TOKEN..."
+                      className="w-full px-4 py-3 pr-10 rounded-xl bg-zinc-900/80 border border-zinc-800 focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/40 text-xs font-mono text-white placeholder:text-zinc-600 outline-none transition-all"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors p-1"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Error Banner */}
+                {authError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3 rounded-xl bg-red-950/40 border border-red-800/50 flex items-start gap-2.5 text-xs text-red-300 font-mono"
+                  >
+                    <ShieldAlert className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <span className="leading-snug">{authError}</span>
+                  </motion.div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isVerifying || !inputToken.trim()}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-950 font-bold text-xs tracking-wide transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  {isVerifying ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Verifying Cryptographic Digest...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Authenticate & Decrypt</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Security Specs Pill Row */}
+              <div className="pt-2 border-t border-zinc-900 grid grid-cols-2 gap-2 text-[10px] font-mono text-zinc-500">
+                <div className="flex items-center gap-1.5 p-2 rounded-lg bg-zinc-900/40 border border-zinc-800/40">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>Rate-Limit Guard</span>
+                </div>
+                <div className="flex items-center gap-1.5 p-2 rounded-lg bg-zinc-900/40 border border-zinc-800/40">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>Timing-Safe Hash</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ── DASHBOARD (WHEN AUTHENTICATED) ── */}
+      {isAuthenticated === true && (
+        <>
+          {/* ── TAB NAVIGATION ── */}
+          <div className="border-b border-zinc-800/40 bg-zinc-950/50 backdrop-blur-xl sticky top-16 z-40">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 py-2 overflow-x-auto">
           {TABS.map((tab) => (
             <button
@@ -1340,11 +1568,49 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Admin Access Controls & Zero-Trust Security */}
+                <div className="rounded-2xl bg-gradient-to-br from-zinc-900/60 to-zinc-950/80 border border-emerald-500/30 p-6 backdrop-blur-xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-emerald-400 font-semibold text-xs font-mono">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Zero-Trust API Security</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300">
+                      ENFORCED
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Protected with <strong className="text-white">Bearer Token Authentication</strong>,{" "}
+                    <strong className="text-white">constant-time cryptographic comparison</strong> (anti-timing attacks), and{" "}
+                    <strong className="text-white">5-attempt sliding rate limiting</strong> with automated IP lockout.
+                  </p>
+                  <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/40 space-y-1.5 text-[11px] font-mono text-zinc-300">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Auth Method:</span>
+                      <span className="text-white font-bold">256-bit URL-Safe Bearer Token</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Brute-Force Guard:</span>
+                      <span className="text-emerald-400">5-attempt rolling window / 5m lockout</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Timing Protection:</span>
+                      <span className="text-emerald-400">secrets.compare_digest</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Credential Storage:</span>
+                      <span className="text-zinc-400">Ephemeral sessionStorage (cleared on close)</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
+    </>
+  )}
 
       {/* Custom scrollbar styles */}
       <style jsx global>{`

@@ -922,11 +922,121 @@ async def delete_schedule(schedule_id: str, email: str, x_athlete_email: Optiona
         return {"success": False, "error": str(e)}
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Admin Dashboard Aggregation API Endpoints
+# Admin Dashboard Security: Token Authentication & Brute-Force Protection
+# ──────────────────────────────────────────────────────────────────────────────
+
+import hashlib
+import secrets
+from fastapi import Depends
+
+# Admin API Token — set in .env. If not set, admin endpoints are fully locked.
+ADMIN_API_TOKEN = os.getenv("ADMIN_API_TOKEN", "")
+if not ADMIN_API_TOKEN:
+    print("[Admin Security] WARNING: ADMIN_API_TOKEN not set in .env — admin endpoints will reject all requests.")
+else:
+    print("[Admin Security] Admin API token configured. Admin endpoints are protected.")
+
+# Brute-force protection: max 5 failed attempts per IP, 5-minute lockout
+_admin_auth_failures: Dict[str, List[float]] = {}
+_ADMIN_MAX_FAILURES = 5
+_ADMIN_LOCKOUT_SECONDS = 300  # 5 minutes
+
+def _check_admin_lockout(client_ip: str) -> bool:
+    """Returns True if the IP is locked out due to too many failed auth attempts."""
+    now = time.time()
+    attempts = _admin_auth_failures.get(client_ip, [])
+    # Prune old attempts
+    attempts = [t for t in attempts if now - t < _ADMIN_LOCKOUT_SECONDS]
+    _admin_auth_failures[client_ip] = attempts
+    return len(attempts) >= _ADMIN_MAX_FAILURES
+
+def _record_admin_failure(client_ip: str):
+    """Record a failed admin auth attempt."""
+    now = time.time()
+    if client_ip not in _admin_auth_failures:
+        _admin_auth_failures[client_ip] = []
+    _admin_auth_failures[client_ip].append(now)
+
+def _clear_admin_failures(client_ip: str):
+    """Clear failed attempts on successful auth."""
+    _admin_auth_failures.pop(client_ip, None)
+
+async def verify_admin_token(
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+):
+    """FastAPI dependency that enforces admin authentication on protected endpoints."""
+    client_ip = request.client.host if request.client else "unknown"
+
+    # Check lockout
+    if _check_admin_lockout(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed authentication attempts. Try again in 5 minutes.",
+        )
+
+    # Token must be configured
+    if not ADMIN_API_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="Admin access is not configured. Set ADMIN_API_TOKEN in .env.",
+        )
+
+    # Validate Bearer token
+    if not authorization or not authorization.startswith("Bearer "):
+        _record_admin_failure(client_ip)
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header.")
+
+    provided_token = authorization[7:]  # Strip "Bearer "
+    # Constant-time comparison to prevent timing attacks
+    if not secrets.compare_digest(provided_token, ADMIN_API_TOKEN):
+        _record_admin_failure(client_ip)
+        raise HTTPException(status_code=403, detail="Invalid admin token.")
+
+    _clear_admin_failures(client_ip)
+    return True
+
+
+@app.post("/api/admin/verify")
+async def admin_verify_token(request: Request, authorization: Optional[str] = Header(default=None)):
+    """Verify admin token for frontend login gate. Returns success/failure."""
+    client_ip = request.client.host if request.client else "unknown"
+
+    if _check_admin_lockout(client_ip):
+        return JSONResponse(
+            status_code=429,
+            content={"success": False, "error": "Too many failed attempts. Locked for 5 minutes."},
+        )
+
+    if not ADMIN_API_TOKEN:
+        return JSONResponse(
+            status_code=503,
+            content={"success": False, "error": "ADMIN_API_TOKEN not configured on server."},
+        )
+
+    if not authorization or not authorization.startswith("Bearer "):
+        _record_admin_failure(client_ip)
+        return JSONResponse(status_code=401, content={"success": False, "error": "Missing token."})
+
+    provided_token = authorization[7:]
+    if not secrets.compare_digest(provided_token, ADMIN_API_TOKEN):
+        _record_admin_failure(client_ip)
+        remaining = _ADMIN_MAX_FAILURES - len(_admin_auth_failures.get(client_ip, []))
+        return JSONResponse(
+            status_code=403,
+            content={"success": False, "error": f"Invalid token. {max(0, remaining)} attempts remaining."},
+        )
+
+    _clear_admin_failures(client_ip)
+    return {"success": True, "message": "Authenticated as admin."}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Admin Dashboard Aggregation API Endpoints (Protected by Bearer Token)
 # ──────────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/admin/overview")
-async def admin_overview():
+async def admin_overview(_auth: bool = Depends(verify_admin_token)):
     """Global KPIs for the Head Coach cockpit: total athletes, sessions, reps, accuracy, avg confidence."""
     def _db_op():
         conn = get_db_conn()
@@ -981,7 +1091,7 @@ async def admin_overview():
 
 
 @app.get("/api/admin/shot-distribution")
-async def admin_shot_distribution():
+async def admin_shot_distribution(_auth: bool = Depends(verify_admin_token)):
     """Shot popularity matrix: how many sessions per target_shot, with accuracy."""
     def _db_op():
         conn = get_db_conn()
@@ -1023,7 +1133,7 @@ async def admin_shot_distribution():
 
 
 @app.get("/api/admin/flaw-hotspots")
-async def admin_flaw_hotspots():
+async def admin_flaw_hotspots(_auth: bool = Depends(verify_admin_token)):
     """Biomechanical flaw frequency from stroke_telemetry_logs where status != 'success'."""
     def _db_op():
         conn = get_db_conn()
@@ -1067,7 +1177,7 @@ async def admin_flaw_hotspots():
 
 
 @app.get("/api/admin/athletes")
-async def admin_athletes():
+async def admin_athletes(_auth: bool = Depends(verify_admin_token)):
     """Full athlete roster with aggregated practice stats per athlete."""
     def _db_op():
         conn = get_db_conn()
@@ -1117,7 +1227,7 @@ async def admin_athletes():
 
 
 @app.get("/api/admin/sessions/recent")
-async def admin_recent_sessions():
+async def admin_recent_sessions(_auth: bool = Depends(verify_admin_token)):
     """Most recent practice sessions across all athletes (for the session feed)."""
     def _db_op():
         conn = get_db_conn()
@@ -1161,7 +1271,7 @@ async def admin_recent_sessions():
 
 
 @app.get("/api/admin/timeline")
-async def admin_timeline():
+async def admin_timeline(_auth: bool = Depends(verify_admin_token)):
     """Daily aggregated metrics for time-series charts (last 30 days)."""
     def _db_op():
         conn = get_db_conn()
