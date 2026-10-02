@@ -1172,8 +1172,13 @@ async def admin_flaw_hotspots(_auth: bool = Depends(verify_admin_token)):
     try:
         data = await asyncio.to_thread(_db_op)
         return {"success": True, "hotspots": data}
-    except Exception as e:
-        return {"success": True, "hotspots": [], "fallback": True, "error": str(e)}
+    except Exception:
+        return {
+            "success": True,
+            "hotspots": [],
+            "fallback": True,
+            "error": "Unable to load hotspots right now.",
+        }
 
 
 @app.get("/api/admin/athletes")
