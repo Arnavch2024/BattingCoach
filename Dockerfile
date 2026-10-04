@@ -27,7 +27,7 @@ RUN pip install --no-cache-dir --user torch torchvision --index-url https://down
 
 # Install remaining Python dependencies
 COPY --chown=user requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir --user --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 
 # Copy backend code and biomechanics analysis engine
 COPY --chown=user coach_backend.py biomechanics.py ./
