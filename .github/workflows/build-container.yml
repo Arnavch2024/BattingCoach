@@ -4,13 +4,19 @@ on:
   push:
     branches: [main]
     paths:
+      - 'requirements.txt'
       - 'Dockerfile'
       - '.dockerignore'
-      - 'coach_backend.py'
-      - 'biomechanics.py'
-      - 'requirements.txt'
       - '.github/workflows/build-container.yml'
+    tags:
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual container build'
+        required: false
+        default: 'Manual deployment trigger'
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
