@@ -22,7 +22,10 @@ ENV HOME=/home/user \
 
 WORKDIR /app
 
-# Install Python dependencies
+# Install lightweight CPU-only PyTorch & torchvision (slashes image size from ~4.5GB down to ~1GB)
+RUN pip install --no-cache-dir --user torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining Python dependencies
 COPY --chown=user requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
