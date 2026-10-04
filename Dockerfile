@@ -26,8 +26,8 @@ WORKDIR /app
 COPY --chown=user requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Copy backend code
-COPY --chown=user coach_backend.py .
+# Copy backend code and biomechanics analysis engine
+COPY --chown=user coach_backend.py biomechanics.py ./
 
 EXPOSE 7860 8888
 
