@@ -6,6 +6,7 @@ on:
     paths:
       - 'requirements.txt'
       - 'Dockerfile'
+      - 'coach_backend.py'
       - '.dockerignore'
       - '.github/workflows/build-container.yml'
     tags:
