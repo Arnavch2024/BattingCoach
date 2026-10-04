@@ -690,7 +690,8 @@ async def sync_athlete(req: AthleteSyncRequest, x_athlete_email: Optional[str] =
         result = await asyncio.to_thread(_db_op)
         return {"success": True, "athlete": result}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        print(f"[API Error] /api/athlete failed: {e}")
+        return {"success": False, "error": "Unable to save or fetch athlete profile."}
 
 @app.post("/api/sessions/save")
 async def save_session(req: PracticeSessionSaveRequest, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
@@ -742,7 +743,8 @@ async def save_session(req: PracticeSessionSaveRequest, x_athlete_email: Optiona
         session_id = await asyncio.to_thread(_db_op)
         return {"success": True, "session_id": session_id}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        print(f"[API Error] /api/sessions/save failed: {e}")
+        return {"success": False, "error": "Unable to save practice session."}
 
 @app.get("/api/sessions/history")
 async def get_session_history(email: str, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
@@ -780,7 +782,8 @@ async def get_session_history(email: str, x_athlete_email: Optional[str] = Heade
         sessions = await asyncio.to_thread(_db_op)
         return {"success": True, "sessions": sessions}
     except Exception as e:
-        return {"success": False, "error": str(e), "sessions": []}
+        print(f"[API Error] /api/sessions/history failed: {e}")
+        return {"success": False, "error": "Unable to load session history.", "sessions": []}
 
 @app.get("/api/stats")
 async def get_stats(email: str, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
@@ -815,7 +818,8 @@ async def get_stats(email: str, x_athlete_email: Optional[str] = Header(default=
         stats = await asyncio.to_thread(_db_op)
         return {"success": True, "stats": stats}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        print(f"[API Error] /api/stats failed: {e}")
+        return {"success": False, "error": "Unable to load player statistics."}
 
 @app.post("/api/schedule/sync")
 async def sync_schedule(req: ScheduleSyncRequest, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
@@ -859,7 +863,8 @@ async def sync_schedule(req: ScheduleSyncRequest, x_athlete_email: Optional[str]
         res_id = await asyncio.to_thread(_db_op)
         return {"success": True, "schedule_id": res_id}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        print(f"[API Error] /api/schedule/sync failed: {e}")
+        return {"success": False, "error": "Unable to sync training schedule."}
 
 @app.get("/api/schedule/list")
 async def list_schedule(email: str, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
@@ -900,7 +905,8 @@ async def list_schedule(email: str, x_athlete_email: Optional[str] = Header(defa
         items = await asyncio.to_thread(_db_op)
         return {"success": True, "schedules": items}
     except Exception as e:
-        return {"success": False, "error": str(e), "schedules": []}
+        print(f"[API Error] /api/schedule/list failed: {e}")
+        return {"success": False, "error": "Unable to load training schedule list.", "schedules": []}
 
 @app.delete("/api/schedule/{schedule_id}")
 async def delete_schedule(schedule_id: str, email: str, x_athlete_email: Optional[str] = Header(default=None, alias="X-Athlete-Email")):
@@ -919,7 +925,8 @@ async def delete_schedule(schedule_id: str, email: str, x_athlete_email: Optiona
         await asyncio.to_thread(_db_op)
         return {"success": True}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        print(f"[API Error] /api/schedule/delete failed: {e}")
+        return {"success": False, "error": "Unable to delete schedule item."}
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Admin Dashboard Security: Token Authentication & Brute-Force Protection
@@ -1083,11 +1090,12 @@ async def admin_overview(_auth: bool = Depends(verify_admin_token)):
         data = await asyncio.to_thread(_db_op)
         return {"success": True, "overview": data}
     except Exception as e:
+        print(f"[Admin Error] overview failed: {e}")
         return {"success": True, "overview": {
             "athlete_count": 0, "total_sessions": 0, "total_reps": 0,
             "successful_reps": 0, "accuracy": 0.0, "best_streak": 0,
             "avg_confidence": 0.0, "total_practice_hours": 0.0,
-        }, "fallback": True, "error": str(e)}
+        }, "fallback": True, "error": "Unable to load overview telemetry."}
 
 
 @app.get("/api/admin/shot-distribution")
@@ -1129,7 +1137,8 @@ async def admin_shot_distribution(_auth: bool = Depends(verify_admin_token)):
         data = await asyncio.to_thread(_db_op)
         return {"success": True, "distribution": data}
     except Exception as e:
-        return {"success": True, "distribution": [], "fallback": True, "error": str(e)}
+        print(f"[Admin Error] shot-distribution failed: {e}")
+        return {"success": True, "distribution": [], "fallback": True, "error": "Unable to load shot distribution."}
 
 
 @app.get("/api/admin/flaw-hotspots")
@@ -1173,7 +1182,8 @@ async def admin_flaw_hotspots(_auth: bool = Depends(verify_admin_token)):
         data = await asyncio.to_thread(_db_op)
         return {"success": True, "hotspots": data}
     except Exception as e:
-        return {"success": True, "hotspots": [], "fallback": True, "error": str(e)}
+        print(f"[Admin Error] flaw-hotspots failed: {e}")
+        return {"success": True, "hotspots": [], "fallback": True, "error": "Unable to load hotspots right now."}
 
 
 @app.get("/api/admin/athletes")
@@ -1223,7 +1233,8 @@ async def admin_athletes(_auth: bool = Depends(verify_admin_token)):
         data = await asyncio.to_thread(_db_op)
         return {"success": True, "athletes": data}
     except Exception as e:
-        return {"success": True, "athletes": [], "fallback": True, "error": str(e)}
+        print(f"[Admin Error] athletes failed: {e}")
+        return {"success": True, "athletes": [], "fallback": True, "error": "Unable to load athlete roster."}
 
 
 @app.get("/api/admin/sessions/recent")
@@ -1267,7 +1278,8 @@ async def admin_recent_sessions(_auth: bool = Depends(verify_admin_token)):
         data = await asyncio.to_thread(_db_op)
         return {"success": True, "sessions": data}
     except Exception as e:
-        return {"success": True, "sessions": [], "fallback": True, "error": str(e)}
+        print(f"[Admin Error] recent-sessions failed: {e}")
+        return {"success": True, "sessions": [], "fallback": True, "error": "Unable to load recent sessions."}
 
 
 @app.get("/api/admin/timeline")
@@ -1308,7 +1320,8 @@ async def admin_timeline(_auth: bool = Depends(verify_admin_token)):
         data = await asyncio.to_thread(_db_op)
         return {"success": True, "timeline": data}
     except Exception as e:
-        return {"success": True, "timeline": [], "fallback": True, "error": str(e)}
+        print(f"[Admin Error] timeline failed: {e}")
+        return {"success": True, "timeline": [], "fallback": True, "error": "Unable to load timeline analytics."}
 
 
 @app.websocket("/ws")
