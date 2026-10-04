@@ -3,11 +3,12 @@ import path from "path";
 
 const CSP_HEADER = `
   default-src 'self';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com/gsi/client https://apis.google.com;
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com/gsi/client https://apis.google.com https://*.vercel-analytics.com https://va.vercel-scripts.com;
   style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com data:;
   img-src 'self' data: blob: https://images.unsplash.com https://lh3.googleusercontent.com;
-  connect-src 'self' http://localhost:8888 http://127.0.0.1:8888 ws://localhost:8888 ws://127.0.0.1:8888 https://accounts.google.com/gsi/ https://apis.google.com;
+  connect-src 'self' http://localhost:8888 http://127.0.0.1:8888 ws://localhost:8888 ws://127.0.0.1:8888 https://*.azurecontainerapps.io wss://*.azurecontainerapps.io https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.datadoghq.com https://accounts.google.com/gsi/ https://apis.google.com https://*.vercel-analytics.com https://va.vercel-scripts.com;
+  manifest-src 'self' https://vercel.com;
   frame-src 'self' https://accounts.google.com/gsi/;
   media-src 'self' blob: data:;
   object-src 'none';
