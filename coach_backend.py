@@ -527,6 +527,10 @@ def _is_allowed_origin(origin: str) -> bool:
     if not origin:
         return True
     normalized = _normalize_origin(origin)
+    if normalized.endswith(".vercel.app") or normalized.startswith("https://vercel.app"):
+        return True
+    if "*" in ALLOWED_ORIGINS:
+        return True
     if normalized in {_normalize_origin(o) for o in ALLOWED_ORIGINS}:
         return True
     return _is_local_network_origin(normalized)
@@ -574,6 +578,7 @@ app = FastAPI(title="BatCoach AI Pro Backend", version="2.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
