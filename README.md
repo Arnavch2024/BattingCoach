@@ -28,6 +28,7 @@ pinned: false
 ![VideoMAE](https://img.shields.io/badge/Vision%20Transformer-VideoMAE-7952B3?style=flat)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
 ![Tests](https://img.shields.io/badge/Tests-29%20Passing-brightgreen?style=flat)
+[![Wiki](https://img.shields.io/badge/Documentation-GitHub%20Wiki-0969DA?style=flat&logo=github&logoColor=white)](https://github.com/Arnavch2024/BattingCoach/wiki)
 
 ---
 
