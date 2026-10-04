@@ -365,7 +365,7 @@ def _enforce_ssl_url(url: str) -> str:
         return f"{url}{sep}sslmode=require"
     return url
 
-DATABASE_URL = _enforce_ssl_url(os.getenv("DATABASE_URL", ""))
+DATABASE_URL = _enforce_ssl_url(os.getenv("DATABASE_URL", "") or os.getenv("SUPABASE_DB_URL", ""))
 
 db_pool = None
 if DATABASE_URL:
