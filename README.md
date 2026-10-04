@@ -22,6 +22,9 @@ pinned: false
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-3D%20World%20Landmarks-4285F4?style=flat&logo=google&logoColor=white)
 ![YOLOv8](https://img.shields.io/badge/YOLOv8--OBB-Oriented%20Bat%20Tracking-00FFFF?style=flat)
 ![Supabase](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=flat&logo=supabase&logoColor=white)
+![Sentry](https://img.shields.io/badge/Sentry-APM%20%26%20Crash%20Diagnostics-362D59?style=flat&logo=sentry&logoColor=white)
+![Datadog](https://img.shields.io/badge/Datadog-RUM%20%26%20Tracing-632CA6?style=flat&logo=datadog&logoColor=white)
+![PostHog](https://img.shields.io/badge/PostHog-Product%20Analytics-1D63FF?style=flat&logo=posthog&logoColor=white)
 ![VideoMAE](https://img.shields.io/badge/Vision%20Transformer-VideoMAE-7952B3?style=flat)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
 ![Tests](https://img.shields.io/badge/Tests-29%20Passing-brightgreen?style=flat)
@@ -138,6 +141,36 @@ All biomechanical thresholds are codified as named constants cited directly from
 
 ---
 
+### 9. 📊 Connected Third-Party Platforms & Observability Ecosystem
+
+The platform integrates enterprise-grade monitoring, analytics, and cloud identity services across the full stack:
+
+| Provider | Service Role | Integrated SDK / Library | Target Environment | Key Metrics & Telemetry Captured |
+|---|---|---|---|---|
+| **[PostHog](https://posthog.com)** | Product & Technique Analytics | `posthog-js` (`^1.434.15`) | Next.js Frontend | Event tracking (`stroke_executed`, `drill_locked_intervention`, `practice_mode_switched`, `masterclass_video_watched`), funnel drop-offs, user conversion. |
+| **[Datadog](https://www.datadoghq.com)** | RUM & Distributed APM | `@datadog/browser-rum`, `ddtrace` | Frontend + Backend | Frontend Real User Monitoring (Core Web Vitals, LCP/FID/CLS, client crashes) + Backend APM latency spans (`batcoach-backend` on `us5.datadoghq.com`). |
+| **[Sentry](https://sentry.io)** | Crash Diagnostics & APM | `@sentry/nextjs`, `sentry-sdk` | Frontend + Backend | Real-time exception capture, stack trace debugging, edge middleware errors, release health tracking (`batcoach-ai` project). |
+| **[Supabase](https://supabase.com)** | Serverless PostgreSQL DB | `psycopg2-binary`, Supavisor Pooler | Cloud Database | Athlete profile sync, per-stroke telemetry logs, practice session history, and training schedule persistence over IPv4 Session Pooler. |
+| **[Google Cloud](https://cloud.google.com)** | Identity & Calendar Sync | Google Identity Services, GCal API | Frontend | Google OAuth One-Tap sign-in, JWT credential validation, and automated synchronization of batting practice drills to Google Calendar. |
+| **[Hugging Face](https://huggingface.co)** | Model Hub & Transformer Host | `transformers`, `huggingface_hub` | ML Pipeline | Model weight repository for fine-tuned VideoMAE transformer (`Arnav2005/cricket-videomae-classifier`). |
+
+#### Detailed Integration Breakdown:
+* **PostHog Product Analytics (`cricket-coach-ui/src/lib/analytics.ts`)**:
+  * Event taxonomy captures every shot event with biomechanical score, stroke name, and clean/flawed status.
+  * Captures `drill_locked_intervention` events whenever consecutive errors trigger technique intervention, allowing coaches to measure drill effectiveness.
+  * Tracks slow-motion masterclass completion rates and playback speeds (`0.25x`, `0.5x`, `1.0x`).
+* **Datadog RUM & APM Tracing**:
+  * **Frontend RUM**: Initialized via `@datadog/browser-rum` in `cricket-coach-ui/src/app/layout.tsx` targeting Datadog US5 (`us5.datadoghq.com`).
+  * **Backend APM**: Configured via `DD_API_KEY`, `DD_SITE`, `DD_SERVICE=batcoach-backend`, and `DD_ENV=development` in root `.env` for tracking WebSocket streaming latency and inference throughput.
+* **Sentry Crash Diagnostics (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`)**:
+  * DSN: Configured with automated source maps upload via `SENTRY_AUTH_TOKEN`.
+  * Catches unhandled browser errors during video decoding, MediaPipe WebGL context losses, and backend inference exceptions.
+* **Google Cloud Ecosystem**:
+  * `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Enables one-tap authentication for athletes.
+  * `GOOGLE_API_KEY`: Facilitates one-click export of training drills to athlete Google Calendars.
+
+---
+
 ## Supported Stroke Syllabus
 
 | Shot | Category | Target Elbow | Target Knee | Pro Blueprint | Key Biomechanical Cue |
@@ -226,12 +259,74 @@ cd ..
 
 ### 2. Environment Configuration
 
-Create or verify `cricket-coach-ui/.env.local`:
+The application requires configuration files for both the AI backend and the Next.js frontend to securely connect to cloud databases and third-party observability providers.
+
+#### A. AI Backend (`.env` in root)
+Create a `.env` file in the project root:
 
 ```env
-DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres
+# Cloud Database (Supabase PostgreSQL IPv4 Pooler)
+DATABASE_URL=postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+
+# Admin Studio Security Gate
+ADMIN_API_TOKEN=your-random-cryptographic-token-32-chars
+
+# Datadog Backend APM & Distributed Tracing (us5.datadoghq.com)
+DD_API_KEY=your-datadog-api-key
+DD_SITE=us5.datadoghq.com
+DD_SERVICE=batcoach-backend
+DD_ENV=production
+
+# Sentry Backend Crash Reporting & Diagnostics
+SENTRY_DSN=https://[KEY]@o[ORG_ID].ingest.us.sentry.io/[PROJECT_ID]
+SENTRY_AUTH_TOKEN=sntryu_...
+SENTRY_ORG=your-sentry-org
+SENTRY_PROJECT=batcoach-ai
+
+# Hugging Face Hub (Model Weights)
+HF_TOKEN=hf_...
+HF_SPACE_URL=https://huggingface.co/spaces/Arnav2005/BatCoach
+```
+
+#### B. Next.js Frontend (`cricket-coach-ui/.env.local`)
+Create a `.env.local` file in `cricket-coach-ui/`:
+
+```env
+# Backend Connection (Local dev or Azure Container Apps)
+# Local:
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8888
 NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8888/ws
+# Azure Production:
+# NEXT_PUBLIC_API_URL=https://bat-coach.icypond-1d4761cb.eastasia.azurecontainerapps.io
+# NEXT_PUBLIC_WS_URL=wss://bat-coach.icypond-1d4761cb.eastasia.azurecontainerapps.io/ws
+
+# Supabase PostgreSQL & Storage
+DATABASE_URL=postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+NEXT_PUBLIC_SUPABASE_URL=https://[PROJECT_REF].supabase.co
+
+# PostHog Product & Technique Analytics
+NEXT_PUBLIC_POSTHOG_KEY=phc_...
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+
+# Datadog Frontend Real User Monitoring (RUM)
+NEXT_PUBLIC_DATADOG_APPLICATION_ID=your-datadog-rum-app-id
+NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=your-datadog-rum-client-token
+NEXT_PUBLIC_DATADOG_SITE=us5.datadoghq.com
+NEXT_PUBLIC_DATADOG_SERVICE=batcoach-ui
+
+# Sentry Frontend APM & Exception Monitoring
+NEXT_PUBLIC_SENTRY_DSN=https://[KEY]@o[ORG_ID].ingest.us.sentry.io/[PROJECT_ID]
+SENTRY_AUTH_TOKEN=sntryu_...
+SENTRY_ORG=your-sentry-org
+SENTRY_PROJECT=batcoach-ai
+
+# Google Cloud (Identity One-Tap Sign-In & Calendar API Sync)
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+GOOGLE_API_KEY=your-google-calendar-api-key
+NEXT_PUBLIC_GOOGLE_API_KEY=your-google-calendar-api-key
+
+# Admin Studio Security Gate (Server verification reference)
+ADMIN_API_TOKEN=your-random-cryptographic-token-32-chars
 ```
 
 ---
@@ -381,4 +476,5 @@ The repository is protected by enterprise GitHub Actions CI/CD workflows:
 * **Pose Estimation**: Google MediaPipe 3D Euclidean World Landmarks.
 * **Bat Detection**: Ultralytics YOLOv8-OBB (`Arnav2005/cricket-yolov8-bat-detection`).
 * **Cloud Infrastructure**: Azure Container Apps (Serverless), Vercel (Edge Frontend), Supabase (PostgreSQL).
+* **Observability & Analytics**: Sentry (Crash Diagnostics & APM), Datadog (RUM & Distributed Tracing), PostHog (Product Analytics), Google Cloud Identity & Calendar API.
 * **Biomechanical Standards**: England and Wales Cricket Board (ECB) Coaching Guidelines, MCC Masterclass Standards, and published research by Taliep et al. & Stretch et al.
