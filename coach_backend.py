@@ -359,7 +359,8 @@ from pydantic import BaseModel
 def _enforce_ssl_url(url: str) -> str:
     """Enforces TLS/SSL in-transit encryption for remote PostgreSQL connections."""
     if not url:
-        return url
+        return ""
+    url = url.strip().strip("'\"").strip()
     if "sslmode=" not in url.lower() and "localhost" not in url.lower() and "127.0.0.1" not in url:
         sep = "&" if "?" in url else "?"
         return f"{url}{sep}sslmode=require"
