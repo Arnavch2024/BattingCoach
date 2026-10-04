@@ -82,13 +82,25 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: 🔍 Discover Resource Group
+        if: "${{ secrets.AZURE_CREDENTIALS != '' }}"
+        id: discover-rg
+        run: |
+          if [ -n "${{ secrets.AZURE_RESOURCE_GROUP }}" ]; then
+            echo "rg=${{ secrets.AZURE_RESOURCE_GROUP }}" >> $GITHUB_OUTPUT
+          else
+            RG=$(az containerapp list --query "[?name=='bat-coach'].resourceGroup" -o tsv | head -n 1)
+            echo "Auto-detected Resource Group: $RG"
+            echo "rg=$RG" >> $GITHUB_OUTPUT
+          fi
+
       - name: 🚀 Deploy Updated Image to Azure
         if: "${{ secrets.AZURE_CREDENTIALS != '' }}"
         uses: azure/container-apps-deploy-action@v2
         with:
           imageToDeploy: ghcr.io/${{ env.IMAGE_NAME }}:latest
           containerAppName: bat-coach
-          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP || 'BattingCoachRG' }}
+          resourceGroup: ${{ steps.discover-rg.outputs.rg }}
 
       - name: ℹ️ Instructions if Azure Secret is not set
         if: "${{ secrets.AZURE_CREDENTIALS == '' }}"
