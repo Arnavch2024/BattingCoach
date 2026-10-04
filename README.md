@@ -13,7 +13,10 @@ pinned: false
 ### Real-Time Cricket Batting Biomechanics, Dual-Mode YOLOv8-OBB & Neural Stroke Analytics
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat&logo=python&logoColor=white)
-![PyTorch](https://img.shields.io/badge/PyTorch-CUDA%20FP16-EE4C2C?style=flat&logo=pytorch&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-CPU%20%26%20FP16-EE4C2C?style=flat&logo=pytorch&logoColor=white)
+![Azure](https://img.shields.io/badge/Azure-Container%20Apps%20(Serverless)-0078D4?style=flat&logo=microsoftazure&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-Edge%20Frontend-000000?style=flat&logo=vercel&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-GHCR%20Container-2496ED?style=flat&logo=docker&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-16%20Turbopack-000000?style=flat&logo=nextdotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Async%20WebSockets-009688?style=flat&logo=fastapi&logoColor=white)
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-3D%20World%20Landmarks-4285F4?style=flat&logo=google&logoColor=white)
@@ -109,6 +112,32 @@ All biomechanical thresholds are codified as named constants cited directly from
 
 ---
 
+### 7. 🏛️ Enterprise Admin Dashboard & Token Authentication
+* **Dedicated Administrative Studio (`/admin`)**:
+  * Real-time aggregate analytics: total athletes, completed practice sessions, overall form accuracy %, flaw hotspot breakdown, and practice hour logs.
+  * System health & inference telemetry: Live Azure CPU mode status, database connectivity, and WebSocket ping latency.
+* **Cryptographic Token Verification**:
+  * Constant-time token comparison via Python `secrets.compare_digest` to prevent timing attacks.
+  * Ephemeral client-side session management (`sessionStorage`) ensuring admin credentials are never bundled into the public client JavaScript.
+* **Brute-Force Lockout Defense**:
+  * Rolling IP-based rate limiting on administrative endpoints: 5 failed attempts trigger an automatic 5-minute security lockout.
+
+---
+
+### 8. ☁️ Cloud Production Deployment & Scale-to-Zero Architecture
+* **Frontend (Vercel Edge Network)**:
+  * Next.js 16 compiled with Turbopack, served globally via Vercel's edge CDN with sub-second page loads.
+  * Dynamic Content Security Policy (CSP) securing WebSockets (`wss://`), Azure API endpoints, and Supabase connections.
+* **AI Backend (Azure Container Apps)**:
+  * Hosted in Azure East Asia on a serverless consumption tier.
+  * **Scale-to-Zero Capability (`minReplicas = 0`)**: Scales to 0 running instances when idle, incurring **$0.00 compute charges** and preserving cloud credits.
+  * Auto-wakes on incoming HTTP/WebSocket traffic in seconds.
+* **Cloud Database (Supabase PostgreSQL)**:
+  * High-throughput PostgreSQL instance connected over IPv4 using Supabase's Session Pooler (`aws-0-ap-southeast-1.pooler.supabase.com:5432`).
+  * Automatic table creation and schema validation on container initialization (`athletes`, `practice_sessions`, `stroke_telemetry_logs`, `training_schedules`).
+
+---
+
 ## Supported Stroke Syllabus
 
 | Shot | Category | Target Elbow | Target Knee | Pro Blueprint | Key Biomechanical Cue |
@@ -132,7 +161,7 @@ All biomechanical thresholds are codified as named constants cited directly from
 flowchart TD
     A["Webcam Video Stream (25 FPS)"] --> B["Dual-Mode Processing Pipeline"]
 
-    subgraph Backend ["AI Backend (FastAPI Server :8888)"]
+    subgraph Backend ["AI Backend (Azure Container Apps - Serverless :7860)"]
         direction TB
         B -->|"Shadow Mode (no bat)"| C["MediaPipe 3D Euclidean Landmarks"]
         B -->|"Willow Mode (with bat)"| D["YOLOv8-OBB Oriented Bat Tracking"]
@@ -140,16 +169,16 @@ flowchart TD
         
         C --> E["biomechanics.py (Kinematics & Flaw Diagnosis)"]
         D --> E
-        F --> G["Async PyTorch FP16 VideoMAE Classifier"]
+        F --> G["Async PyTorch VideoMAE Classifier"]
         
         E --> H["Coaching Feedback Engine"]
         G --> H
         
-        H --> I["WebSocket Stream (JSON Telemetry Payload)"]
-        H --> J[("Supabase PostgreSQL Pool")]
+        H --> I["Secure WebSocket Stream (WSS)"]
+        H --> J[("Supabase PostgreSQL Pooler (IPv4)")]
     end
 
-    subgraph Frontend ["Next.js React Dashboard (:3000)"]
+    subgraph Frontend ["Next.js React Dashboard (Vercel Edge Network)"]
         direction TB
         I --> K["Live AR Video Viewport & Telemetry HUD"]
         I --> L["30 FPS Kinematic Checklist"]
@@ -157,6 +186,7 @@ flowchart TD
         I --> N["Web Speech Audio Coach"]
         I --> O["5s Multi-Speed Slow-Mo Masterclass"]
         I --> P["Interactive Training Calendar Modal"]
+        I --> Q["Enterprise Admin Dashboard (/admin)"]
     end
 ```
 
@@ -266,22 +296,36 @@ All athlete-scoped endpoints require the `X-Athlete-Email` header to match the e
 | `POST /api/schedule/sync` | HTTP POST | `X-Athlete-Email` | Creates or updates a training calendar event for an athlete. |
 | `GET /api/schedule/list` | HTTP GET | `X-Athlete-Email` | Lists scheduled training drills and workouts for an athlete (`?email=...`). |
 | `DELETE /api/schedule/{id}` | HTTP DELETE | `X-Athlete-Email` | Deletes a scheduled training drill (`?email=...`). |
+| `POST /api/admin/verify` | HTTP POST | `Authorization` | Verifies admin API token for frontend login gate with IP lockout defense. |
+| `GET /api/admin/overview` | HTTP GET | `Authorization` | Returns platform aggregates: total athletes, sessions, reps, accuracy, and practice hours. |
+| `GET /api/admin/shot-distribution` | HTTP GET | `Authorization` | Aggregates practice session volume and average accuracy per stroke type. |
+| `GET /api/admin/flaw-hotspots` | HTTP GET | `Authorization` | Identifies most prevalent biomechanical flaws and recurring error patterns. |
+| `GET /api/admin/athletes` | HTTP GET | `Authorization` | Retrieves complete registered athlete roster with lifetime practice stats. |
+| `GET /api/admin/sessions/recent` | HTTP GET | `Authorization` | Streams recent practice sessions with per-stroke breakdowns. |
+| `GET /api/admin/timeline` | HTTP GET | `Authorization` | Aggregates daily practice volume and rep completion trends. |
 
 ---
 
 ## CI/CD & Automated Quality Gates
 
-The repository is protected by GitHub Actions CI/CD workflows:
+The repository is protected by enterprise GitHub Actions CI/CD workflows:
 1. **Frontend & Biomechanics CI (`.github/workflows/ci.yml`)**:
-   - Executes Python 3.10 biomechanics test suite (`pytest`).
+   - Executes Python 3.10 biomechanics test suite (`pytest`) with 29 passing unit tests.
    - Runs Next.js 16 Turbopack production build and TypeScript compilation.
    - Enforced as required status checks on the `main` branch.
-2. **Weekly Dependency Security Audit (`.github/workflows/dependency-audit.yml`)**:
+2. **Container Build & Azure Continuous Deployment (`.github/workflows/build-container.yml`)**:
+   - Compiles CPU-optimized Docker container (`ghcr.io/arnavch2024/batcoach-backend:latest`).
+   - Strict path filter: triggers **only** on backend logic (`coach_backend.py`, `biomechanics.py`), dependencies (`requirements.txt`), or container runtime files (`Dockerfile`).
+   - Automatically auto-discovers and deploys updated revisions to Azure Container Apps.
+3. **Secret Scanning & Leak Prevention (`.github/workflows/secret-scanning.yml`)**:
+   - Automated Gitleaks repository scanning on all pushes and pull requests.
+   - Tree-tracking guardrails preventing accidental commits of `.env`, `.env.local`, or API tokens.
+4. **Weekly Dependency Security Audit (`.github/workflows/dependency-audit.yml`)**:
    - Scans Python (`pip audit`) and NPM packages for known CVEs.
    - Automatically opens a prioritized GitHub Issue when vulnerabilities are discovered.
-3. **Dependabot (`.github/dependabot.yml`)**:
-   - Automated monthly version updates for Python, NPM, and GitHub Actions.
-   - Pinned NumPy (`<2.0.0`) for PyTorch and MediaPipe ABI stability.
+5. **Dependabot Optimization (`.github/dependabot.yml`)**:
+   - Monthly version updates for Python, NPM, and GitHub Actions.
+   - Pinned Python ML dependencies (NumPy `<2.0.0`, PyTorch, MediaPipe) for strict C-ABI stability.
 
 ---
 
@@ -289,23 +333,30 @@ The repository is protected by GitHub Actions CI/CD workflows:
 
 ```
 .
+├── Dockerfile                    # CPU-optimized multi-stage PyTorch & FastAPI container
+├── .dockerignore                 # Excludes cache, git, and frontend from container builds
 ├── biomechanics.py               # Literature-backed biomechanics constants, 3D kinematics & feedback engine
 ├── coach_backend.py              # FastAPI server, WebSocket hub, YOLOv8-OBB, VideoMAE & Supabase pool
 ├── run_coach.py                  # Universal root launcher script (starts backend + frontend)
+├── requirements.txt              # Pinned Python dependencies for reproducible builds
 ├── tests/
 │   ├── __init__.py
 │   └── test_biomechanics.py      # 29-test comprehensive biomechanical unit test suite
 ├── .github/
 │   ├── dependabot.yml            # Dependabot updates (Python, npm, GitHub Actions)
 │   └── workflows/
+│       ├── build-container.yml   # Docker build, GHCR publish & Azure CD pipeline
 │       ├── ci.yml                # Automated CI pipeline (Pytest + Next.js build)
-│       └── dependency-audit.yml  # Weekly automated vulnerability & issue scanner
+│       ├── dependency-audit.yml  # Weekly automated vulnerability scanner
+│       └── secret-scanning.yml   # Gitleaks secret and credential leak detector
 │
 ├── cricket-coach-ui/             # Next.js 16 Web Application (Turbopack)
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── page.tsx          # Landing / Home Page with hero banner & athlete sync
 │   │   │   ├── layout.tsx        # Root layout, fonts, and dark theme wrapper
+│   │   │   ├── admin/
+│   │   │   │   └── page.tsx      # Enterprise Admin Studio with live analytics & token gate
 │   │   │   └── coach/
 │   │   │       └── page.tsx      # Dedicated live AI coaching studio, 30 FPS HUD & Video Masterclass
 │   │   └── components/
@@ -315,6 +366,7 @@ The repository is protected by GitHub Actions CI/CD workflows:
 │   ├── public/
 │   │   ├── tutorials/            # Local 5-second slow-mo tutorial MP4 directory ($0 streaming)
 │   │   └── sw.js                 # Service worker for offline caching
+│   ├── next.config.ts            # Next.js configuration with hardened Content-Security-Policy
 │   └── package.json              # Frontend dependencies
 │
 ├── train_yolov8.py               # YOLOv8-OBB bat detector training script
@@ -328,5 +380,5 @@ The repository is protected by GitHub Actions CI/CD workflows:
 * **Vision Transformer**: Fine-tuned VideoMAE via HuggingFace Transformers (`Arnav2005/cricket-videomae-classifier`).
 * **Pose Estimation**: Google MediaPipe 3D Euclidean World Landmarks.
 * **Bat Detection**: Ultralytics YOLOv8-OBB (`Arnav2005/cricket-yolov8-bat-detection`).
-* **Database**: Supabase PostgreSQL.
+* **Cloud Infrastructure**: Azure Container Apps (Serverless), Vercel (Edge Frontend), Supabase (PostgreSQL).
 * **Biomechanical Standards**: England and Wales Cricket Board (ECB) Coaching Guidelines, MCC Masterclass Standards, and published research by Taliep et al. & Stretch et al.
