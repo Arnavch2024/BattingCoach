@@ -1,0 +1,282 @@
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import { Play, ArrowRight, Calendar, Target, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { HeroSlide } from "@/types/landing";
+
+interface HeroSectionProps {
+  slides: HeroSlide[];
+  currentSlide: number;
+  onSelectSlide: (idx: number) => void;
+  onPrevSlide: () => void;
+  onNextSlide: () => void;
+  onOpenCalendar: () => void;
+  onOpenSignIn: () => void;
+}
+
+export function HeroSection({
+  slides,
+  currentSlide,
+  onSelectSlide,
+  onPrevSlide,
+  onNextSlide,
+  onOpenCalendar,
+  onOpenSignIn,
+}: HeroSectionProps) {
+  return (
+    <section
+      id="hero"
+      className="relative min-h-[92vh] flex items-center justify-center pt-24 pb-16 px-6 lg:px-12 overflow-hidden"
+    >
+      {/* Dynamic Stadium Background Slider */}
+      <div className="absolute inset-0 z-0 overflow-hidden bg-slate-100 dark:bg-zinc-950">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentSlide}
+            initial={{ opacity: 0, scale: 1.05 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.9, ease: "easeInOut" }}
+            className="absolute inset-0"
+          >
+            <img
+              src={slides[currentSlide].url}
+              alt={slides[currentSlide].title}
+              className="w-full h-full object-cover object-center opacity-70 sm:opacity-85 dark:opacity-40 saturate-125 contrast-[1.03]"
+            />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Athletic stadium lighting / subtle glow */}
+        <div className="absolute -top-20 -right-20 w-96 h-96 bg-emerald-400/25 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Left reading scrim */}
+        <div className="absolute inset-y-0 left-0 w-full lg:w-[60%] bg-gradient-to-r from-white/95 via-white/85 to-transparent dark:from-[#09090b]/95 dark:via-[#09090b]/80 dark:to-transparent pointer-events-none" />
+
+        {/* Top nav blur transition */}
+        <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-white/80 via-white/30 to-transparent dark:from-[#09090b]/80 dark:via-[#09090b]/20 dark:to-transparent pointer-events-none" />
+
+        {/* Bottom seamless blend into next section */}
+        <div className="absolute bottom-0 inset-x-0 h-36 bg-gradient-to-t from-slate-50 via-slate-50/70 to-transparent dark:from-[#09090b] dark:via-[#09090b]/80 dark:to-transparent pointer-events-none" />
+      </div>
+
+      {/* Hero Content Container */}
+      <div className="relative z-10 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center mt-6">
+        {/* Left Column: Value Proposition */}
+        <div className="lg:col-span-7 flex flex-col items-start text-left gap-5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-400 text-xs font-semibold backdrop-blur-md shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>3D Euclidean Pose & VideoMAE Vision Transformer</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+            Textbook Batting Form. <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 dark:from-emerald-400 dark:via-teal-300 dark:to-cyan-300">
+              Zero Body Sensors.
+            </span>
+          </h1>
+
+          <p className="text-sm sm:text-base text-slate-600 dark:text-zinc-200 max-w-xl leading-relaxed">
+            Transform any standard laptop or webcam into an Olympic-grade batting laboratory. Measures{" "}
+            <strong className="text-slate-900 dark:text-white">3D front elbow elevation</strong>,{" "}
+            <strong className="text-slate-900 dark:text-white">lead knee flexion</strong>, and
+            classifies 10 cricket stroke mechanics with instant spoken feedback.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-wrap items-center gap-3.5 pt-2 w-full sm:w-auto">
+            <Link href="/coach">
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+                <Button
+                  size="lg"
+                  className="gap-2 text-sm font-bold h-12 px-7 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/25 rounded-xl cursor-pointer"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  Start Live Session
+                  <ArrowRight className="h-4 w-4 ml-0.5" />
+                </Button>
+              </motion.div>
+            </Link>
+
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={onOpenCalendar}
+                className="text-sm font-semibold h-12 px-6 bg-white hover:bg-slate-100 text-slate-800 border-slate-200 dark:bg-emerald-950/40 dark:border-emerald-500/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 backdrop-blur-md gap-2 shadow-sm rounded-xl cursor-pointer"
+              >
+                <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                Training Schedule
+              </Button>
+            </motion.div>
+
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={onOpenSignIn}
+                className="text-sm font-semibold h-12 px-6 bg-white hover:bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-900/80 dark:border-zinc-700 dark:text-zinc-200 backdrop-blur-md rounded-xl shadow-sm cursor-pointer"
+              >
+                Athlete Portal
+              </Button>
+            </motion.div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-3 gap-3 pt-4 w-full max-w-lg border-t border-slate-200 dark:border-zinc-800/80 mt-2">
+            <div>
+              <div className="text-xl font-bold text-slate-900 dark:text-white mono">24 FPS</div>
+              <div className="text-[11px] text-slate-500 dark:text-zinc-400">Locked Stream Rate</div>
+            </div>
+            <div>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mono">&lt; 15ms</div>
+              <div className="text-[11px] text-slate-500 dark:text-zinc-400">FP16 CUDA Latency</div>
+            </div>
+            <div>
+              <div className="text-xl font-bold text-teal-600 dark:text-cyan-400 mono">10 Strokes</div>
+              <div className="text-[11px] text-slate-500 dark:text-zinc-400">Classified Live</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Interactive Biometrics Radar Preview */}
+        <div className="lg:col-span-5 flex flex-col gap-4">
+          <div className="relative rounded-2xl bg-white/95 dark:bg-zinc-950/90 border border-slate-200/90 dark:border-zinc-800/90 p-5 shadow-xl shadow-slate-200/50 dark:shadow-2xl backdrop-blur-xl space-y-4 transition-colors">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Live Biometrics Radar
+                </span>
+              </div>
+              <Badge
+                variant="outline"
+                className="text-[10px] font-mono py-0 px-2 bg-slate-100 dark:bg-cyan-950 text-slate-700 dark:text-cyan-300 border-slate-200 dark:border-cyan-500/30"
+              >
+                Active Stance Check
+              </Badge>
+            </div>
+
+            {/* Simulated Skeleton & Angle HUD */}
+            <div className="relative h-56 rounded-xl bg-slate-100/80 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 overflow-hidden flex items-center justify-center p-4 transition-colors">
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#64748b15_1px,transparent_1px),linear-gradient(to_bottom,#64748b15_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#27272a15_1px,transparent_1px),linear-gradient(to_bottom,#27272a15_1px,transparent_1px)] bg-[size:24px_24px]" />
+
+              <div className="relative z-10 w-full flex items-center justify-between px-2">
+                {/* Lead Elbow Gauge */}
+                <div className="flex flex-col items-center gap-1 bg-white/95 dark:bg-zinc-950/90 border border-emerald-500/40 rounded-xl p-3 shadow-md">
+                  <div className="text-[10px] text-slate-500 dark:text-zinc-400 uppercase font-semibold">
+                    Lead Elbow
+                  </div>
+                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mono">
+                    134.2°
+                  </div>
+                  <div className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                    TARGET: ≥ 130° (PASS)
+                  </div>
+                </div>
+
+                {/* Dynamic Pose Icon */}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-16 w-16 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                    <Target className="h-8 w-8 animate-pulse" />
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-700 dark:text-zinc-300">
+                    Cover Drive Stance
+                  </span>
+                </div>
+
+                {/* Lead Knee Gauge */}
+                <div className="flex flex-col items-center gap-1 bg-white/95 dark:bg-zinc-950/90 border border-teal-500/40 rounded-xl p-3 shadow-md">
+                  <div className="text-[10px] text-slate-500 dark:text-zinc-400 uppercase font-semibold">
+                    Lead Knee
+                  </div>
+                  <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mono">
+                    148.6°
+                  </div>
+                  <div className="text-[9px] text-teal-700 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 rounded">
+                    TARGET: ≤ 155° (PASS)
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Overlay Toast */}
+              <div className="absolute bottom-2 inset-x-2 bg-white/95 dark:bg-zinc-950/90 border border-slate-200 dark:border-zinc-800 rounded-lg py-1.5 px-3 flex items-center justify-between text-[11px] shadow-sm">
+                <span className="text-slate-500 dark:text-zinc-400">Form Rating:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 mono">
+                  A+ (Elite Technical Follow-Through)
+                </span>
+              </div>
+            </div>
+
+            {/* Shot Probabilities Simulation */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-slate-700 dark:text-zinc-300 font-medium">
+                <span>
+                  Detected Stroke:{" "}
+                  <strong className="text-slate-900 dark:text-white">Cover Drive</strong>
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400 mono">
+                  94.8% Confidence
+                </span>
+              </div>
+              <div className="h-2 w-full bg-slate-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full w-[94.8%]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Slider Switcher & Thumbnail Indicator */}
+          <div className="flex items-center justify-between bg-white/95 dark:bg-zinc-950/90 border border-slate-200 dark:border-zinc-800 rounded-xl p-3 px-4 shadow-sm backdrop-blur-md transition-colors">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+                Slide:
+              </span>
+              <span className="text-xs font-semibold text-slate-900 dark:text-white truncate max-w-[130px] sm:max-w-none">
+                {slides[currentSlide].title}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 mr-1.5">
+                {slides.map((slide, idx) => (
+                  <button
+                    key={slide.id}
+                    onClick={() => onSelectSlide(idx)}
+                    className={cn(
+                      "h-2 rounded-full transition-all cursor-pointer",
+                      currentSlide === idx
+                        ? "w-5 bg-emerald-600 dark:bg-emerald-400"
+                        : "w-2 bg-slate-300 dark:bg-zinc-700 hover:bg-slate-400 dark:hover:bg-zinc-600"
+                    )}
+                    aria-label={`Jump to slide ${idx + 1}`}
+                    title={slide.title}
+                  />
+                ))}
+              </div>
+
+              <button
+                onClick={onPrevSlide}
+                className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 transition-colors cursor-pointer"
+                aria-label="Previous Slide"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={onNextSlide}
+                className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 transition-colors cursor-pointer"
+                aria-label="Next Slide"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
