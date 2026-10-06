@@ -10,5 +10,5 @@
 
 ### External Links
 * [GitHub Repository](https://github.com/Arnavch2024/BattingCoach)
-* [Live Web Application](https://batting-coach-ob41fmhxt-arnav-ch.vercel.app)
+* [Live Web Application](https://batting-coach.vercel.app)
 * [Azure Container App Backend](https://bat-coach.icypond-1d4761cb.eastasia.azurecontainerapps.io)
