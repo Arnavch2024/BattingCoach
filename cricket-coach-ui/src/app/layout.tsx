@@ -95,7 +95,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "r5izVX48E9a6OtIX0p-Pe_HEbDzzgY9LyLV3vaM5-K0",
   },
   icons: {
     icon: [
@@ -137,6 +137,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <head>
+        <meta name="google-site-verification" content="r5izVX48E9a6OtIX0p-Pe_HEbDzzgY9LyLV3vaM5-K0" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
