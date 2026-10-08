@@ -82,42 +82,42 @@ export function MasterclassModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md">
       <motion.div
         initial={{ opacity: 0, scale: 0.94, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 10 }}
-        className="relative w-full max-w-4xl bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative w-full max-w-4xl bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
       >
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between bg-slate-50 dark:bg-zinc-900/60">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 flex items-center justify-center">
-              <Video className="h-5 w-5" />
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between bg-slate-50 dark:bg-zinc-900/60">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Video className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
                   {shot.name} Masterclass
                 </h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-zinc-700">
+                <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-zinc-700">
                   {shot.difficulty}
                 </span>
                 {isFirstTime && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40">
-                    ⭐ Pre-Drill Masterclass
+                  <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40">
+                    ⭐ Pre-Drill
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                {shot.proExample} • 5-Second Slow-Mo Form Blueprint
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 mt-0.5 truncate">
+                {shot.proExample} • 5-Second Blueprint
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+            className="text-slate-400 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer shrink-0"
             title="Close modal"
           >
             <XCircle className="h-5 w-5" />
@@ -125,7 +125,7 @@ export function MasterclassModal({
         </div>
 
         {/* Modal Body: Split 2 Columns */}
-        <div className="flex-1 grid grid-cols-12 gap-6 p-6 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 grid grid-cols-12 gap-4 sm:gap-6 p-3.5 sm:p-6 overflow-y-auto custom-scrollbar">
           {/* Left Column: Video Player & Speed Controller (7 Cols) */}
           <div className="col-span-12 md:col-span-7 flex flex-col gap-3">
             <div className="relative aspect-video rounded-xl bg-black border border-zinc-800 overflow-hidden shadow-inner group flex items-center justify-center">

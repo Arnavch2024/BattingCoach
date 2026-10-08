@@ -284,40 +284,40 @@ export function TrainingCalendarModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 dark:bg-black/85 backdrop-blur-md overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-black/75 dark:bg-black/85 backdrop-blur-md overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800/90 rounded-2xl shadow-2xl overflow-hidden my-auto"
+          className="relative w-full max-w-4xl max-h-[94vh] sm:max-h-[90vh] flex flex-col bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800/90 rounded-2xl shadow-2xl overflow-hidden my-auto"
         >
           {/* Header */}
-          <div className="px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-zinc-800 bg-gradient-to-r from-slate-50 via-white to-slate-100 dark:from-zinc-900 dark:via-zinc-900/90 dark:to-zinc-950 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-md">
-                <CalendarIcon className="h-5 w-5" />
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 dark:border-zinc-800 bg-gradient-to-r from-slate-50 via-white to-slate-100 dark:from-zinc-900 dark:via-zinc-900/90 dark:to-zinc-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-md shrink-0">
+                <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                     Athlete Training Calendar
                   </h2>
-                  <Badge className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30 text-[10px] font-mono">
+                  <Badge className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30 text-[9px] sm:text-[10px] font-mono">
                     Google Calendar Sync
                   </Badge>
                   {userEmail && (
-                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 px-2 py-0.5 rounded-full">
-                      👤 {userName ? `${userName} (${userEmail})` : userEmail}
+                    <span className="text-[9px] sm:text-[10px] text-emerald-700 dark:text-emerald-400 font-mono bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 px-2 py-0.5 rounded-full truncate max-w-[200px]">
+                      👤 {userName ? `${userName}` : userEmail}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 line-clamp-1 sm:line-clamp-none">
                   Schedule batting practices, net sessions, and match days with 1-click Google Calendar sync.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
               <Button
                 size="sm"
                 onClick={() => setIsCreating(!isCreating)}
@@ -338,21 +338,21 @@ export function TrainingCalendarModal({
 
           {/* Quick Stats & Notification Strip */}
           {syncNotice && (
-            <div className="px-6 py-2 bg-emerald-50 dark:bg-emerald-950/60 border-b border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
+            <div className="px-4 sm:px-6 py-2 bg-emerald-50 dark:bg-emerald-950/60 border-b border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>{syncNotice}</span>
+              <span className="line-clamp-2">{syncNotice}</span>
             </div>
           )}
 
-          <div className="px-5 sm:px-6 py-2.5 bg-slate-50/80 dark:bg-zinc-900/40 border-b border-slate-200 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-4 text-slate-600 dark:text-zinc-400">
+          <div className="px-4 sm:px-6 py-2 sm:py-2.5 bg-slate-50/80 dark:bg-zinc-900/40 border-b border-slate-200 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+            <div className="flex items-center gap-3 sm:gap-4 text-slate-600 dark:text-zinc-400 text-[11px] sm:text-xs">
               <span>📅 Total: <strong className="text-slate-900 dark:text-white">{events.length}</strong></span>
               <span>✅ Completed: <strong className="text-emerald-600 dark:text-emerald-400">{completedCount}</strong></span>
-              <span>🎯 Target Reps: <strong className="text-cyan-600 dark:text-cyan-400">{totalRepsBooked}</strong></span>
+              <span>🎯 Reps: <strong className="text-cyan-600 dark:text-cyan-400">{totalRepsBooked}</strong></span>
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-zinc-400">
+              <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-zinc-400">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                 <span>Google Calendar Ready</span>
               </div>
@@ -382,7 +382,7 @@ export function TrainingCalendarModal({
                   <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 block mb-2">
                     ⚡ Quick Presets (Click to Auto-Fill):
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                     <button
                       type="button"
                       onClick={() => applyPreset({
@@ -775,7 +775,7 @@ export function TrainingCalendarModal({
                             </div>
 
                             {/* Right: Actions */}
-                            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                            <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 self-start sm:self-center shrink-0 mt-2 sm:mt-0">
                               {/* 1-Click Google Calendar Sync */}
                               <Button
                                 size="sm"

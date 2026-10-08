@@ -27,8 +27,8 @@ export function AthleteRosterTab({ athletes }: AthleteRosterTabProps) {
       transition={{ duration: 0.2 }}
       className="space-y-6"
     >
-      <div className="rounded-2xl bg-gradient-to-br from-zinc-900/60 to-zinc-950/80 border border-zinc-800/60 p-6 backdrop-blur-xl">
-        <div className="flex items-center justify-between mb-5">
+      <div className="rounded-2xl bg-gradient-to-br from-zinc-900/60 to-zinc-950/80 border border-zinc-800/60 p-4 sm:p-6 backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
           <div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
               <Users className="w-4 h-4 text-cyan-400" />
@@ -38,21 +38,21 @@ export function AthleteRosterTab({ athletes }: AthleteRosterTabProps) {
               All registered athletes with aggregated practice stats
             </p>
           </div>
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
               value={athleteSearch}
               onChange={(e) => setAthleteSearch(e.target.value)}
               placeholder="Search athletes..."
-              className="pl-9 pr-3 py-2 rounded-xl bg-zinc-900/80 border border-zinc-800/60 text-xs text-zinc-200 placeholder:text-zinc-500 font-mono focus:outline-none focus:border-cyan-500/50 w-48 transition-colors"
+              className="pl-9 pr-3 py-2 rounded-xl bg-zinc-900/80 border border-zinc-800/60 text-xs text-zinc-200 placeholder:text-zinc-500 font-mono focus:outline-none focus:border-cyan-500/50 w-full sm:w-48 transition-colors"
             />
           </div>
         </div>
 
         {filteredAthletes.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 custom-scrollbar">
+            <table className="w-full text-xs min-w-[620px]">
               <thead>
                 <tr className="border-b border-zinc-800/60">
                   <th className="text-left py-3 px-3 font-mono text-zinc-400 uppercase tracking-wider text-[10px]">

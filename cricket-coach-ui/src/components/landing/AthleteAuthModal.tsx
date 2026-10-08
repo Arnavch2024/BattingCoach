@@ -35,7 +35,7 @@ export function AthleteAuthModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -50,7 +50,7 @@ export function AthleteAuthModal({
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            className="relative w-full max-w-md bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl p-7 shadow-2xl z-10 space-y-6 transition-colors"
+            className="relative w-full max-w-md max-h-[92vh] overflow-y-auto bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-7 shadow-2xl z-10 space-y-5 sm:space-y-6 transition-colors my-auto"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">

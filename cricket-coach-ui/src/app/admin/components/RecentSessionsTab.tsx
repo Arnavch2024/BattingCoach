@@ -27,8 +27,8 @@ export function RecentSessionsTab({ sessions }: RecentSessionsTabProps) {
     >
       {/* Session Bar Chart */}
       {sessions.length > 0 && (
-        <div className="rounded-2xl bg-gradient-to-br from-zinc-900/60 to-zinc-950/80 border border-zinc-800/60 p-6 backdrop-blur-xl">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2 mb-4">
+        <div className="rounded-2xl bg-gradient-to-br from-zinc-900/60 to-zinc-950/80 border border-zinc-800/60 p-4 sm:p-6 backdrop-blur-xl">
+          <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2 mb-4">
             <BarChart3 className="w-4 h-4 text-amber-400" />
             Session Accuracy Comparison (Last 20)
           </h3>
@@ -66,10 +66,10 @@ export function RecentSessionsTab({ sessions }: RecentSessionsTabProps) {
       )}
 
       {/* Session Feed */}
-      <div className="rounded-2xl bg-gradient-to-br from-zinc-900/60 to-zinc-950/80 border border-zinc-800/60 p-6 backdrop-blur-xl">
+      <div className="rounded-2xl bg-gradient-to-br from-zinc-900/60 to-zinc-950/80 border border-zinc-800/60 p-4 sm:p-6 backdrop-blur-xl">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+            <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
               <Calendar className="w-4 h-4 text-purple-400" />
               Recent Sessions Feed
             </h3>
@@ -88,32 +88,34 @@ export function RecentSessionsTab({ sessions }: RecentSessionsTabProps) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.02 }}
-                className="flex items-center gap-4 p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/60 transition-all group"
+                className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/60 transition-all group"
               >
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-zinc-700/50 flex items-center justify-center text-xs font-bold text-purple-400 font-mono flex-shrink-0">
-                  {s.athlete_name.charAt(0).toUpperCase()}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-white text-xs truncate">{s.athlete_name}</span>
-                    <span className="text-[10px] text-zinc-500 font-mono">•</span>
-                    <span className="text-[10px] text-zinc-400 font-mono">{timeAgo(s.created_at)}</span>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {/* Avatar */}
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-zinc-700/50 flex items-center justify-center text-xs font-bold text-purple-400 font-mono flex-shrink-0">
+                    {s.athlete_name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-[10px] font-mono text-zinc-400">
-                    <span className="flex items-center gap-1">
-                      <CircleDot className="w-3 h-3" style={{ color: SHOT_COLORS[s.shot] || "#10b981" }} />
-                      {SHOT_DISPLAY_NAMES[s.shot] || s.shot}
-                    </span>
-                    <span>{s.total_reps} reps</span>
-                    <span>{formatDuration(s.duration_seconds)}</span>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white text-xs truncate">{s.athlete_name}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono">•</span>
+                      <span className="text-[10px] text-zinc-400 font-mono">{timeAgo(s.created_at)}</span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-[10px] font-mono text-zinc-400">
+                      <span className="flex items-center gap-1">
+                        <CircleDot className="w-3 h-3" style={{ color: SHOT_COLORS[s.shot] || "#10b981" }} />
+                        {SHOT_DISPLAY_NAMES[s.shot] || s.shot}
+                      </span>
+                      <span>{s.total_reps} reps</span>
+                      <span>{formatDuration(s.duration_seconds)}</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Stats */}
-                <div className="flex items-center gap-4 text-[11px] font-mono flex-shrink-0">
+                <div className="flex items-center justify-end sm:justify-center gap-4 text-[11px] font-mono flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-zinc-800/50">
                   <div className="text-center">
                     <span
                       className={`font-bold block ${

@@ -29,17 +29,17 @@ export function ArchitectureSection() {
   return (
     <section
       id="demo-preview"
-      className="py-20 px-6 lg:px-12 bg-white dark:bg-zinc-950 border-t border-slate-200 dark:border-zinc-800 transition-colors"
+      className="py-12 sm:py-20 px-4 sm:px-6 lg:px-12 bg-white dark:bg-zinc-950 border-t border-slate-200 dark:border-zinc-800 transition-colors"
     >
-      <div className="max-w-6xl mx-auto space-y-12">
-        <div className="text-center space-y-3 max-w-2xl mx-auto">
-          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+      <div className="max-w-6xl mx-auto space-y-8 sm:space-y-12">
+        <div className="text-center space-y-2.5 sm:space-y-3 max-w-2xl mx-auto">
+          <span className="text-[11px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
             Engineering Specs
           </span>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
             Why 3D Metric Space Replaces 2D Screen Landmark Tracking
           </h2>
-          <p className="text-sm text-slate-600 dark:text-zinc-400">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
             Traditional computer vision calculates 2D pixel angles that distort whenever the camera
             tilts. BatCoach AI computes true Euclidean metric vectors in meters.
           </p>

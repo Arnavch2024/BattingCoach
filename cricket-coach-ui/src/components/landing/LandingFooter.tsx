@@ -5,8 +5,8 @@ import Link from "next/link";
 
 export function LandingFooter() {
   return (
-    <footer className="mt-auto border-t border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 py-12 px-6 lg:px-12 text-xs text-slate-500 dark:text-zinc-500 transition-colors">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+    <footer className="mt-auto border-t border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 py-8 sm:py-12 px-4 sm:px-6 lg:px-12 text-xs text-slate-500 dark:text-zinc-500 transition-colors">
+      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6 text-center md:text-left">
         <div className="flex items-center gap-3">
           <img
             src="/bat-icon.jpg"
@@ -23,7 +23,7 @@ export function LandingFooter() {
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-6 text-xs text-slate-600 dark:text-zinc-400">
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs text-slate-600 dark:text-zinc-400">
           <Link
             href="/coach"
             className="hover:text-emerald-600 dark:hover:text-white transition-colors"

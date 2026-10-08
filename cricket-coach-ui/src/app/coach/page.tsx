@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Video, BarChart2, BookOpen } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { TrainingCalendarModal } from "@/components/TrainingCalendarModal";
 import { API_BASE_URL, WS_BASE_URL } from "@/lib/api-config";
 import { PracticeMode, SessionLogItem, SHOT_CATALOG } from "@/types/coach";
+import { cn } from "@/lib/utils";
 
 import { CoachHeader } from "./components/CoachHeader";
 import { ShotCatalogSidebar } from "./components/ShotCatalogSidebar";
@@ -25,6 +26,9 @@ export default function BatCoachDashboard() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [showAngles, setShowAngles] = useState<boolean>(true);
+
+  // Dynamic Mobile Layout Tab State
+  const [mobileCoachTab, setMobileCoachTab] = useState<"camera" | "drills" | "stats">("camera");
 
   // Video Tutorial Masterclass State
   const [seenTutorials, setSeenTutorials] = useState<Record<string, boolean>>({});
@@ -161,6 +165,7 @@ export default function BatCoachDashboard() {
     if (!isLive) {
       setIsLive(true);
     }
+    setMobileCoachTab("camera");
   };
 
   // Session elapsed timer
@@ -414,6 +419,12 @@ export default function BatCoachDashboard() {
     }
   };
 
+  const handleShotSelectOnMobile = (shotId: string) => {
+    handleShotChange(shotId);
+    // On mobile screens, automatically return to camera view so athlete can start immediately
+    setMobileCoachTab("camera");
+  };
+
   const handleManualUnlockDrill = () => {
     isDrillLockedRef.current = false;
     repeatErrorCountRef.current = 0;
@@ -549,71 +560,193 @@ export default function BatCoachDashboard() {
         userProfile={userProfile}
       />
 
-      {/* Main Workspace Grid */}
-      <div className="flex-1 grid grid-cols-12 gap-4 p-4 min-h-0">
-        {/* Left Column: Shot Directory & Drills (3 Cols) */}
-        <ShotCatalogSidebar
-          filteredShots={filteredShots}
-          targetShot={targetShot}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-          onSelectShot={handleShotChange}
-          onOpenTutorial={(shotId) => openTutorialModal(shotId, false)}
-          isLive={isLive}
-          streamData={streamData}
-        />
+      {/* ── Mobile Tab Navigation Bar (Visible only on < lg) ──────────────── */}
+      <div className="lg:hidden flex items-center bg-slate-100/90 dark:bg-zinc-900/90 border-b border-slate-200 dark:border-zinc-800 p-1 px-3 gap-1 shrink-0">
+        <button
+          onClick={() => setMobileCoachTab("camera")}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+            mobileCoachTab === "camera"
+              ? "bg-white dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 shadow-sm border border-slate-200/60 dark:border-emerald-500/40"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+          )}
+        >
+          <Video className="h-3.5 w-3.5" />
+          <span>Camera Feed</span>
+        </button>
 
-        {/* Center Stage: Live Feed & Video Analysis (6 Cols) */}
-        <CameraViewport
-          videoRef={videoRef}
-          canvasRef={canvasRef}
-          isLive={isLive}
-          hasLocalCamera={hasLocalCamera}
-          streamData={streamData}
-          practiceMode={practiceMode}
-          batData={batData}
-          showAngles={showAngles}
-          onToggleShowAngles={setShowAngles}
-          onStartPractice={() => setIsLive(true)}
-          currentMetadata={currentMetadata}
-          formRating={formRating}
-          isBodyDetected={isBodyDetected}
-          liveChecklist={liveChecklist}
-          elbowAngle={elbowAngle}
-          kneeAngle={kneeAngle}
-          isDrillLocked={isDrillLocked}
-          repeatErrorCount={repeatErrorCount}
-          lockedErrorTitle={lockedErrorTitle || ""}
-          lockedCorrectionCue={lockedCorrectionCue || ""}
-          onOpenTutorialModal={openTutorialModal}
-          onManualUnlockDrill={handleManualUnlockDrill}
-          targetShot={targetShot}
-          persistentFeedback={persistentFeedback}
-        />
+        <button
+          onClick={() => setMobileCoachTab("drills")}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+            mobileCoachTab === "drills"
+              ? "bg-white dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 shadow-sm border border-slate-200/60 dark:border-emerald-500/40"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+          )}
+        >
+          <BookOpen className="h-3.5 w-3.5" />
+          <span>Syllabus</span>
+        </button>
 
-        {/* Right Column: Biometrics & Telemetry (3 Cols) */}
-        <div className="col-span-3 flex flex-col gap-3 min-h-0">
-          <LiveBiometricsCard
-            isBodyDetected={isBodyDetected}
-            isElbowGood={isElbowGood}
-            isKneeGood={isKneeGood}
-            elbowAngle={elbowAngle}
-            kneeAngle={kneeAngle}
-            currentMetadata={currentMetadata}
-            practiceMode={practiceMode}
-            bioData={bioData}
-            batData={batData}
-          />
+        <button
+          onClick={() => setMobileCoachTab("stats")}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+            mobileCoachTab === "stats"
+              ? "bg-white dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 shadow-sm border border-slate-200/60 dark:border-emerald-500/40"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+          )}
+        >
+          <BarChart2 className="h-3.5 w-3.5" />
+          <span>Stats & Angles</span>
+        </button>
+      </div>
 
-          <SessionPerformanceCard
-            repCount={repCount}
-            totalSwings={totalSwings}
-            streakCount={streakCount}
-            isDrillLocked={isDrillLocked}
-            sessionLogs={sessionLogs}
-          />
+      {/* ── Main Workspace Grid (Responsive: Tab-Switched on Mobile, 3-Col on Desktop) ── */}
+      <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden p-2.5 sm:p-4">
+        {/* Desktop 3-Column Layout (Always on lg+) */}
+        <div className="hidden lg:grid grid-cols-12 gap-4 h-full min-h-0">
+          {/* Left Column: Shot Directory & Drills (3 Cols) */}
+          <div className="col-span-3 flex flex-col gap-3 min-h-0">
+            <ShotCatalogSidebar
+              filteredShots={filteredShots}
+              targetShot={targetShot}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              onSelectShot={handleShotChange}
+              onOpenTutorial={(shotId) => openTutorialModal(shotId, false)}
+              isLive={isLive}
+              streamData={streamData}
+            />
+          </div>
+
+          {/* Center Stage: Live Feed & Video Analysis (6 Cols) */}
+          <div className="col-span-6 flex flex-col gap-3 min-h-0">
+            <CameraViewport
+              videoRef={videoRef}
+              canvasRef={canvasRef}
+              isLive={isLive}
+              hasLocalCamera={hasLocalCamera}
+              streamData={streamData}
+              practiceMode={practiceMode}
+              batData={batData}
+              showAngles={showAngles}
+              onToggleShowAngles={setShowAngles}
+              onStartPractice={() => setIsLive(true)}
+              currentMetadata={currentMetadata}
+              formRating={formRating}
+              isBodyDetected={isBodyDetected}
+              liveChecklist={liveChecklist}
+              elbowAngle={elbowAngle}
+              kneeAngle={kneeAngle}
+              isDrillLocked={isDrillLocked}
+              repeatErrorCount={repeatErrorCount}
+              lockedErrorTitle={lockedErrorTitle || ""}
+              lockedCorrectionCue={lockedCorrectionCue || ""}
+              onOpenTutorialModal={openTutorialModal}
+              onManualUnlockDrill={handleManualUnlockDrill}
+              targetShot={targetShot}
+              persistentFeedback={persistentFeedback}
+            />
+          </div>
+
+          {/* Right Column: Biometrics & Telemetry (3 Cols) */}
+          <div className="col-span-3 flex flex-col gap-3 min-h-0 overflow-y-auto custom-scrollbar">
+            <LiveBiometricsCard
+              isBodyDetected={isBodyDetected}
+              isElbowGood={isElbowGood}
+              isKneeGood={isKneeGood}
+              elbowAngle={elbowAngle}
+              kneeAngle={kneeAngle}
+              currentMetadata={currentMetadata}
+              practiceMode={practiceMode}
+              bioData={bioData}
+              batData={batData}
+            />
+
+            <SessionPerformanceCard
+              repCount={repCount}
+              totalSwings={totalSwings}
+              streakCount={streakCount}
+              isDrillLocked={isDrillLocked}
+              sessionLogs={sessionLogs}
+            />
+          </div>
+        </div>
+
+        {/* Mobile View (< lg): Dynamic Active Tab Component */}
+        <div className="lg:hidden flex flex-col h-full min-h-0">
+          {mobileCoachTab === "camera" && (
+            <CameraViewport
+              videoRef={videoRef}
+              canvasRef={canvasRef}
+              isLive={isLive}
+              hasLocalCamera={hasLocalCamera}
+              streamData={streamData}
+              practiceMode={practiceMode}
+              batData={batData}
+              showAngles={showAngles}
+              onToggleShowAngles={setShowAngles}
+              onStartPractice={() => setIsLive(true)}
+              currentMetadata={currentMetadata}
+              formRating={formRating}
+              isBodyDetected={isBodyDetected}
+              liveChecklist={liveChecklist}
+              elbowAngle={elbowAngle}
+              kneeAngle={kneeAngle}
+              isDrillLocked={isDrillLocked}
+              repeatErrorCount={repeatErrorCount}
+              lockedErrorTitle={lockedErrorTitle || ""}
+              lockedCorrectionCue={lockedCorrectionCue || ""}
+              onOpenTutorialModal={openTutorialModal}
+              onManualUnlockDrill={handleManualUnlockDrill}
+              targetShot={targetShot}
+              persistentFeedback={persistentFeedback}
+            />
+          )}
+
+          {mobileCoachTab === "drills" && (
+            <div className="h-full flex flex-col min-h-0">
+              <ShotCatalogSidebar
+                filteredShots={filteredShots}
+                targetShot={targetShot}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+                onSelectShot={handleShotSelectOnMobile}
+                onOpenTutorial={(shotId) => openTutorialModal(shotId, false)}
+                isLive={isLive}
+                streamData={streamData}
+              />
+            </div>
+          )}
+
+          {mobileCoachTab === "stats" && (
+            <div className="space-y-3 pb-6">
+              <LiveBiometricsCard
+                isBodyDetected={isBodyDetected}
+                isElbowGood={isElbowGood}
+                isKneeGood={isKneeGood}
+                elbowAngle={elbowAngle}
+                kneeAngle={kneeAngle}
+                currentMetadata={currentMetadata}
+                practiceMode={practiceMode}
+                bioData={bioData}
+                batData={batData}
+              />
+
+              <SessionPerformanceCard
+                repCount={repCount}
+                totalSwings={totalSwings}
+                streakCount={streakCount}
+                isDrillLocked={isDrillLocked}
+                sessionLogs={sessionLogs}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -643,6 +776,7 @@ export default function BatCoachDashboard() {
         userName={userProfile.name}
         onLaunchShot={(shotId) => {
           handleShotChange(shotId);
+          setMobileCoachTab("camera");
         }}
       />
     </div>

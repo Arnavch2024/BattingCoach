@@ -49,20 +49,20 @@ export function OverviewTab({
       className="space-y-6"
     >
       {/* KPI Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Global Accuracy */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900/80 to-zinc-950/90 border border-zinc-800/60 p-5 group hover:border-emerald-500/40 transition-all duration-300">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900/80 to-zinc-950/90 border border-zinc-800/60 p-3.5 sm:p-5 group hover:border-emerald-500/40 transition-all duration-300">
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl" />
-          <div className="flex items-center justify-between text-zinc-400 text-[10px] font-mono mb-3 uppercase tracking-wider">
+          <div className="flex items-center justify-between text-zinc-400 text-[10px] font-mono mb-2 sm:mb-3 uppercase tracking-wider">
             <span>Global Accuracy</span>
-            <Award className="w-4 h-4 text-emerald-400" />
+            <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold tracking-tight text-white font-mono">
+          <div className="flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-mono">
               <AnimatedNumber value={ov.accuracy} decimals={1} suffix="%" />
             </span>
             {ov.accuracy > 0 && (
-              <span className="text-xs font-medium text-emerald-400 flex items-center font-mono">
+              <span className="text-[11px] sm:text-xs font-medium text-emerald-400 flex items-center font-mono">
                 <TrendingUp className="w-3 h-3 mr-0.5" />
                 Live
               </span>

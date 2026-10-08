@@ -31,7 +31,7 @@ export function ShotCatalogSidebar({
   streamData,
 }: ShotCatalogSidebarProps) {
   return (
-    <div className="col-span-3 flex flex-col gap-3 min-h-0">
+    <div className="w-full h-full flex flex-col gap-3 min-h-0">
       <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm dark:shadow-lg">
         {/* Search & Header */}
         <div className="p-4 pb-3 space-y-3 border-b border-slate-200 dark:border-zinc-800">

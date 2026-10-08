@@ -21,19 +21,19 @@ export function LandingHeader({
   onSignOut,
 }: LandingHeaderProps) {
   return (
-    <header className="fixed top-0 inset-x-0 h-16 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-xl border-b border-slate-200/90 dark:border-zinc-800/80 z-50 px-6 lg:px-12 flex items-center justify-between transition-colors">
-      <div className="flex items-center gap-3">
+    <header className="fixed top-0 inset-x-0 h-14 sm:h-16 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-xl border-b border-slate-200/90 dark:border-zinc-800/80 z-50 px-3 sm:px-6 lg:px-12 flex items-center justify-between transition-colors">
+      <div className="flex items-center gap-2 sm:gap-3">
         <img
           src="/bat-icon.jpg"
           alt="BatCoach Logo"
-          className="h-9 w-9 rounded-xl object-cover border border-emerald-500/40 shadow-sm shadow-emerald-500/10"
+          className="h-7 w-7 sm:h-9 sm:w-9 rounded-xl object-cover border border-emerald-500/40 shadow-sm shadow-emerald-500/10 shrink-0"
         />
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="font-bold text-sm sm:text-base tracking-tight text-slate-900 dark:text-white">
               BatCoach AI Pro
             </span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
+            <span className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 hidden xs:inline">
               v2.0
             </span>
           </div>
@@ -44,7 +44,7 @@ export function LandingHeader({
       </div>
 
       {/* Center Navigation */}
-      <nav className="hidden md:flex items-center gap-8 text-xs text-slate-600 dark:text-zinc-300 font-medium">
+      <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-xs text-slate-600 dark:text-zinc-300 font-medium">
         <a href="#hero" className="hover:text-emerald-600 dark:hover:text-white transition-colors">
           Overview
         </a>
@@ -60,26 +60,26 @@ export function LandingHeader({
       </nav>
 
       {/* Right CTA / Athlete Profile / Theme Toggle */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-1.5 sm:gap-2.5">
         <ThemeToggle />
 
         {userProfile ? (
-          <div className="flex items-center gap-2 bg-slate-100/90 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 rounded-xl p-1 pr-3 text-xs transition-colors">
-            <div className="h-7 w-7 rounded-lg bg-emerald-600 flex items-center justify-center font-bold text-white text-[11px] shadow-sm">
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100/90 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 rounded-xl p-1 pr-2 sm:pr-3 text-xs transition-colors">
+            <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg bg-emerald-600 flex items-center justify-center font-bold text-white text-[10px] sm:text-[11px] shadow-sm shrink-0">
               {userProfile.name.slice(0, 2).toUpperCase()}
             </div>
             <div className="text-left hidden sm:block leading-tight">
-              <div className="text-xs font-semibold text-slate-900 dark:text-zinc-200">
+              <div className="text-xs font-semibold text-slate-900 dark:text-zinc-200 truncate max-w-[90px]">
                 {userProfile.name}
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-zinc-500">
+              <div className="text-[10px] text-slate-500 dark:text-zinc-500 truncate max-w-[90px]">
                 {userProfile.stance}
               </div>
             </div>
             <button
               onClick={onSignOut}
               title="Sign Out"
-              className="ml-2 text-slate-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 transition-colors cursor-pointer"
+              className="ml-1 sm:ml-2 text-slate-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 transition-colors cursor-pointer"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
@@ -89,10 +89,10 @@ export function LandingHeader({
             variant="outline"
             size="sm"
             onClick={onOpenSignIn}
-            className="text-slate-700 dark:text-zinc-200 border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs gap-1.5 font-medium rounded-xl"
+            className="text-slate-700 dark:text-zinc-200 border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs gap-1 font-medium rounded-xl h-8 px-2.5"
           >
             <LogIn className="h-3.5 w-3.5" />
-            Sign In
+            <span className="hidden sm:inline">Sign In</span>
           </Button>
         )}
 
@@ -100,20 +100,21 @@ export function LandingHeader({
           variant="outline"
           size="sm"
           onClick={onOpenCalendar}
-          className="text-xs border-emerald-500/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-white gap-1.5 font-medium rounded-xl transition-all"
+          className="text-xs border-emerald-500/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-white gap-1 font-medium rounded-xl transition-all h-8 px-2 sm:px-3"
+          title="Training Schedule"
         >
           <Calendar className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-          <span className="hidden sm:inline">Training Schedule</span>
-          <span className="sm:hidden">Calendar</span>
+          <span className="hidden sm:inline">Schedule</span>
         </Button>
 
         <Link href="/coach">
           <Button
             size="sm"
-            className="gap-1.5 font-semibold text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 hover:shadow-emerald-600/30 rounded-xl transition-all"
+            className="gap-1 sm:gap-1.5 font-semibold text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 hover:shadow-emerald-600/30 rounded-xl transition-all h-8 px-2.5 sm:px-3.5"
           >
             <Play className="h-3 w-3 fill-current" />
-            Launch Live Coach
+            <span className="hidden sm:inline">Launch Coach</span>
+            <span className="sm:hidden">Coach</span>
           </Button>
         </Link>
       </div>

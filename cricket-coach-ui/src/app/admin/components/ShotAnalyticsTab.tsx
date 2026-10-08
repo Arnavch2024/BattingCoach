@@ -47,7 +47,7 @@ export function ShotAnalyticsTab({ shotDist, flaws }: ShotAnalyticsTabProps) {
       {/* Shot Distribution Bars + Pie Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Bar breakdown */}
-        <div className="lg:col-span-2 rounded-2xl bg-gradient-to-br from-zinc-900/60 to-zinc-950/80 border border-zinc-800/60 p-6 backdrop-blur-xl">
+        <div className="lg:col-span-2 rounded-2xl bg-gradient-to-br from-zinc-900/60 to-zinc-950/80 border border-zinc-800/60 p-4 sm:p-6 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
