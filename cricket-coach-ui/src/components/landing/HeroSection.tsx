@@ -28,35 +28,50 @@ export function HeroSection({
   onOpenCalendar,
   onOpenSignIn,
 }: HeroSectionProps) {
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <section
       id="hero"
-      className="relative min-h-[88vh] sm:min-h-[92vh] flex items-center justify-center pt-20 sm:pt-24 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-12 overflow-hidden"
+      className="relative min-h-[88dvh] sm:min-h-[92dvh] flex items-center justify-center pt-20 sm:pt-24 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-12 overflow-hidden"
     >
       {/* Dynamic Stadium Background Slider */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-slate-100 dark:bg-zinc-950">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           <motion.div
             key={currentSlide}
-            initial={{ opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.9, ease: "easeInOut" }}
+            initial={{ opacity: 0, scale: 1 }}
+            animate={{ opacity: 1, scale: isMobile ? 1.025 : 1.055 }}
+            exit={{ opacity: 0, scale: isMobile ? 1.035 : 1.065 }}
+            transition={{
+              opacity: { duration: 1.2, ease: "easeInOut" },
+              scale: { duration: 8, ease: "easeOut" },
+            }}
             className="absolute inset-0"
           >
             <img
               src={slides[currentSlide].url}
               alt={slides[currentSlide].title}
-              className="w-full h-full object-cover object-center opacity-70 sm:opacity-85 dark:opacity-40 saturate-125 contrast-[1.03]"
+              className="w-full h-full object-cover object-[center_32%] sm:object-center opacity-75 sm:opacity-85 dark:opacity-45 saturate-125 contrast-[1.03]"
+              loading="eager"
             />
           </motion.div>
         </AnimatePresence>
 
         {/* Athletic stadium lighting / subtle glow */}
-        <div className="absolute -top-20 -right-20 w-96 h-96 bg-emerald-400/25 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-20 -right-20 w-72 sm:w-96 h-72 sm:h-96 bg-emerald-400/25 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Left reading scrim */}
-        <div className="absolute inset-y-0 left-0 w-full lg:w-[60%] bg-gradient-to-r from-white/95 via-white/85 to-transparent dark:from-[#09090b]/95 dark:via-[#09090b]/80 dark:to-transparent pointer-events-none" />
+        {/* Responsive reading scrim (omni/vertical gradient on mobile, horizontal on desktop) */}
+        <div className="absolute inset-0 lg:inset-y-0 lg:left-0 lg:w-[62%] bg-gradient-to-b from-white/92 via-white/80 to-white/95 dark:from-[#09090b]/92 dark:via-[#09090b]/80 dark:to-[#09090b]/95 lg:bg-gradient-to-r lg:from-white/95 lg:via-white/85 lg:to-transparent pointer-events-none" />
 
         {/* Top nav blur transition */}
         <div className="absolute top-0 inset-x-0 h-20 sm:h-24 bg-gradient-to-b from-white/80 via-white/30 to-transparent dark:from-[#09090b]/80 dark:via-[#09090b]/20 dark:to-transparent pointer-events-none" />
@@ -236,13 +251,17 @@ export function HeroSection({
               <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider shrink-0">
                 Slide:
               </span>
-              <span className="text-[11px] sm:text-xs font-semibold text-slate-900 dark:text-white truncate max-w-[110px] sm:max-w-none">
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-900 dark:text-white truncate max-w-[130px] sm:max-w-none">
                 {slides[currentSlide].title}
               </span>
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              <div className="flex items-center gap-1 sm:gap-1.5 mr-1">
+              <span className="sm:hidden text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                {currentSlide + 1}/{slides.length}
+              </span>
+
+              <div className="hidden sm:flex items-center gap-1 sm:gap-1.5 mr-1">
                 {slides.map((slide, idx) => (
                   <button
                     key={slide.id}
