@@ -61,23 +61,26 @@ export function HeroSection({
             <img
               src={slides[currentSlide].url}
               alt={slides[currentSlide].title}
-              className="w-full h-full object-cover object-[center_32%] sm:object-center opacity-75 sm:opacity-85 dark:opacity-45 saturate-125 contrast-[1.03]"
+              className="w-full h-full object-cover object-[center_32%] sm:object-center opacity-85 dark:opacity-75 saturate-115 contrast-[1.05]"
               loading="eager"
             />
           </motion.div>
         </AnimatePresence>
 
         {/* Athletic stadium lighting / subtle glow */}
-        <div className="absolute -top-20 -right-20 w-72 sm:w-96 h-72 sm:h-96 bg-emerald-400/25 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-20 -right-20 w-80 sm:w-96 h-80 sm:h-96 bg-emerald-500/15 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Responsive reading scrim (omni/vertical gradient on mobile, horizontal on desktop) */}
-        <div className="absolute inset-0 lg:inset-y-0 lg:left-0 lg:w-[62%] bg-gradient-to-b from-white/92 via-white/80 to-white/95 dark:from-[#09090b]/92 dark:via-[#09090b]/80 dark:to-[#09090b]/95 lg:bg-gradient-to-r lg:from-white/95 lg:via-white/85 lg:to-transparent pointer-events-none" />
+        {/* Uniform ambient cinematic base tint - ensures 100% consistent exposure across the whole image */}
+        <div className="absolute inset-0 bg-slate-900/20 dark:bg-[#09090b]/45 pointer-events-none" />
 
-        {/* Top nav blur transition */}
-        <div className="absolute top-0 inset-x-0 h-20 sm:h-24 bg-gradient-to-b from-white/80 via-white/30 to-transparent dark:from-[#09090b]/80 dark:via-[#09090b]/20 dark:to-transparent pointer-events-none" />
+        {/* Feather-soft, full-bleed reading scrim - zero visible seam or cutoff line */}
+        <div className="absolute inset-0 bg-gradient-to-t from-white/75 via-white/30 to-transparent sm:bg-gradient-to-r sm:from-white/80 sm:via-white/35 sm:to-transparent dark:from-[#09090b]/75 dark:via-[#09090b]/35 dark:to-transparent pointer-events-none" />
 
-        {/* Bottom seamless blend into next section */}
-        <div className="absolute bottom-0 inset-x-0 h-28 sm:h-36 bg-gradient-to-t from-slate-50 via-slate-50/70 to-transparent dark:from-[#09090b] dark:via-[#09090b]/80 dark:to-transparent pointer-events-none" />
+        {/* Soft top header blend */}
+        <div className="absolute top-0 inset-x-0 h-16 sm:h-20 bg-gradient-to-b from-white/60 to-transparent dark:from-[#09090b]/60 dark:to-transparent pointer-events-none" />
+
+        {/* Soft bottom blend into next section */}
+        <div className="absolute bottom-0 inset-x-0 h-20 sm:h-28 bg-gradient-to-t from-slate-50 via-slate-50/50 to-transparent dark:from-[#09090b] dark:via-[#09090b]/50 dark:to-transparent pointer-events-none" />
       </div>
 
       {/* Hero Content Container */}
