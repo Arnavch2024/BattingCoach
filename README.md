@@ -12,23 +12,27 @@ pinned: false
 # BatCoach AI Pro v2.0
 ### Real-Time Cricket Batting Biomechanics, Dual-Mode YOLOv8-OBB & Neural Stroke Analytics
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat&logo=python&logoColor=white)
-![PyTorch](https://img.shields.io/badge/PyTorch-CPU%20%26%20FP16-EE4C2C?style=flat&logo=pytorch&logoColor=white)
-![Azure](https://img.shields.io/badge/Azure-Container%20Apps%20(Serverless)-0078D4?style=flat&logo=microsoftazure&logoColor=white)
-![Vercel](https://img.shields.io/badge/Vercel-Edge%20Frontend-000000?style=flat&logo=vercel&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-GHCR%20Container-2496ED?style=flat&logo=docker&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-16%20Turbopack-000000?style=flat&logo=nextdotjs&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-Async%20WebSockets-009688?style=flat&logo=fastapi&logoColor=white)
-![MediaPipe](https://img.shields.io/badge/MediaPipe-3D%20World%20Landmarks-4285F4?style=flat&logo=google&logoColor=white)
-![YOLOv8](https://img.shields.io/badge/YOLOv8--OBB-Oriented%20Bat%20Tracking-00FFFF?style=flat)
-![Supabase](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=flat&logo=supabase&logoColor=white)
-![Sentry](https://img.shields.io/badge/Sentry-APM%20%26%20Crash%20Diagnostics-362D59?style=flat&logo=sentry&logoColor=white)
-![Datadog](https://img.shields.io/badge/Datadog-RUM%20%26%20Tracing-632CA6?style=flat&logo=datadog&logoColor=white)
-![PostHog](https://img.shields.io/badge/PostHog-Product%20Analytics-1D63FF?style=flat&logo=posthog&logoColor=white)
-![VideoMAE](https://img.shields.io/badge/Vision%20Transformer-VideoMAE-7952B3?style=flat)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
-![Tests](https://img.shields.io/badge/Tests-29%20Passing-brightgreen?style=flat)
-[![Wiki](https://img.shields.io/badge/Documentation-GitHub%20Wiki-0969DA?style=flat&logo=github&logoColor=white)](https://github.com/Arnavch2024/BattingCoach/wiki)
+![BatCoach AI Pro Banner](https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1200&auto=format&fit=crop)
+
+<p align="left">
+  <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/PyTorch-CPU_%26_FP16-EE4C2C?style=flat&logo=pytorch&logoColor=white" alt="PyTorch" />
+  <img src="https://img.shields.io/badge/Azure-Container_Apps_(Serverless)-0078D4?style=flat&logo=microsoftazure&logoColor=white" alt="Azure" />
+  <img src="https://img.shields.io/badge/Vercel-Edge_Frontend-000000?style=flat&logo=vercel&logoColor=white" alt="Vercel" />
+  <img src="https://img.shields.io/badge/Docker-GHCR_Container-2496ED?style=flat&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/Next.js-16_Turbopack-000000?style=flat&logo=nextdotjs&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/FastAPI-Async_WebSockets-009688?style=flat&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/MediaPipe-3D_World_Landmarks-4285F4?style=flat&logo=google&logoColor=white" alt="MediaPipe" />
+  <img src="https://img.shields.io/badge/YOLOv8--OBB-Oriented_Bat_Tracking-00FFFF?style=flat" alt="YOLOv8" />
+  <img src="https://img.shields.io/badge/Database-Supabase_PostgreSQL-3ECF8E?style=flat&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/Sentry-APM_%26_Crash_Diagnostics-362D59?style=flat&logo=sentry&logoColor=white" alt="Sentry" />
+  <img src="https://img.shields.io/badge/Datadog-RUM_%26_Tracing-632CA6?style=flat&logo=datadog&logoColor=white" alt="Datadog" />
+  <img src="https://img.shields.io/badge/PostHog-Product_Analytics-1D63FF?style=flat&logo=posthog&logoColor=white" alt="PostHog" />
+  <img src="https://img.shields.io/badge/Vision_Transformer-VideoMAE-7952B3?style=flat" alt="VideoMAE" />
+  <img src="https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?style=flat&logo=githubactions&logoColor=white" alt="CI/CD" />
+  <img src="https://img.shields.io/badge/Tests-29_Passing-brightgreen?style=flat" alt="Tests" />
+  <a href="https://github.com/Arnavch2024/BattingCoach/wiki"><img src="https://img.shields.io/badge/Documentation-GitHub_Wiki-0969DA?style=flat&logo=github&logoColor=white" alt="GitHub Wiki" /></a>
+</p>
 
 ---
 
@@ -41,6 +45,20 @@ pinned: false
 - **Neural stroke classification** across 10 foundational cricket shots via a fine-tuned VideoMAE transformer.
 - **Real-time feedback & repeated error gating**: Instant AR HUD cues, voice coaching, and rep freezes on recurring technique flaws.
 - **Athlete telemetry & training schedule persistence** backed by Supabase PostgreSQL with strict email-scoped API security.
+
+---
+
+## 📚 Technical Wiki & Knowledge Base
+
+Comprehensive engineering runbooks, biomechanical literature citations, and architecture specifications are available on the [BatCoach AI Pro GitHub Wiki](https://github.com/Arnavch2024/BattingCoach/wiki):
+
+| Chapter | Focus Area | Key Documentation & Specifications |
+|---|---|---|
+| **📖 [1. Biomechanical Science & Kinematics](https://github.com/Arnavch2024/BattingCoach/wiki/Biomechanical-Science-and-Kinematics)** | Sports Science | Literature citations (ECB, MCC, Taliep et al.), 3D Euclidean vectors, angle math, and flaw codes. |
+| **🤖 [2. Dual-Model Computer Vision Architecture](https://github.com/Arnavch2024/BattingCoach/wiki/Dual-Model-Computer-Vision-Architecture)** | Computer Vision & ML | MediaPipe 3D pose, YOLOv8-OBB bat tracking geometry, and VideoMAE temporal action recognition. |
+| **☁️ [3. Cloud Deployment & Scale-to-Zero](https://github.com/Arnavch2024/BattingCoach/wiki/Cloud-Deployment-and-Scale-to-Zero)** | Cloud Infrastructure | Serverless Azure Container Apps (`minReplicas = 0`), IPv4 Supabase pooler, and Vercel Edge CSP. |
+| **🛡️ [4. Enterprise Admin Studio & Security](https://github.com/Arnavch2024/BattingCoach/wiki/Enterprise-Admin-Studio-and-Security)** | Security & Compliance | Constant-time token verification, rolling IP lockout defenses, and athlete scope validation. |
+| **🔧 [5. Troubleshooting & FAQ](https://github.com/Arnavch2024/BattingCoach/wiki/Troubleshooting-and-FAQ)** | Systems & Diagnostics | Webcam permissions, WebSocket handshake debugging, container cold-starts, and DB connection pooling. |
 
 ---
 
