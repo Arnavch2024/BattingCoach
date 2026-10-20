@@ -456,6 +456,11 @@ def init_db():
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
 
+            -- Covering index for the stroke_telemetry_logs.session_id foreign key
+            -- so cascade deletes and session lookups stay efficient.
+            CREATE INDEX IF NOT EXISTS idx_stroke_telemetry_logs_session_id
+                ON stroke_telemetry_logs (session_id);
+
             -- Row Level Security: backend accesses the DB through a direct
             -- PostgreSQL connection (table owner role), so enabling RLS blocks
             -- PostgREST/anon access to these public tables without policies.
