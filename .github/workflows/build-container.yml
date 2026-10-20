@@ -26,7 +26,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/batcoach-backend
+  IMAGE_NAME: arnavch2024/batcoach-backend
 
 jobs:
   build-and-push:
