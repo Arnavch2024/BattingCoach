@@ -455,6 +455,14 @@ def init_db():
                 synced_to_google BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
+
+            -- Row Level Security: backend accesses the DB through a direct
+            -- PostgreSQL connection (table owner role), so enabling RLS blocks
+            -- PostgREST/anon access to these public tables without policies.
+            ALTER TABLE athletes ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE practice_sessions ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE stroke_telemetry_logs ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE training_schedules ENABLE ROW LEVEL SECURITY;
         """)
         conn.commit()
         cur.close()
