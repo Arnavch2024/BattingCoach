@@ -13,10 +13,11 @@ function itemDetail(item: Record<string, unknown>) {
   return parts.filter((value): value is string | number => typeof value === "string" || typeof value === "number").join(" · ");
 }
 
-export function MonitoringTab({ providers }: { providers: MonitoringProvider[] | null }) {
+export function MonitoringTab({ providers, error }: { providers: MonitoringProvider[] | null; error: string | null }) {
   return <motion.section key="monitoring" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-5">
     <div><h2 className="text-lg font-semibold text-white">Observability</h2><p className="text-xs text-zinc-500">Recent errors and events fetched from your monitoring providers.</p></div>
-    {!providers && <p className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-sm text-zinc-400">Waiting for monitoring data…</p>}
+    {!providers && !error && <p className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-sm text-zinc-400">Waiting for monitoring data…</p>}
+    {error && <p role="alert" className="rounded-xl border border-amber-700/50 bg-amber-950/30 p-4 text-sm text-amber-200">{error}</p>}
     <div className="grid gap-4 lg:grid-cols-3">
       {(providers || []).map((provider) => {
         const connected = provider.status === "connected";

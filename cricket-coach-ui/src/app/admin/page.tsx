@@ -26,6 +26,7 @@ export default function AdminDashboardPage() {
   const [sessions, setSessions] = useState<RecentSession[]>([]);
   const [timeline, setTimeline] = useState<TimelineDay[]>([]);
   const [monitoring, setMonitoring] = useState<MonitoringProvider[] | null>(null);
+  const [monitoringError, setMonitoringError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string>("Loading...");
 
@@ -190,6 +191,15 @@ export default function AdminDashboardPage() {
       if (monitoringRes.status === "fulfilled" && monitoringRes.value.ok) {
         const d = await monitoringRes.value.json();
         setMonitoring(d.providers || []);
+        setMonitoringError(null);
+      } else if (monitoringRes.status === "fulfilled") {
+        setMonitoringError(
+          monitoringRes.value.status === 404
+            ? "The backend deployment is missing the monitoring endpoint. Redeploy the latest backend, then refresh."
+            : `The backend could not load monitoring data (HTTP ${monitoringRes.value.status}).`
+        );
+      } else {
+        setMonitoringError("Could not reach the backend monitoring endpoint. Check the backend connection and refresh.");
       }
     } catch {
       setHealth(null);
@@ -275,7 +285,7 @@ export default function AdminDashboardPage() {
                 dbConnected={dbConnected}
               />
             )}
-            {activeTab === "monitoring" && <MonitoringTab key="monitoring" providers={monitoring} />}
+            {activeTab === "monitoring" && <MonitoringTab key="monitoring" providers={monitoring} error={monitoringError} />}
           </AnimatePresence>
         </main>
       )}
