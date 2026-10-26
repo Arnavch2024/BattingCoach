@@ -1,4 +1,4 @@
-const CACHE_NAME = "batcoach-pwa-v2.0";
+const CACHE_NAME = "batcoach-pwa-v2.1";
 const STATIC_ASSETS = [
   "/",
   "/coach",
@@ -39,8 +39,17 @@ self.addEventListener("activate", (event) => {
 
 // Fetch Event - Network first with cache fallback
 self.addEventListener("fetch", (event) => {
+  const requestUrl = new URL(event.request.url);
+
   // Ignore non-GET, WebSocket or API calls
-  if (event.request.method !== "GET" || event.request.url.startsWith("ws:") || event.request.url.startsWith("wss:") || event.request.url.includes("/api/")) {
+  if (
+    !["http:", "https:"].includes(requestUrl.protocol) ||
+    requestUrl.origin !== self.location.origin ||
+    event.request.method !== "GET" ||
+    event.request.url.startsWith("ws:") ||
+    event.request.url.startsWith("wss:") ||
+    event.request.url.includes("/api/")
+  ) {
     return;
   }
 
@@ -50,9 +59,9 @@ self.addEventListener("fetch", (event) => {
         // Clone and cache valid responses
         if (response && response.status === 200 && response.type === "basic") {
           const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
+          caches.open(CACHE_NAME)
+            .then((cache) => cache.put(event.request, responseClone))
+            .catch(() => {});
         }
         return response;
       })

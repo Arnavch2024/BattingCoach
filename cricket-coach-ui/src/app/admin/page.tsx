@@ -55,7 +55,9 @@ export default function AdminDashboardPage() {
           },
         });
         const data = await res.json();
-        if (res.ok && data.admin) {
+        // The FastAPI verification endpoint returns { success: true }.
+        // Accept the older admin flag too for compatibility with alternate backends.
+        if (res.ok && (data.success === true || data.admin === true)) {
           const cleaned = token.trim();
           setAuthToken(cleaned);
           setIsAuthenticated(true);
