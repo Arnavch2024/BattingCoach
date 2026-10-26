@@ -76,7 +76,14 @@ export interface HealthTelemetry {
   pingMs?: number;
 }
 
-export type TabId = "overview" | "shots" | "athletes" | "sessions" | "infra";
+export interface MonitoringProvider {
+  provider: string;
+  status: "connected" | "error" | "not_configured";
+  message?: string;
+  items: Array<Record<string, unknown>>;
+}
+
+export type TabId = "overview" | "shots" | "athletes" | "sessions" | "infra" | "monitoring";
 
 export const SHOT_DISPLAY_NAMES: Record<string, string> = {
   cover: "Cover Drive",

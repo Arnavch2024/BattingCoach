@@ -109,22 +109,11 @@ export function InfrastructureTab({
               <span>Datadog APM</span>
             </div>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300">
-              TRACING
+              VIEW IN MONITORING
             </span>
           </div>
           <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/15 space-y-1.5 text-[11px] font-mono text-zinc-300">
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Service:</span>
-              <span className="text-white font-bold">batcoach-backend</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Site:</span>
-              <span className="text-white">us5.datadoghq.com</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Spans:</span>
-              <span className="text-purple-400">ai.inference, ai.yolo</span>
-            </div>
+            <p className="text-zinc-300">Recent Datadog events and provider status are shown in the Monitoring tab.</p>
           </div>
         </div>
 
@@ -136,22 +125,11 @@ export function InfrastructureTab({
               <span>Sentry Performance</span>
             </div>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-orange-500/20 text-orange-300">
-              APDEX 0.99
+              VIEW IN MONITORING
             </span>
           </div>
           <div className="p-3 rounded-xl bg-orange-950/20 border border-orange-500/15 space-y-1.5 text-[11px] font-mono text-zinc-300">
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Org:</span>
-              <span className="text-white font-bold">vesit-0s</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Project:</span>
-              <span className="text-white">batcoach-ai</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Sample Rate:</span>
-              <span className="text-orange-400">100%</span>
-            </div>
+            <p className="text-zinc-300">Recent Sentry issues and provider status are shown in the Monitoring tab.</p>
           </div>
         </div>
       </div>
@@ -166,28 +144,12 @@ export function InfrastructureTab({
               <span>PostHog Product Analytics</span>
             </div>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300">
-              CAPTURING
+              VIEW IN MONITORING
             </span>
           </div>
-          <p className="text-[11px] text-zinc-400 leading-relaxed">
-            Tracking <strong className="text-cyan-300">stroke_executed</strong>,{" "}
-            <strong className="text-cyan-300">drill_locked_intervention</strong>,{" "}
-            <strong className="text-cyan-300">practice_mode_switched</strong>, and{" "}
-            <strong className="text-cyan-300">practice_session_completed</strong> events.
-          </p>
+          <p className="text-[11px] text-zinc-400 leading-relaxed">Recent PostHog events are shown in the Monitoring tab when read API credentials are configured.</p>
           <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/15 space-y-1.5 text-[11px] font-mono text-zinc-300">
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Plan:</span>
-              <span className="text-white font-bold">1M Free Events/mo</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Session Replay:</span>
-              <span className="text-white">5,000/mo</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Custom Events:</span>
-              <span className="text-cyan-400">4 event types</span>
-            </div>
+            <p className="text-zinc-300">PostHog feed status and recent events are shown in the Monitoring tab.</p>
           </div>
         </div>
 

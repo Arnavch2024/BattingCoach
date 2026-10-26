@@ -5,7 +5,7 @@ import { AnimatePresence } from "framer-motion";
 import { RefreshCw } from "lucide-react";
 import {
   OverviewData, ShotDistribution, FlawHotspot, Athlete, RecentSession,
-  TimelineDay, HealthTelemetry, TabId
+  TimelineDay, HealthTelemetry, TabId, MonitoringProvider
 } from "@/types/admin";
 import { AdminHeader } from "./components/AdminHeader";
 import { AdminLoginModal } from "./components/AdminLoginModal";
@@ -14,6 +14,7 @@ import { ShotAnalyticsTab } from "./components/ShotAnalyticsTab";
 import { AthleteRosterTab } from "./components/AthleteRosterTab";
 import { RecentSessionsTab } from "./components/RecentSessionsTab";
 import { InfrastructureTab } from "./components/InfrastructureTab";
+import { MonitoringTab } from "./components/MonitoringTab";
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
@@ -24,6 +25,7 @@ export default function AdminDashboardPage() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [sessions, setSessions] = useState<RecentSession[]>([]);
   const [timeline, setTimeline] = useState<TimelineDay[]>([]);
+  const [monitoring, setMonitoring] = useState<MonitoringProvider[] | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string>("Loading...");
 
@@ -129,6 +131,7 @@ export default function AdminDashboardPage() {
         athletesRes,
         sessionsRes,
         timelineRes,
+        monitoringRes,
       ] = await Promise.allSettled([
         fetch(`${apiUrl}/health`, { method: "GET", signal: AbortSignal.timeout(8000) }),
         fetch(`${apiUrl}/api/admin/overview`, opts),
@@ -137,6 +140,7 @@ export default function AdminDashboardPage() {
         fetch(`${apiUrl}/api/admin/athletes`, opts),
         fetch(`${apiUrl}/api/admin/sessions/recent`, opts),
         fetch(`${apiUrl}/api/admin/timeline`, opts),
+        fetch(`${apiUrl}/api/admin/observability`, opts),
       ]);
 
       const pingMs = Math.round(performance.now() - t0);
@@ -180,6 +184,10 @@ export default function AdminDashboardPage() {
       if (timelineRes.status === "fulfilled" && timelineRes.value.ok) {
         const d = await timelineRes.value.json();
         if (d.timeline) setTimeline(d.timeline);
+      }
+      if (monitoringRes.status === "fulfilled" && monitoringRes.value.ok) {
+        const d = await monitoringRes.value.json();
+        setMonitoring(d.providers || []);
       }
     } catch {
       setHealth(null);
@@ -265,6 +273,7 @@ export default function AdminDashboardPage() {
                 dbConnected={dbConnected}
               />
             )}
+            {activeTab === "monitoring" && <MonitoringTab key="monitoring" providers={monitoring} />}
           </AnimatePresence>
         </main>
       )}

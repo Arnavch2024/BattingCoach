@@ -6,11 +6,13 @@ import random
 import threading
 import time
 import os
+import urllib.error
+import urllib.request
 import uuid
 import ipaddress
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
 
 try:
     from dotenv import load_dotenv
@@ -1341,6 +1343,52 @@ async def admin_timeline(_auth: bool = Depends(verify_admin_token)):
     except Exception as e:
         print(f"[Admin Error] timeline failed: {e}")
         return {"success": True, "timeline": [], "fallback": True, "error": "Unable to load timeline analytics."}
+
+
+def _monitoring_json(url: str, headers: dict) -> object:
+    request = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(request, timeout=8) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+async def _monitoring_provider(name: str, url: str, headers: dict, items_key: str):
+    try:
+        payload = await asyncio.to_thread(_monitoring_json, url, headers)
+        items = payload if isinstance(payload, list) else payload.get(items_key, []) if isinstance(payload, dict) else []
+        return {"provider": name, "status": "connected", "items": items[:10]}
+    except urllib.error.HTTPError as exc:
+        return {"provider": name, "status": "error", "message": f"Provider returned HTTP {exc.code}.", "items": []}
+    except Exception:
+        return {"provider": name, "status": "error", "message": "Could not fetch data from provider.", "items": []}
+
+
+@app.get("/api/admin/observability")
+async def admin_observability(_auth: bool = Depends(verify_admin_token)):
+    """Fetch recent monitoring data using server-only provider credentials."""
+    jobs = []
+    if os.getenv("SENTRY_AUTH_TOKEN") and os.getenv("SENTRY_ORG") and os.getenv("SENTRY_PROJECT"):
+        url = f"https://sentry.io/api/0/projects/{os.getenv('SENTRY_ORG')}/{os.getenv('SENTRY_PROJECT')}/issues/?statsPeriod=24h&limit=10"
+        jobs.append(_monitoring_provider("Sentry", url, {"Authorization": f"Bearer {os.getenv('SENTRY_AUTH_TOKEN')}"}, "issues"))
+    else:
+        jobs.append(asyncio.sleep(0, result={"provider": "Sentry", "status": "not_configured", "message": "Set SENTRY_AUTH_TOKEN, SENTRY_ORG, and SENTRY_PROJECT.", "items": []}))
+
+    if os.getenv("DD_API_KEY"):
+        from datetime import datetime, timedelta, timezone
+        start = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        site = os.getenv("DD_SITE", "us5.datadoghq.com")
+        url = f"https://api.{site}/api/v1/events?{urlencode({'start': start, 'sources': 'error'})}"
+        jobs.append(_monitoring_provider("Datadog", url, {"DD-API-KEY": os.getenv("DD_API_KEY", "")}, "events"))
+    else:
+        jobs.append(asyncio.sleep(0, result={"provider": "Datadog", "status": "not_configured", "message": "Set DD_API_KEY to fetch recent events.", "items": []}))
+
+    ph_host = os.getenv("POSTHOG_HOST", "https://us.i.posthog.com").rstrip("/")
+    ph_key, ph_project = os.getenv("POSTHOG_PERSONAL_API_KEY"), os.getenv("POSTHOG_PROJECT_ID")
+    if ph_key and ph_project:
+        url = f"{ph_host}/api/projects/{ph_project}/events/?limit=10"
+        jobs.append(_monitoring_provider("PostHog", url, {"Authorization": f"Bearer {ph_key}"}, "results"))
+    else:
+        jobs.append(asyncio.sleep(0, result={"provider": "PostHog", "status": "not_configured", "message": "Set POSTHOG_PERSONAL_API_KEY and POSTHOG_PROJECT_ID to fetch recent events.", "items": []}))
+    return {"providers": await asyncio.gather(*jobs)}
 
 
 @app.websocket("/ws")

@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import {
   Brain, ArrowLeft, ShieldCheck, Lock, RefreshCw, LogOut, Play,
-  Gauge, Target, Users, Calendar, Layers
+  Gauge, Target, Users, Calendar, Layers, Activity
 } from "lucide-react";
 import { TabId } from "@/types/admin";
 
@@ -14,6 +14,7 @@ export const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "athletes", label: "Athletes", icon: <Users className="w-3.5 h-3.5" /> },
   { id: "sessions", label: "Sessions", icon: <Calendar className="w-3.5 h-3.5" /> },
   { id: "infra", label: "Infrastructure", icon: <Layers className="w-3.5 h-3.5" /> },
+  { id: "monitoring", label: "Monitoring", icon: <Activity className="w-3.5 h-3.5" /> },
 ];
 
 interface AdminHeaderProps {
