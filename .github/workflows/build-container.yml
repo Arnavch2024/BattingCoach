@@ -57,7 +57,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
-            type=sha,format=short
+            type=sha,format=long
 
       - name: 🚀 Build and Push Image to GHCR
         uses: docker/build-push-action@v5
@@ -108,7 +108,7 @@ jobs:
         if: env.AZURE_CREDENTIALS != ''
         uses: azure/container-apps-deploy-action@v2
         with:
-          imageToDeploy: ghcr.io/${{ env.IMAGE_NAME }}:latest
+          imageToDeploy: ghcr.io/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
           containerAppName: bat-coach
           resourceGroup: ${{ steps.discover-rg.outputs.rg }}
 
