@@ -6,7 +6,9 @@ import { PostHogProvider as PHProvider } from "posthog-js/react";
 
 export function PostHogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
-    const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    const posthogKey =
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN ||
+      process.env.NEXT_PUBLIC_POSTHOG_KEY;
     const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
 
     if (!posthogKey) {
@@ -16,6 +18,7 @@ export function PostHogProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined" && !posthog.__loaded) {
       posthog.init(posthogKey, {
         api_host: posthogHost,
+        defaults: "2026-08-30",
         person_profiles: "identified_only",
         capture_pageview: true,
         capture_pageleave: true,

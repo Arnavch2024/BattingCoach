@@ -5,6 +5,7 @@ import { PwaRegister, PwaInstallPrompt } from "@/components/pwa-register";
 import { ThemeProvider } from "@/components/theme-provider";
 import { DatadogRum } from "@/components/DatadogRum";
 import { TelemetryFloatingWidget } from "@/components/TelemetryFloatingWidget";
+import { PostHogProvider } from "@/components/PostHogProvider";
 
 export const viewport: Viewport = {
   themeColor: "#059669",
@@ -184,11 +185,13 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100 font-sans transition-colors duration-200 selection:bg-emerald-500/20 selection:text-emerald-700 dark:selection:text-emerald-300">
         <ThemeProvider>
-          <PwaRegister />
-          {children}
-          <DatadogRum />
-          <TelemetryFloatingWidget />
-          <PwaInstallPrompt />
+          <PostHogProvider>
+            <PwaRegister />
+            {children}
+            <DatadogRum />
+            <TelemetryFloatingWidget />
+            <PwaInstallPrompt />
+          </PostHogProvider>
         </ThemeProvider>
       </body>
     </html>
