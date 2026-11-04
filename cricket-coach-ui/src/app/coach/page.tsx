@@ -70,8 +70,10 @@ export default function BatCoachDashboard() {
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
 
   const wsRef = useRef<WebSocket | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const desktopVideoRef = useRef<HTMLVideoElement | null>(null);
+  const mobileVideoRef = useRef<HTMLVideoElement | null>(null);
+  const desktopCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mobileCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
   const streamIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastProcessedEventIdRef = useRef<string>("");
@@ -239,16 +241,90 @@ export default function BatCoachDashboard() {
       setIsConnected(false);
       setStreamData(null);
       if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-        videoRef.current.srcObject = null;
-      }
+      [desktopVideoRef.current, mobileVideoRef.current].forEach((video) => {
+        if (video) video.srcObject = null;
+      });
       return;
     }
 
     let localStream: MediaStream | null = null;
     setCameraError(null);
+
+    // Start the local preview independently from the backend WebSocket. The
+    // camera belongs to the user's browser; an Azure container has no camera
+    // hardware, and a backend connection failure must not leave the preview black.
+    if (navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices
+        .getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+          audio: false,
+        })
+        .then((stream) => {
+          localStream = stream;
+          setCameraError(null);
+          setHasLocalCamera(true);
+          [desktopVideoRef.current, mobileVideoRef.current].forEach((video) => {
+            if (!video) return;
+            video.srcObject = stream;
+            if (video.getClientRects().length === 0) return;
+            video.play().catch((err: unknown) => {
+              console.error("Could not start camera preview:", err);
+              setCameraError("Camera access was granted, but the browser could not start the preview. Stop and restart practice, or check whether another app is using the camera.");
+            });
+          });
+
+          [desktopCanvasRef.current, mobileCanvasRef.current].forEach((canvas) => {
+            if (!canvas) return;
+            canvas.width = 320;
+            canvas.height = 240;
+          });
+          if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
+          streamIntervalRef.current = setInterval(() => {
+            const ws = wsRef.current;
+            const visibleVideo = [desktopVideoRef.current, mobileVideoRef.current].find(
+              (video) => video && video.getClientRects().length > 0 && video.videoWidth > 0
+            );
+            const canvas = visibleVideo === desktopVideoRef.current
+              ? desktopCanvasRef.current
+              : mobileCanvasRef.current;
+            if (
+              ws?.readyState === WebSocket.OPEN &&
+              ws.bufferedAmount === 0 &&
+              visibleVideo &&
+              canvas
+            ) {
+              const ctx = canvas.getContext("2d", { willReadFrequently: true });
+              if (ctx) {
+                ctx.drawImage(visibleVideo, 0, 0, 320, 240);
+                const base64Img = canvas.toDataURL("image/jpeg", 0.5);
+                ws.send(JSON.stringify({
+                  image: base64Img,
+                  target: targetShotRef.current,
+                  practice_mode: practiceModeRef.current,
+                }));
+              }
+            }
+          }, 55);
+        })
+        .catch((err) => {
+          console.warn("[Browser Camera Error] Could not access a local camera:", err);
+          setHasLocalCamera(false);
+          if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+            setCameraError("Camera permission was denied. Allow camera access for this site in your browser settings, then stop and restart practice.");
+          } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
+            setCameraError("No camera was found. Connect a camera and restart practice.");
+          } else if (err?.name === "NotReadableError" || err?.name === "TrackStartError") {
+            setCameraError("The camera is unavailable or being used by another app. Close other camera apps and restart practice.");
+          } else if (err?.name === "SecurityError") {
+            setCameraError("The browser blocked camera access. Open this page over HTTPS and allow camera access for the site.");
+          } else {
+            setCameraError("The browser could not access a camera. Check this site's camera permission and restart practice.");
+          }
+        });
+    } else {
+      setCameraError("Camera access is unavailable in this browser. Open the app in a browser that supports camera access over HTTPS.");
+      setHasLocalCamera(false);
+    }
 
     const connect = () => {
       const defaultWsUrl = WS_BASE_URL;
@@ -260,71 +336,6 @@ export default function BatCoachDashboard() {
           target: targetShotRef.current,
           practice_mode: practiceModeRef.current,
         }));
-
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          navigator.mediaDevices
-            .getUserMedia({
-              video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
-              audio: false,
-            })
-            .then((stream) => {
-              localStream = stream;
-              setCameraError(null);
-              setHasLocalCamera(true);
-              if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play().catch((err: unknown) => {
-                  console.error("Could not start camera preview:", err);
-                  setCameraError("Camera access was granted, but the browser could not start the preview. Stop and restart practice, or check whether another app is using the camera.");
-                });
-              }
-
-              if (canvasRef.current) {
-                canvasRef.current.width = 320;
-                canvasRef.current.height = 240;
-              }
-              if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
-              streamIntervalRef.current = setInterval(() => {
-                if (
-                  ws.readyState === WebSocket.OPEN &&
-                  ws.bufferedAmount === 0 &&
-                  videoRef.current &&
-                  canvasRef.current &&
-                  videoRef.current.videoWidth > 0
-                ) {
-                  const canvas = canvasRef.current;
-                  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-                  if (ctx) {
-                    ctx.drawImage(videoRef.current, 0, 0, 320, 240);
-                    const base64Img = canvas.toDataURL("image/jpeg", 0.5);
-                    ws.send(JSON.stringify({
-                      image: base64Img,
-                      target: targetShotRef.current,
-                      practice_mode: practiceModeRef.current,
-                    }));
-                  }
-                }
-              }, 55);
-            })
-            .catch((err) => {
-              console.warn("[Browser Camera Error] Could not access a local camera:", err);
-              setHasLocalCamera(false);
-              if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
-                setCameraError("Camera permission was denied. Allow camera access for this site in your browser settings, then stop and restart practice.");
-              } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
-                setCameraError("No camera was found. Connect a camera and restart practice.");
-              } else if (err?.name === "NotReadableError" || err?.name === "TrackStartError") {
-                setCameraError("The camera is unavailable or being used by another app. Close other camera apps and restart practice.");
-              } else if (err?.name === "SecurityError") {
-                setCameraError("The browser blocked camera access. Open this page over HTTPS and allow camera access for the site.");
-              } else {
-                setCameraError("The browser could not access a camera. Check this site's camera permission and restart practice.");
-              }
-            });
-        } else {
-          setCameraError("Camera access is unavailable in this browser. Open the app in a browser that supports camera access over HTTPS.");
-          setHasLocalCamera(false);
-        }
       };
 
       ws.onmessage = (event) => {
@@ -647,11 +658,12 @@ export default function BatCoachDashboard() {
           {/* Center Stage: Live Feed & Video Analysis (6 Cols) */}
           <div className="col-span-6 flex flex-col gap-3 min-h-0">
             <CameraViewport
-              videoRef={videoRef}
-              canvasRef={canvasRef}
+              videoRef={desktopVideoRef}
+              canvasRef={desktopCanvasRef}
               isLive={isLive}
               hasLocalCamera={hasLocalCamera}
               cameraError={cameraError}
+              isConnected={isConnected}
               streamData={streamData}
               practiceMode={practiceMode}
               batData={batData}
@@ -703,11 +715,12 @@ export default function BatCoachDashboard() {
         <div className="lg:hidden flex flex-col h-full min-h-0">
           {mobileCoachTab === "camera" && (
             <CameraViewport
-              videoRef={videoRef}
-              canvasRef={canvasRef}
+              videoRef={mobileVideoRef}
+              canvasRef={mobileCanvasRef}
               isLive={isLive}
               hasLocalCamera={hasLocalCamera}
               cameraError={cameraError}
+              isConnected={isConnected}
               streamData={streamData}
               practiceMode={practiceMode}
               batData={batData}

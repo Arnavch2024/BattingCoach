@@ -22,6 +22,7 @@ interface CameraViewportProps {
   isLive: boolean;
   hasLocalCamera: boolean;
   cameraError: string | null;
+  isConnected: boolean;
   streamData: any;
   practiceMode: PracticeMode;
   batData: any;
@@ -60,6 +61,7 @@ export function CameraViewport({
   isLive,
   hasLocalCamera,
   cameraError,
+  isConnected,
   streamData,
   practiceMode,
   batData,
@@ -106,6 +108,12 @@ export function CameraViewport({
                 <span>Camera unavailable</span>
               </div>
               <p className="mt-2 text-xs leading-relaxed text-zinc-200">{cameraError}</p>
+            </div>
+          )}
+
+          {isLive && !isConnected && (
+            <div role="status" className="absolute bottom-4 left-4 right-4 z-20 mx-auto max-w-lg rounded-xl border border-amber-500/40 bg-zinc-950/90 px-4 py-3 text-center text-xs text-amber-200 shadow-lg">
+              Camera preview is independent. AI analysis is reconnecting to the backend.
             </div>
           )}
 
