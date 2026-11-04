@@ -23,6 +23,7 @@ export default function BatCoachDashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isLive, setIsLive] = useState<boolean>(false);
   const [hasLocalCamera, setHasLocalCamera] = useState<boolean>(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [showAngles, setShowAngles] = useState<boolean>(true);
@@ -232,6 +233,8 @@ export default function BatCoachDashboard() {
   // WebSocket Connection & Dual-Mode Camera Streaming
   useEffect(() => {
     if (!isLive) {
+      setCameraError(null);
+      setHasLocalCamera(false);
       wsRef.current?.close();
       setIsConnected(false);
       setStreamData(null);
@@ -245,6 +248,7 @@ export default function BatCoachDashboard() {
     }
 
     let localStream: MediaStream | null = null;
+    setCameraError(null);
 
     const connect = () => {
       const defaultWsUrl = WS_BASE_URL;
@@ -265,10 +269,14 @@ export default function BatCoachDashboard() {
             })
             .then((stream) => {
               localStream = stream;
+              setCameraError(null);
               setHasLocalCamera(true);
               if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                videoRef.current.play().catch(console.error);
+                videoRef.current.play().catch((err: unknown) => {
+                  console.error("Could not start camera preview:", err);
+                  setCameraError("Camera access was granted, but the browser could not start the preview. Stop and restart practice, or check whether another app is using the camera.");
+                });
               }
 
               if (canvasRef.current) {
@@ -299,9 +307,23 @@ export default function BatCoachDashboard() {
               }, 55);
             })
             .catch((err) => {
-              console.log("[Browser Camera Notice]: Using backend camera grabber:", err);
+              console.warn("[Browser Camera Error] Could not access a local camera:", err);
               setHasLocalCamera(false);
+              if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+                setCameraError("Camera permission was denied. Allow camera access for this site in your browser settings, then stop and restart practice.");
+              } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
+                setCameraError("No camera was found. Connect a camera and restart practice.");
+              } else if (err?.name === "NotReadableError" || err?.name === "TrackStartError") {
+                setCameraError("The camera is unavailable or being used by another app. Close other camera apps and restart practice.");
+              } else if (err?.name === "SecurityError") {
+                setCameraError("The browser blocked camera access. Open this page over HTTPS and allow camera access for the site.");
+              } else {
+                setCameraError("The browser could not access a camera. Check this site's camera permission and restart practice.");
+              }
             });
+        } else {
+          setCameraError("Camera access is unavailable in this browser. Open the app in a browser that supports camera access over HTTPS.");
+          setHasLocalCamera(false);
         }
       };
 
@@ -629,6 +651,7 @@ export default function BatCoachDashboard() {
               canvasRef={canvasRef}
               isLive={isLive}
               hasLocalCamera={hasLocalCamera}
+              cameraError={cameraError}
               streamData={streamData}
               practiceMode={practiceMode}
               batData={batData}
@@ -684,6 +707,7 @@ export default function BatCoachDashboard() {
               canvasRef={canvasRef}
               isLive={isLive}
               hasLocalCamera={hasLocalCamera}
+              cameraError={cameraError}
               streamData={streamData}
               practiceMode={practiceMode}
               batData={batData}

@@ -21,6 +21,7 @@ interface CameraViewportProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   isLive: boolean;
   hasLocalCamera: boolean;
+  cameraError: string | null;
   streamData: any;
   practiceMode: PracticeMode;
   batData: any;
@@ -58,6 +59,7 @@ export function CameraViewport({
   canvasRef,
   isLive,
   hasLocalCamera,
+  cameraError,
   streamData,
   practiceMode,
   batData,
@@ -96,6 +98,16 @@ export function CameraViewport({
             autoPlay
           />
           <canvas ref={canvasRef} className="hidden" />
+
+          {cameraError && (
+            <div role="alert" className="absolute inset-x-4 top-4 z-30 mx-auto max-w-lg rounded-xl border border-amber-500/50 bg-zinc-950/95 p-4 text-center shadow-xl">
+              <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-300">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>Camera unavailable</span>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-200">{cameraError}</p>
+            </div>
+          )}
 
           {/* Fallback image stream for backend hardware camera grabber */}
           {isLive && !hasLocalCamera && streamData?.frame && (
